@@ -286,6 +286,15 @@
 /thirdparty/                                  @godotengine/buildsystem
 /thirdparty/jolt_physics/                     @godotengine/buildsystem @godotengine/jolt-physics
 
+# GO. Game Engine additions
+
+/docs/go/                                     @LeoGoettlinger
+/go_assets/                                   @LeoGoettlinger
+/go_bundled_plugins/                          @LeoGoettlinger
+/go_project_template/                         @LeoGoettlinger
+/modules/go_suite/                            @LeoGoettlinger
+/.github/workflows/go-*.yml                   @LeoGoettlinger
+
 # Buildsystem (After everything to catch all)
 
 /*.*                                          @godotengine/buildsystem

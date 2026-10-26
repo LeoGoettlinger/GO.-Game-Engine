@@ -77,10 +77,13 @@ skip = [
 ]
 ignore-words-list = [
 	"breaked",
+	"behaviour",
 	"cancelled",
+	"catalogue",
 	"checkin",
 	"colour",
 	"curvelinear",
+	"dialogue",
 	"doubleclick",
 	"expct",
 	"findn",
@@ -98,6 +101,7 @@ ignore-words-list = [
 	"parm",
 	"pEvent",
 	"requestor",
+	"sanitising",
 	"streamin",
 	"te",
 	"textin",

@@ -1,6 +1,6 @@
 # Bundled plugins
 
-`go_bundled_plugins/plugins.json` is the offline catalogue. Each entry pins an upstream tag
+`go_bundled_plugins/plugins.json` is the offline catalog. Each entry pins an upstream tag
 **and** 40-character commit, license, Godot minimum, addon path, type, default activation and
 category. `go_validate_plugins.py` checks the manifest, `plugin.cfg`, license files,
 `.origin.json` provenance, checksums and symmetric mutual-exclusion rules. The quick PR

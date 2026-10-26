@@ -10,7 +10,7 @@ the pristine upstream tree; reapply the patches below afterwards.
 
 - `addons/proton_scatter/src/scatter.gd` — `_get()` lacked an explicit return for unknown
   properties. Godot 4.7.2-stable reports “Not all code paths return a value.” Added
-  `return null` at the end of the function. No plugin behaviour changes for the two handled
+  `return null` at the end of the function. No plugin behavior changes for the two handled
   properties.
 
 This is the only source patch among the seven vendored GDScript plugins as of
