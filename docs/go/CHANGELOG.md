@@ -25,3 +25,5 @@
   warm-up in the official-binary parse job, so quick checks are reproducible on GitHub runners.
 - Minimal, documented ProtonScatter `_get()` return patch so all 397 vendored GDScript files
   parse under the official Godot 4.7.2-stable binary.
+- GO. Quick Checks and upstream static checks green on GitHub Actions; the inherited
+  full-platform build matrix is gated off on the GO. branch in favor of `go-build.yml`.

@@ -294,6 +294,7 @@
 /go_project_template/                         @LeoGoettlinger
 /modules/go_suite/                            @LeoGoettlinger
 /.github/workflows/go-*.yml                   @LeoGoettlinger
+/.github/workflows/runner.yml                 @LeoGoettlinger
 
 # Buildsystem (After everything to catch all)
 

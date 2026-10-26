@@ -9,6 +9,8 @@ compiled editor/CI, `[ ]` open.
 - [x] Kilo and Monocraft references pinned outside the committed source.
 - [x] `docs/go/` scaffold and upstream-patch register.
 - [x] Large build/release workflow and fast PR workflow authored; YAML and all local quick checks pass.
+- [x] GO. Quick Checks green on GitHub Actions, including official Godot 4.7.2-stable parsing of
+  all 397 vendored GDScript files; upstream static checks also pass on the GO. branch.
 - [~] Editor-only `modules/go_suite` source, docks, icons and guardrails present; full Godot
   C++/SCons compile is still CI-only.
 - [ ] Full Windows + Linux editor/template build proven green in GitHub Actions.
