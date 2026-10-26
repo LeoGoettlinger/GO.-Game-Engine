@@ -15,3 +15,9 @@
   GDScript plugins vendored offline, and reproducible vendor/validate/check scripts.
 - `go_package_release.py` producing a release ZIP, Godot-compatible `.tpz`, license bundle and
   SHA-256 checksums.
+- Editor-only `modules/go_suite` with `GoGitDock`, `GoAgenticsDock`, the suite launcher, three
+  generated SVG dock icons and a checked-in icon header.
+- Pure C++ guardrail layers for remote parsing, `res://` paths, LFS rules, free-model filtering,
+  commit-message sanitising, auto-commit state and the Agentics tool whitelist.
+- Standalone guardrail runner, mock Kilo Gateway test, forbidden-UI source scanner and Godot
+  doctest module tests; all run locally without a compiled editor.

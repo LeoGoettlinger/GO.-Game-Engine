@@ -38,6 +38,9 @@ jobs:
       - name: Branding invariants
         run: python misc/scripts/go_branding_check.py
 
+      - name: Generated dock icon header
+        run: python misc/scripts/go_update_dock_icons.py --check
+
       - name: Plugin manifest and vendored files
         run: |
           python misc/scripts/go_validate_plugins.py

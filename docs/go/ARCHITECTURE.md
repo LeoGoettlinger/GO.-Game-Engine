@@ -35,6 +35,12 @@ Pure logic files have no dependency on Godot classes so that `misc/scripts/go_ru
 can compile and execute them on any CI runner. The same functions are also covered by Godot's
 doctest module tests when built with `tests=yes`.
 
+**Current status:** the table is the target architecture. Step 4 adds the two docks, the launcher,
+icon generation, the pure logic layers listed above, and the standalone/doctest guardrails. The
+process wrapper (`go_system_git.*`), project lifecycle singleton, `go_project_setup.*` and
+`go_bundled_plugins.*` runtime glue are still planned; their UI buttons currently report that
+the backend is not wired. See [`ROADMAP.md`](ROADMAP.md).
+
 ## Bundled data lookup
 
 At runtime GO. looks for `go_bundled_plugins/`, `go_project_template/` and `go_assets/` in this

@@ -1,0 +1,17 @@
+#!/usr/bin/env python
+from misc.utility.scons_hints import *
+
+Import("env")
+Import("env_modules")
+
+env_go_suite = env_modules.Clone()
+module_obj = []
+
+# The module is absent from export templates; config.py already gates it on
+# env.editor_build. Keep the guard so a custom editor-less build is safe.
+if env.editor_build:
+    env_go_suite.add_source_files(module_obj, "*.cpp")
+    # tests/standalone_guardrails.cpp is intentionally NOT compiled here:
+    # misc/scripts/go_run_guardrails.py builds it without Godot headers.
+
+env.modules_sources += module_obj

@@ -9,6 +9,8 @@ compiled editor/CI, `[ ]` open.
 - [x] Kilo and Monocraft references pinned outside the committed source.
 - [x] `docs/go/` scaffold and upstream-patch register.
 - [x] Large build/release workflow and fast PR workflow authored; YAML and all local quick checks pass.
+- [~] Editor-only `modules/go_suite` source, docks, icons and guardrails present; full Godot
+  C++/SCons compile is still CI-only.
 - [ ] Full Windows + Linux editor/template build proven green in GitHub Actions.
 - [ ] Full release ZIP verified on a clean offline machine.
 
@@ -21,26 +23,27 @@ compiled editor/CI, `[ ]` open.
 
 ## Git Suite
 
-- [ ] Two built-in docks with icons and side-dock buttons.
-- [ ] Status, stage/unstage, diff, commit, pull, push, log, remote assistant.
-- [ ] Host parser tests (all remote forms, ports, case, custom/local).
-- [ ] Git LFS install/init/`.gitattributes`/large-file/pointer/quota flows.
+- [~] Two built-in docks with icons and side-dock buttons (source present, compiled-editor screenshot pending).
+- [~] Host parser, LFS rules, commit-message sanitising and auto-commit pure logic with standalone tests.
+- [ ] Status, stage/unstage, diff, commit, pull, push, log, remote assistant wired to system Git.
+- [ ] Git LFS install/init/`.gitattributes`/large-file/pointer/quota flows wired to system Git.
 - [ ] Local bare-remote end-to-end test.
 - [ ] Open/close reminders with per-project disable switches.
 
 ## Automatic Commit
 
+- [~] Pure stage machine and guaranteed-unlock invariant unit-tested.
 - [ ] Six-stage overlay that swallows all editor input and window-close.
-- [ ] Kilo `kilo-auto/free` message generator with sanitising and fallback.
+- [ ] Kilo `kilo-auto/free` message generator with sanitising and fallback wired to network.
 - [ ] LFS-aware staging, commit, push and honest intermediate-state errors.
-- [ ] Unit-tested invariant: success and failure always unlock the UI.
 
 ## Code Agentics
 
-- [ ] Kilo anonymous client, free-model filter, offline/429 handling, mock-server test.
-- [ ] Native chat dock with locked workspace and no forbidden settings.
+- [~] Anonymous free-only model filter, 429 parsing and mock-gateway test.
+- [~] Native chat dock with locked workspace and no forbidden settings (source present, compiled-editor screenshot pending).
+- [~] Whitelisted tool schemas and `res://` path guardrails unit-tested.
+- [ ] Real HTTP client wired to Godot `HTTPRequest`.
 - [ ] 20-step tool loop with native tool calling and JSON fallback.
-- [ ] Full whitelisted Godot tool set, undo/redo, path guardrail tests.
 - [ ] Player smoke test with screenshot/log in a compiled editor.
 
 ## Plugins and lifecycle
@@ -60,6 +63,8 @@ compiled editor/CI, `[ ]` open.
 - Editor-log access depends on the Godot 4.7 API and may be best-effort.
 - macOS signing/notarisation is out of scope.
 - C#/.NET is disabled.
+- `go_suite/config.py` requires the built-in `svg` module for dock icons; a no-SVG editor build
+  therefore disables `go_suite` until a fallback icon path is selected.
 - This sandbox does not ship a prebuilt 4.7.2 editor; UI screenshots and compiled-editor
   smoke tests must be produced by CI or on a developer machine. The GitHub release-asset CDN
   is not in the sandbox host allow-list, so the real GDScript parse check is CI-only.
