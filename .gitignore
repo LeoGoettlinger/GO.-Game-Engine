@@ -396,3 +396,18 @@ $RECYCLE.BIN/
 *.msp
 *.lnk
 *.generated.props
+
+# GO. local-only references and generated artifacts
+/_external/
+/kilocode-reference/
+/monocraft-reference/
+/go_splash_venv/
+/dist/
+/.scons_cache/
+# GO. vendored plugin `debug/` folders are upstream source, not build output.
+!go_bundled_plugins/**/[Dd]ebug/
+!go_bundled_plugins/**/[Dd]ebug/**
+*.go-build.log
+/modules/go_suite/go_suite_icons.gen.h.tmp
+# GO. dock icon header is checked in so editor-only builds need no code generator.
+!/modules/go_suite/go_suite_icons.gen.h
