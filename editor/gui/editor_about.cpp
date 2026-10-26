@@ -35,6 +35,7 @@
 #include "core/license.gen.h"
 #include "core/object/callable_mp.h"
 #include "core/os/os.h"
+#include "core/version.h" // GO. fork version label.
 #include "editor/editor_node.h"
 #include "editor/editor_string_names.h"
 #include "editor/gui/credits_roll.h"
@@ -88,7 +89,8 @@ void EditorAbout::_notification(int p_what) {
 			license_text_label->add_theme_constant_override(SceneStringName(line_separation), 4 * EDSCALE);
 			license_text_label->end_bulk_theme_override();
 
-			_logo->set_texture(get_editor_theme_icon(SNAME("Logo")));
+			// GO. use the fork's own mark; Godot credits remain intact below.
+			_logo->set_texture(get_editor_theme_icon(SNAME("GoLogo")));
 
 			for (ItemList *il : name_lists) {
 				for (int i = 0; i < il->get_item_count(); i++) {
@@ -234,6 +236,18 @@ EditorAbout::EditorAbout() {
 	version_info_vbc->add_child(v_spacer);
 
 	version_info_vbc->add_child(memnew(EditorVersionButton(EditorVersionButton::FORMAT_WITH_NAME_AND_BUILD)));
+
+	// GO. show the fork's own release label and the legally required fork notice.
+	Label *go_version_label = memnew(Label);
+	go_version_label->set_text(vformat(TTR("GO. 0.1.0 — based on Godot %s"), GODOT_VERSION_NUMBER));
+	go_version_label->set_auto_translate_mode(AUTO_TRANSLATE_MODE_DISABLED);
+	go_version_label->set_focus_mode(Control::FOCUS_ACCESSIBILITY);
+	version_info_vbc->add_child(go_version_label);
+
+	Label *go_fork_label = memnew(Label);
+	go_fork_label->set_text(TTR("GO. Game Engine is an unofficial fork of the Godot Engine"));
+	go_fork_label->set_focus_mode(Control::FOCUS_ACCESSIBILITY);
+	version_info_vbc->add_child(go_fork_label);
 
 	_about_text_label = memnew(Label);
 	_about_text_label->set_focus_mode(Control::FOCUS_ACCESSIBILITY);

@@ -1,76 +1,113 @@
-# Godot Engine
-
 <p align="center">
-  <a href="https://godotengine.org">
-    <img src="misc/logo/logo_outlined.svg" width="400" alt="Godot Engine logo">
-  </a>
+  <img src="misc/logo/go_logo.svg" width="140" alt="GO. Game Engine logo">
 </p>
 
-## 2D and 3D cross-platform game engine
+<h1 align="center">GO. Game Engine</h1>
 
-**[Godot Engine](https://godotengine.org) is a feature-packed, cross-platform
-game engine to create 2D and 3D games from a unified interface.** It provides a
-comprehensive set of [common tools](https://godotengine.org/features), so that
-users can focus on making games without having to reinvent the wheel. Games can
-be exported with one click to a number of platforms, including the major desktop
-platforms (Linux, macOS, Windows), mobile platforms (Android, iOS), as well as
-Web-based platforms and [consoles](https://godotengine.org/consoles).
+<p align="center"><strong>GO.</strong> + „dort“ – ein echter Full-Fork der Godot Engine mit
+integrierter Git Suite und Code Agentics direkt im Editor.</p>
 
-## Free, open source and community-driven
+> **GO. Game Engine is an unofficial fork of the Godot Engine.**
+> Godot's MIT license, copyright notices, authors and donors are preserved. This project is
+> not affiliated with or endorsed by the Godot Foundation.
 
-Godot is completely free and open source under the very permissive [MIT license](https://godotengine.org/license).
-No strings attached, no royalties, nothing. The users' games are theirs, down
-to the last line of engine code. Godot's development is fully independent and
-community-driven, empowering users to help shape their engine to match their
-expectations. It is supported by the [Godot Foundation](https://godot.foundation/)
-not-for-profit.
+**English summary:** GO. Game Engine is a native fork of Godot 4.7.2-stable. It adds two
+built-in editor suites — a host-neutral Git client with Git LFS and an anonymous, free-model
+Kilo Gateway coding agent — plus a curated offline plugin bundle. The numeric engine version
+remains Godot-compatible; the GO. release label is `4.7.2.go.0.1.0`. Windows and Linux
+editor/export builds are produced by GitHub Actions. C#/.NET and macOS signing are out of
+scope for this release.
 
-Before being open sourced in [February 2014](https://github.com/godotengine/godot/commit/0b806ee0fc9097fa7bda7ac0109191c9c5e0a1ac),
-Godot had been developed by [Juan Linietsky](https://github.com/reduz) and
-[Ariel Manzur](https://github.com/punto-) for several years as an in-house
-engine, used to publish several work-for-hire titles.
+---
 
-![Screenshot of a 3D scene in the Godot Engine editor](https://raw.githubusercontent.com/godotengine/godot-design/master/screenshots/editor_tps_demo_1920x1080.jpg)
+## Status
 
-## Getting the engine
+Dieser Fork wird gerade aus der Anforderungsdatei `PROMPT.md` heraus aufgebaut. Der stabile
+Arbeitsstand, gepinnte Referenzen und der ehrliche Fortschritt stehen in
+[`docs/go/ROADMAP.md`](docs/go/ROADMAP.md). Bereits umgesetzt sind die stabile Godot-Basis,
+GO.-Branding/Version, beide Splash-Bilder mit dem exakten Schriftzug
+`A Godot Game Engine Fork by SampleCraft` in der frei lizenzierten Monocraft-Pixel-Font sowie
+die Dokumentations- und Lizenzgrundlage. Features, die nur in CI oder einem kompilierten Editor
+beweisbar sind, werden im Roadmap-Dokument ausdrücklich als offen markiert.
 
-### Binary downloads
+## Die zwei Suites
 
-Official binaries for the Godot editor and the export templates can be found
-[on the Godot website](https://godotengine.org/download).
+1. **GO. Git Suite** — Status, Stage/Unstage, Diff, Commit, Pull/Push, Verlauf, Remote-Assistent
+   für GitHub/Codeberg/GitLab/Custom, automatische Git-LFS-Einrichtung und der deterministische
+   **Automatic Commit** mit vollständiger UI-Sperre. Credentials bleiben beim System-Git.
+2. **Code Agentics** — ein nativ nachgebauter, umgebrandeter Kilo-Free-Agent. Ausschließlich
+   anonyme Gratis-Modelle über das Kilo Gateway, Standard `kilo-auto/free`; kein Login, keine
+   API-Keys, keine Provider-Auswahl, keine MCP-Server, kein Workspace-Wechsel. Der Workspace ist
+   immer `res://` des offenen Projekts.
 
-### Compiling from source
+Beide Suites sind als Editor-Modul einkompiliert und erscheinen als andockbare Tabs am rechten
+Editor-Rand. Sie sind keine nachinstallierten Projekt-Addons.
 
-[See the official docs](https://docs.godotengine.org/en/latest/engine_details/development/compiling)
-for compilation instructions for every supported platform.
+## Gebündelte Plugins
 
-## Community and contributing
+Der Fork enthält ein versioniertes, offline verfügbares Plugin-Bundle. Reine GDScript-Addons
+werden bei neuen Projekten nach `res://addons/` kopiert; GDExtensions werden im Release-Bundle
+für Windows/Linux mitgeliefert. Die genauen Pins, Lizenzen und Aktivierungsregeln stehen in
+[`docs/go/PLUGINS.md`](docs/go/PLUGINS.md) und `go_bundled_plugins/plugins.json`.
 
-Godot is not only an engine but an ever-growing community of users and engine
-developers. The main community channels are listed [on the homepage](https://godotengine.org/community).
+## Bauen
 
-The best way to get in touch with the core engine developers is to join the
-[Godot Contributors Chat](https://chat.godotengine.org).
+Die genauen Befehle für Windows und Linux stehen in
+[`docs/go/BUILDING.md`](docs/go/BUILDING.md). Kurzfassung:
 
-To get started contributing to the project, see the [contributing guide](CONTRIBUTING.md).
-This document also includes guidelines for reporting bugs.
+```sh
+python3 -m pip install scons==4.9.1
+scons platform=linuxbsd target=editor arch=x86_64 no_editor_splash=no production=yes
+```
 
-## Documentation and demos
+Wichtig: `short_name = "go"` ändert Binary-, Template- und User-Data-Namen. Daher braucht GO.
+eigene Export-Templates; offizielle Godot-Templates sind nicht kompatibel. Der Editor-Splash
+benötigt `main/splash_editor.png` und `no_editor_splash=no`.
 
-The official documentation is hosted on [Read the Docs](https://docs.godotengine.org).
-It is maintained by the Godot community in its own [GitHub repository](https://github.com/godotengine/godot-docs).
+Die Splash-Bilder sind reproduzierbar:
 
-The [class reference](https://docs.godotengine.org/en/latest/classes/)
-is also accessible from the Godot editor.
+```sh
+python3 -m pip install Pillow
+python3 go_assets/make_splash.py
+python3 go_assets/make_splash.py --check
+```
 
-We also maintain official demos in their own [GitHub repository](https://github.com/godotengine/godot-demo-projects)
-as well as the [Asset Store](https://store.godotengine.org/).
+## Tests und Guardrails
 
-There are also a number of other
-[learning resources](https://docs.godotengine.org/en/latest/community/tutorials.html)
-provided by the community, such as text and video tutorials, demos, etc.
-Consult the [community channels](https://godotengine.org/community)
-for more information.
+```sh
+python3 misc/scripts/go_run_guardrails.py
+python3 misc/scripts/go_check_ui_guardrails.py
+python3 misc/scripts/go_validate_plugins.py
+python3 misc/scripts/go_mock_gateway_test.py
+```
 
-[![Code Triagers Badge](https://www.codetriage.com/godotengine/godot/badges/users.svg)](https://www.codetriage.com/godotengine/godot)
-[![Translate on Weblate](https://hosted.weblate.org/widgets/godot-engine/-/godot/svg-badge.svg)](https://hosted.weblate.org/engage/godot-engine/?utm_source=widget)
+Diese Prüfungen sind ohne kompilierten Editor ausführbar und laufen im schnellen PR-Workflow.
+Der große Workflow baut Editor und Export-Templates für Windows und Linux.
+
+## Lizenzen und Credits
+
+- Godot Engine: MIT, siehe [`LICENSE.txt`](LICENSE.txt), [`COPYRIGHT.txt`](COPYRIGHT.txt),
+  [`AUTHORS.md`](AUTHORS.md) und die unveränderte Upstream-README
+  [`README.godot-upstream.md`](README.godot-upstream.md).
+- Kilo Code / opencode: MIT, siehe [`docs/go/licenses/KILO-MIT.txt`](docs/go/licenses/KILO-MIT.txt).
+- Monocraft: SIL OFL 1.1, siehe
+  [`go_assets/fonts/LICENSE-Monocraft.txt`](go_assets/fonts/LICENSE-Monocraft.txt).
+- Alle gebündelten Plugins: eigene License-Datei und Pin im Bundle.
+
+Die vollständige Übersicht steht in
+[`docs/go/THIRD_PARTY_NOTICES.md`](docs/go/THIRD_PARTY_NOTICES.md). „Minecraft“ beschreibt nur
+den Stil der frei lizenzierten Pixel-Font; es werden keine Mojang- oder Microsoft-Assets
+verteilt.
+
+## Upstream synchron halten
+
+```sh
+git remote add upstream https://github.com/godotengine/godot.git  # einmalig
+git fetch upstream --tags
+git rebase upstream/<neues-stabiles-tag>
+```
+
+Alle bewusst geänderten Upstream-Dateien sind mit `// GO.` (bzw. `# GO.` in Python) markiert
+und in [`docs/go/UPSTREAM_PATCHES.md`](docs/go/UPSTREAM_PATCHES.md) dokumentiert. Die gewählte
+Basis und externe Referenz-Commits stehen in
+[`docs/go/BASE_VERSION.md`](docs/go/BASE_VERSION.md).

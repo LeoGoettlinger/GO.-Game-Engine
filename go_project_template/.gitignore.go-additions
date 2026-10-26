@@ -1,0 +1,12 @@
+# GO. export/build artifacts (in addition to Godot's own .gitignore)
+/build/
+/exports/
+/dist/
+*.pck
+*.zip
+*.exe
+*.x86_64
+*.apk
+*.aab
+*.dmg
+*.app/
