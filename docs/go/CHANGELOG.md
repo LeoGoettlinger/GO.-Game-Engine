@@ -21,5 +21,5 @@
   commit-message sanitising, auto-commit state and the Agentics tool whitelist.
 - Standalone guardrail runner, mock Kilo Gateway test, forbidden-UI source scanner and Godot
   doctest module tests; all run locally without a compiled editor.
-- Byte-stable splash/app-icon source PNGs under `go_assets/rendered/` and a GDScript class-cache
+- Byte-stable splash/app-icon source PNGs under `go_assets/rendered/` and a headless `--import`
   warm-up in the official-binary parse job, so quick checks are reproducible on GitHub runners.

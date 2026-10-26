@@ -2,10 +2,11 @@
 """Parse-check vendored GDScript plugins with a pinned official Godot binary.
 
 This is a CI/tooling script. It never enables plugins or executes project code.
-A brief headless editor scan builds `.godot/global_script_class_cache.cfg` so
-sibling `class_name` bases resolve; afterwards Godot's `--check-only --script`
-only parses each script. A fake executable that returns 0 can be used with
-`--no-warmup` to test the orchestration offline.
+A brief headless `--import` scan builds `.godot/global_script_class_cache.cfg`
+and imports vendored SVG icons so sibling `class_name` bases and `preload()`
+resources resolve; afterwards Godot's `--check-only --script` only parses each
+script. A fake executable that returns 0 can be used with `--no-warmup` to test
+the orchestration offline.
 
 Usage:
     python3 misc/scripts/go_check_gdscript.py --godot /path/to/Godot_v4.7.2-stable_linux.x86_64
@@ -90,21 +91,21 @@ def main() -> int:
             env[key] = str(temp_root / key.lower())
 
         # Godot's `--check-only --script` cannot resolve global `class_name`
-        # bases from sibling addon scripts unless `.godot/global_script_class_cache.cfg`
-        # exists. A short headless editor scan builds that cache without enabling
-        # any plugin or autoload; all plugins stay disabled in prepare_project().
+        # bases or preloaded SVG icons unless the editor has scanned/imported the
+        # project first. `--import` is the headless, quit-after-import mode; all
+        # plugins stay disabled in prepare_project().
         if not args.no_warmup:
             warmup = subprocess.run(
                 [
                     str(godot), "--headless", "--path", str(project),
-                    "--editor", "--quit-after", "2",
+                    "--import",
                 ],
                 cwd=project,
                 env=env,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
-                timeout=180,
+                timeout=300,
             )
             cache = project / ".godot" / "global_script_class_cache.cfg"
             if not cache.is_file():
