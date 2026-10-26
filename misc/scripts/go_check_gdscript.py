@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Parse-check vendored GDScript plugins with a pinned official Godot binary.
 
-This is a CI/tooling script. It never enables plugins or executes project code;
-Godot's `--check-only --script` only parses each script. A fake executable that
-returns 0 can be used to test the orchestration offline.
+This is a CI/tooling script. It never enables plugins or executes project code.
+A brief headless editor scan builds `.godot/global_script_class_cache.cfg` so
+sibling `class_name` bases resolve; afterwards Godot's `--check-only --script`
+only parses each script. A fake executable that returns 0 can be used with
+`--no-warmup` to test the orchestration offline.
 
 Usage:
     python3 misc/scripts/go_check_gdscript.py --godot /path/to/Godot_v4.7.2-stable_linux.x86_64
@@ -64,6 +66,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--godot", required=True, help="Path to an official Godot 4.7.2-stable executable")
     parser.add_argument("--max-scripts", type=int, default=0, help="Optional limit for faster local runs")
+    parser.add_argument("--no-warmup", action="store_true",
+                        help="Skip the editor class-cache scan (only for fake-binary orchestration tests)")
     args = parser.parse_args()
     godot = Path(args.godot).resolve()
     if not godot.is_file():
@@ -84,6 +88,30 @@ def main() -> int:
         for key in ("XDG_DATA_HOME", "XDG_CONFIG_HOME", "XDG_CACHE_HOME"):
             (temp_root / key.lower()).mkdir(exist_ok=True)
             env[key] = str(temp_root / key.lower())
+
+        # Godot's `--check-only --script` cannot resolve global `class_name`
+        # bases from sibling addon scripts unless `.godot/global_script_class_cache.cfg`
+        # exists. A short headless editor scan builds that cache without enabling
+        # any plugin or autoload; all plugins stay disabled in prepare_project().
+        if not args.no_warmup:
+            warmup = subprocess.run(
+                [
+                    str(godot), "--headless", "--path", str(project),
+                    "--editor", "--quit-after", "2",
+                ],
+                cwd=project,
+                env=env,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                timeout=180,
+            )
+            cache = project / ".godot" / "global_script_class_cache.cfg"
+            if not cache.is_file():
+                print("GDScript parse check FAILED: editor warm-up did not create the global class cache", file=sys.stderr)
+                print(warmup.stdout.strip()[-2000:], file=sys.stderr)
+                return 1
+            print(f"  global class cache ready ({cache.stat().st_size} bytes)")
 
         failures: list[tuple[str, str]] = []
         for index, script in enumerate(scripts, 1):

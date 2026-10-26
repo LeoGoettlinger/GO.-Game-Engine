@@ -8,7 +8,7 @@ unchanged.
 | --- | --- | --- | --- |
 | Godot Engine | `4.7.2-stable`, `ed1daf0bf001b61586d9930840f2f1394092c079` | MIT | See root `LICENSE.txt` and `COPYRIGHT.txt`. |
 | Kilo Code | `54bff5dcbd0ae8c11adad618f32c9255583699d0` | MIT | Concepts/protocol details ported; copyright Kilo Code and opencode. [`licenses/KILO-MIT.txt`](licenses/KILO-MIT.txt). |
-| Monocraft | `e498bf70aeb25b4bdcff1e44d878fb2cb4f7c2a9` | OFL-1.1 | `go_assets/fonts/LICENSE-Monocraft.txt`. Used for splash/GO. UI text. |
+| Monocraft | `e498bf70aeb25b4bdcff1e44d878fb2cb4f7c2a9` | OFL-1.1 | `go_assets/fonts/LICENSE-Monocraft.txt`. Used for splash/GO. UI text. The rendered splash/app-icon source PNGs are committed under `go_assets/rendered/` so CI does not depend on the runner's FreeType version. |
 | Bundled plugins | see `go_bundled_plugins/plugins.json` | MIT | Upstream license file copied with each vendored plugin. |
 
 Pinned plugin catalogue (all MIT): Godot Git Plugin `v3.3.0`; Dialogic 2 `2.0-alpha-20`;
