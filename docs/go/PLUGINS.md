@@ -61,4 +61,7 @@ python3 misc/scripts/go_check_gdscript.py --godot /path/to/Godot_v4.7.2-stable_l
 The local sandbox could not download the official release binary because its CDN host is not
 allow-listed, so `go_check_gdscript.py` was exercised locally with a stub executable that
 returns success. The real parse check runs in GitHub Actions, where the release binary and
-`SHA512-SUMS.txt` are available and checksum-verified.
+`SHA512-SUMS.txt` are available and checksum-verified. It parses all 397 vendored `.gd` files
+after a headless `--import` warm-up. The CI run uncovered one upstream ProtonScatter 4.0
+function that Godot 4.7.2 rejects; the minimal compatibility fix is recorded in
+[`go_bundled_plugins/PATCHES.md`](../go_bundled_plugins/PATCHES.md).

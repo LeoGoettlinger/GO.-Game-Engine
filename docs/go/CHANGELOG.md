@@ -23,3 +23,5 @@
   doctest module tests; all run locally without a compiled editor.
 - Byte-stable splash/app-icon source PNGs under `go_assets/rendered/` and a headless `--import`
   warm-up in the official-binary parse job, so quick checks are reproducible on GitHub runners.
+- Minimal, documented ProtonScatter `_get()` return patch so all 397 vendored GDScript files
+  parse under the official Godot 4.7.2-stable binary.
