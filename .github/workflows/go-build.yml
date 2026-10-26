@@ -1,0 +1,169 @@
+# GO. full editor + export-template build. Intentionally separate from the PR checks.
+name: GO. Build and Release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'go-v*'
+  pull_request:
+    types: [opened, labeled, synchronize, reopened]
+
+permissions:
+  contents: write
+
+env:
+  GO_VERSION: 4.7.2.go.0.1.0
+  SCONS_VERSION: 4.9.1
+  SCONS_CACHE_PATH: ${{ github.workspace }}/.scons_cache
+
+jobs:
+  build:
+    # Only spend full engine-build minutes on explicit requests, tags or the build-engine label.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      startsWith(github.ref, 'refs/tags/go-v') ||
+      contains(github.event.pull_request.labels.*.name, 'build-engine')
+    name: ${{ matrix.platform }} editor + templates
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 240
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux
+            scons_platform: linuxbsd
+            runner: ubuntu-22.04
+            jobs: 2
+          - platform: windows
+            scons_platform: windows
+            runner: windows-2022
+            jobs: 2
+
+    steps:
+      - name: Checkout GO.
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Linux build dependencies
+        if: matrix.platform == 'linux'
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config libx11-dev libxcursor-dev \
+            libxinerama-dev libgl1-mesa-dev libglu1-mesa-dev libasound2-dev libpulse-dev \
+            libudev-dev libxi-dev libxrandr-dev libwayland-dev libxkbcommon-dev
+
+      - name: Setup MSVC developer environment
+        if: matrix.platform == 'windows'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Install SCons
+        shell: bash
+        run: python -m pip install "scons==${SCONS_VERSION}"
+
+      - name: Restore SCons cache
+        uses: actions/cache@v4
+        with:
+          path: .scons_cache
+          key: go-${{ matrix.platform }}-${{ hashFiles('SConstruct', 'modules/go_suite/**', 'version.py') }}-${{ github.sha }}
+          restore-keys: |
+            go-${{ matrix.platform }}-${{ hashFiles('SConstruct', 'modules/go_suite/**', 'version.py') }}-
+            go-${{ matrix.platform }}-
+
+      - name: Build editor
+        shell: bash
+        run: |
+          python -m SCons platform=${{ matrix.scons_platform }} target=editor arch=x86_64 \
+            module_mono_enabled=no no_editor_splash=no production=yes tests=no \
+            cache_path="$SCONS_CACHE_PATH" cache_limit=2 -j${{ matrix.jobs }}
+
+      - name: Verify --version branding
+        shell: bash
+        run: |
+          if [ "${{ matrix.platform }}" = "linux" ]; then
+            EDITOR=bin/godot.linuxbsd.editor.x86_64
+          else
+            EDITOR=bin/godot.windows.editor.x86_64.exe
+          fi
+          "$EDITOR" --version | tee go-version.txt
+          grep -F "GO. Game Engine" go-version.txt
+
+      - name: Build release template
+        shell: bash
+        run: |
+          python -m SCons platform=${{ matrix.scons_platform }} target=template_release arch=x86_64 \
+            module_mono_enabled=no production=yes tests=no \
+            cache_path="$SCONS_CACHE_PATH" cache_limit=2 -j${{ matrix.jobs }}
+
+      - name: Build debug template
+        shell: bash
+        run: |
+          python -m SCons platform=${{ matrix.scons_platform }} target=template_debug arch=x86_64 \
+            module_mono_enabled=no production=yes tests=no \
+            cache_path="$SCONS_CACHE_PATH" cache_limit=2 -j${{ matrix.jobs }}
+
+      - name: Validate plugin manifest
+        shell: bash
+        run: python misc/scripts/go_validate_plugins.py
+
+      # GO. GDExtension binaries are release artifacts. The packaging status file records
+      # entries that are still pending instead of pretending they are source-vendored.
+      - name: Package GO. release
+        shell: bash
+        run: |
+          python misc/scripts/go_package_release.py \
+            --platform ${{ matrix.platform }} \
+            --bin-dir bin \
+            --output-dir dist \
+            --go-version "$GO_VERSION"
+
+      - name: Upload platform artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: GO-${{ matrix.platform }}-x86_64
+          path: |
+            dist/*.zip
+            dist/*.tpz
+            dist/*SHA256SUMS.txt
+          if-no-files-found: error
+
+  release:
+    name: Publish tagged release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/go-v')
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Download all platform artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: GO-*-x86_64
+          merge-multiple: true
+          path: release
+
+      - name: Create combined checksums
+        shell: bash
+        run: |
+          cd release
+          sha256sum GO-Game-Engine-v${GO_VERSION}-*.zip GO-Game-Engine-v${GO_VERSION}-*.tpz > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release/*.zip
+            release/*.tpz
+            release/SHA256SUMS.txt
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

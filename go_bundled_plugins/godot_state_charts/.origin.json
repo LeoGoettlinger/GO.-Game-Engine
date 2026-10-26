@@ -1,0 +1,12 @@
+{
+  "name": "Godot State Charts",
+  "id": "godot_state_charts",
+  "upstream_url": "https://github.com/derkork/godot-statecharts",
+  "tag": "v0.22.5",
+  "commit": "76d226a3efac66a72aea825382b320c94808f409",
+  "license": "MIT",
+  "license_url": "https://github.com/derkork/godot-statecharts/blob/v0.22.5/LICENSE",
+  "tarball_sha256": "87219156c6babe2bb0c4e8e19b07df66dd3ff3d9a433376481cd4dd99c997b23",
+  "source_subdir": "addons/godot_state_charts",
+  "addon_path": "addons/godot_state_charts"
+}

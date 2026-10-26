@@ -1,0 +1,12 @@
+{
+  "name": "Phantom Camera",
+  "id": "phantom_camera",
+  "upstream_url": "https://github.com/ramokz/phantom-camera",
+  "tag": "v0.11.0.3",
+  "commit": "cb6e0966ac305202c47f1d1a81c105966e29da96",
+  "license": "MIT",
+  "license_url": "https://github.com/ramokz/phantom-camera/blob/v0.11.0.3/LICENSE",
+  "tarball_sha256": "a410435c47a5785fb466de151e8c3dd6e92a2f123196462693f4b51c0652f3eb",
+  "source_subdir": "addons/phantom_camera",
+  "addon_path": "addons/phantom_camera"
+}

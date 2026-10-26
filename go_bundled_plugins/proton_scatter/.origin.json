@@ -1,0 +1,12 @@
+{
+  "name": "ProtonScatter",
+  "id": "proton_scatter",
+  "upstream_url": "https://github.com/HungryProton/scatter",
+  "tag": "4.0",
+  "commit": "ca624412c657d469147b4ce464cee290df738a40",
+  "license": "MIT",
+  "license_url": "https://github.com/HungryProton/scatter/blob/4.0/LICENSE.md",
+  "tarball_sha256": "d7afa3e5f67d43e3ebed35e6bba8336e629987a70c4a374965bed593e7cad1b9",
+  "source_subdir": "addons/proton_scatter",
+  "addon_path": "addons/proton_scatter"
+}

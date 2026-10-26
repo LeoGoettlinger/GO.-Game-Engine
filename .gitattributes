@@ -5,6 +5,8 @@ thirdparty/* linguist-vendored
 
 # Normalize EOL for all files that Git considers text files
 * text=auto eol=lf
+# GO. vendored plugin sources preserve upstream whitespace exactly.
+go_bundled_plugins/** whitespace=-trailing-space,-space-before-tab,-blank-at-eof
 # Except for Windows-only / Visual Studio files
 *.bat eol=crlf
 *.sln eol=crlf

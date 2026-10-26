@@ -1,0 +1,12 @@
+{
+  "name": "GUT",
+  "id": "gut",
+  "upstream_url": "https://github.com/bitwes/Gut",
+  "tag": "v9.6.1",
+  "commit": "c80954f47bed74a0a2c471d472c0389f98e0a8f6",
+  "license": "MIT",
+  "license_url": "https://github.com/bitwes/Gut/blob/v9.6.1/addons/gut/LICENSE.md",
+  "tarball_sha256": "1674b52d25eceb8b1ab968f82c09d4874366ffcb0f7167cef326471969c406f5",
+  "source_subdir": "addons/gut",
+  "addon_path": "addons/gut"
+}

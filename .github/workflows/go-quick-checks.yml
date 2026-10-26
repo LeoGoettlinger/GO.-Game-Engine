@@ -1,0 +1,116 @@
+# GO. fast PR checks: no engine compile, no real Kilo Gateway call.
+name: GO. Quick Checks
+
+on:
+  push:
+    branches:
+      - '**'
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  guardrails:
+    name: Branding, manifests, YAML and pure guardrails
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout GO.
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install check-only Python dependencies
+        run: python -m pip install Pillow PyYAML
+
+      - name: Generated splash images
+        run: |
+          python go_assets/make_splash.py --check
+          python go_assets/make_splash.py
+          python go_assets/make_splash.py --check
+          git diff --exit-code -- main/splash.png main/splash_editor.png main/app_icon.png go_project_template/splash.png
+
+      - name: Branding invariants
+        run: python misc/scripts/go_branding_check.py
+
+      - name: Plugin manifest and vendored files
+        run: |
+          python misc/scripts/go_validate_plugins.py
+          python misc/scripts/go_vendor_plugins.py --check
+
+      - name: Workflow YAML syntax
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import yaml
+          files = sorted(Path('.github/workflows').glob('go-*.yml'))
+          assert files, 'no GO. workflows found'
+          for path in files:
+              data = yaml.safe_load(path.read_text(encoding='utf-8'))
+              triggers = data.get('on', data.get(True))
+              assert triggers, f'{path}: missing workflow triggers'
+              assert 'jobs' in data, f'{path}: missing jobs'
+              print('valid workflow:', path)
+          PY
+
+      - name: Pure C++ guardrails and forbidden-UI checks
+        run: |
+          python misc/scripts/go_run_guardrails.py
+          python misc/scripts/go_check_ui_guardrails.py
+
+      - name: Kilo Gateway mock test (no live network)
+        run: python misc/scripts/go_mock_gateway_test.py
+
+      - name: Python unit tests
+        run: python -m unittest discover -s misc/scripts -p 'go_test_*.py' -v
+
+      - name: Release packaging smoke test
+        run: |
+          mkdir -p /tmp/go-fakebin
+          for f in godot.linuxbsd.editor.x86_64 godot.linuxbsd.template_release.x86_64 godot.linuxbsd.template_debug.x86_64; do
+            printf 'fake binary\n' > "/tmp/go-fakebin/$f"
+            chmod +x "/tmp/go-fakebin/$f"
+          done
+          python misc/scripts/go_package_release.py --platform linux --bin-dir /tmp/go-fakebin --output-dir /tmp/go-fakedist
+          test -s /tmp/go-fakedist/GO-Game-Engine-v4.7.2.go.0.1.0-linux-x86_64.zip
+          test -s /tmp/go-fakedist/GO-Game-Engine-v4.7.2.go.0.1.0-linux-x86_64-export-templates.tpz
+
+  gdscript:
+    name: Parse vendored GDScript with Godot 4.7.2-stable
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout GO.
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Download and verify official Godot 4.7.2 binary
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p /tmp/godot-check
+          gh release download 4.7.2-stable \
+            --repo godotengine/godot \
+            --pattern 'Godot_v4.7.2-stable_linux.x86_64.zip' \
+            --pattern 'SHA512-SUMS.txt' \
+            --dir /tmp/godot-check --clobber
+          cd /tmp/godot-check
+          grep ' Godot_v4.7.2-stable_linux.x86_64.zip$' SHA512-SUMS.txt | sha512sum -c -
+          unzip -q -o Godot_v4.7.2-stable_linux.x86_64.zip
+          GODOT_BIN=$(find . -maxdepth 1 -type f -name 'Godot_v4.7.2-stable_linux.x86_64' | head -n 1)
+          test -n "$GODOT_BIN"
+          chmod +x "$GODOT_BIN"
+          echo "GODOT_BIN=/tmp/godot-check/$GODOT_BIN" >> "$GITHUB_ENV"
+          "$GODOT_BIN" --headless --version
+
+      - name: Parse all vendored .gd files
+        run: python misc/scripts/go_check_gdscript.py --godot "$GODOT_BIN"

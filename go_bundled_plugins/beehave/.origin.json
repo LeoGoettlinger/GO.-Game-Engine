@@ -1,0 +1,12 @@
+{
+  "name": "Beehave",
+  "id": "beehave",
+  "upstream_url": "https://github.com/bitbrain/beehave",
+  "tag": "v2.9.3",
+  "commit": "773a5f6dd9b3433cdb8735ab35e9043d4cd60674",
+  "license": "MIT",
+  "license_url": "https://github.com/bitbrain/beehave/blob/v2.9.3/LICENSE",
+  "tarball_sha256": "10c90890d552003e38b93aa6c295d3b3f0238b7988213e998d7621dd0149c1d0",
+  "source_subdir": "addons/beehave",
+  "addon_path": "addons/beehave"
+}

@@ -1,0 +1,12 @@
+{
+  "name": "Dialogue Manager",
+  "id": "dialogue_manager",
+  "upstream_url": "https://github.com/nathanhoad/godot_dialogue_manager",
+  "tag": "v4.1.0",
+  "commit": "a719088aea342572f29b5559fd8726896c9519b2",
+  "license": "MIT",
+  "license_url": "https://github.com/nathanhoad/godot_dialogue_manager/blob/v4.1.0/LICENSE",
+  "tarball_sha256": "5b1bed91273cdab5d0578a12f9d2ad0485046f0f992b9c101e57508ea7f543d6",
+  "source_subdir": "addons/dialogue_manager",
+  "addon_path": "addons/dialogue_manager"
+}

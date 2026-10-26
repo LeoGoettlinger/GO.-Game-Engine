@@ -1,0 +1,12 @@
+{
+  "name": "Aseprite Wizard",
+  "id": "aseprite_wizard",
+  "upstream_url": "https://github.com/viniciusgerevini/godot-aseprite-wizard",
+  "tag": "v9.8.0-4",
+  "commit": "dd7d4e21eb665385c74b47378f7e3020d7037339",
+  "license": "MIT",
+  "license_url": "https://github.com/viniciusgerevini/godot-aseprite-wizard/blob/v9.8.0-4/LICENSE",
+  "tarball_sha256": "8da5cf54e007ec7d23d54ecb31eb5e7322c7f4201bf56bd66f1282435a265fc8",
+  "source_subdir": "addons/AsepriteWizard",
+  "addon_path": "addons/AsepriteWizard"
+}
