@@ -1,3 +1,33 @@
+/**************************************************************************/
+/*  standalone_guardrails.cpp                                             */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
+
 // GO. Game Engine — Copyright (c) 2026 SampleCraft / GO. contributors
 // SPDX-License-Identifier: MIT
 //
@@ -22,24 +52,24 @@ namespace {
 
 int failures = 0;
 
-#define CHECK(condition)                                                                     \
-	do {                                                                                     \
-		if (!(condition)) {                                                                  \
-			std::cerr << "FAIL " << __LINE__ << ": " #condition << std::endl;                \
-			failures++;                                                                       \
-		}                                                                                    \
+#define CHECK(condition) \
+	do { \
+		if (!(condition)) { \
+			std::cerr << "FAIL " << __LINE__ << ": " #condition << std::endl; \
+			failures++; \
+		} \
 	} while (false)
 
-#define CHECK_EQ(actual, expected)                                                           \
-	do {                                                                                     \
-		const auto _actual = (actual);                                                       \
-		const auto _expected = (expected);                                                   \
-		if (!(_actual == _expected)) {                                                        \
-			std::cerr << "FAIL " << __LINE__ << ": " #actual << " == " #expected            \
-					  << " (got '" << _actual << "', expected '" << _expected << "')"        \
-					  << std::endl;                                                          \
-			failures++;                                                                       \
-		}                                                                                    \
+#define CHECK_EQ(actual, expected) \
+	do { \
+		const auto _actual = (actual); \
+		const auto _expected = (expected); \
+		if (!(_actual == _expected)) { \
+			std::cerr << "FAIL " << __LINE__ << ": " #actual << " == " #expected \
+					  << " (got '" << _actual << "', expected '" << _expected << "')" \
+					  << std::endl; \
+			failures++; \
+		} \
 	} while (false)
 
 void test_remote_parser() {
@@ -331,7 +361,10 @@ void test_system_git() {
 	CHECK_EQ(behind, 4);
 
 	const std::vector<GitLogEntry> entries = parse_log(
-			"abc123\x1f" "Author\x1f" "2026-10-27\x1f" "initial commit\x1e");
+			"abc123\x1f"
+			"Author\x1f"
+			"2026-10-27\x1f"
+			"initial commit\x1e");
 	CHECK_EQ(entries.size(), size_t(1));
 	CHECK_EQ(entries.front().hash, std::string("abc123"));
 	CHECK_EQ(entries.front().subject, std::string("initial commit"));
