@@ -22,7 +22,8 @@ scope for this release.
 
 ## Status
 
-Dieser Fork wird gerade aus der Anforderungsdatei `PROMPT.md` heraus aufgebaut. Der stabile
+Dieser Fork wird gerade aus der Anforderungsdatei `PROMPT.md` heraus aufgebaut. Eine kompakte
+Übersicht der GO.-exklusiven Funktionen steht in [`Features.md`](Features.md). Der stabile
 Arbeitsstand, gepinnte Referenzen und der ehrliche Fortschritt stehen in
 [`docs/go/ROADMAP.md`](docs/go/ROADMAP.md). Bereits umgesetzt sind die stabile Godot-Basis,
 GO.-Branding/Version, beide Splash-Bilder mit dem exakten Schriftzug

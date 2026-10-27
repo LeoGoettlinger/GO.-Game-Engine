@@ -27,3 +27,5 @@
   parse under the official Godot 4.7.2-stable binary.
 - GO. Quick Checks and upstream static checks green on GitHub Actions; the inherited
   full-platform build matrix is gated off on the GO. branch in favor of `go-build.yml`.
+- User-facing `Features.md` comparing GO. with upstream Godot, with explicit
+  implemented/partial/planned status and a short English summary.

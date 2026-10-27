@@ -1,7 +1,8 @@
 # GO. roadmap and honest status
 
 Legend: `[x]` implemented and locally verifiable, `[~]` implemented but not yet proven in a
-compiled editor/CI, `[ ]` open.
+compiled editor/CI, `[ ]` open. A user-facing feature comparison lives in
+[`Features.md`](../../Features.md).
 
 ## Foundation
 

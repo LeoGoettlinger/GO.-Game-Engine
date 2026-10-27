@@ -24,7 +24,7 @@ with every new upstream-file patch so a later rebase/merge can be audited.
 | `.github/workflows/runner.yml` | Six GO.-marked branch conditions skip the inherited Android/iOS/macOS/Web/Mono build matrix on the GO. branch; static checks still run. | Preserve the conditions when upstream changes the reusable-workflow caller. |
 | `.gitignore` | GO.-marked ignores for local references, `.scons_cache/` and `dist/`; exceptions for vendored plugin `debug/` source folders and the checked-in `go_suite_icons.gen.h`. | Keep the GO. block at the end. |
 | `.gitattributes` | GO.-marked whitespace exception for verbatim vendored plugin sources. | Keep the GO. line; upstream EOL rules remain unchanged. |
-| `.pre-commit-config.yaml` | Exclude verbatim vendored plugin sources from upstream formatting hooks. | Keep the single GO. exclude line when upstream changes the regex. |
+| `.pre-commit-config.yaml` | Exclude verbatim vendored plugin sources from upstream formatting hooks and exclude the German `README.md`/`Features.md` from the English codespell hook. | Keep both GO. exclude rules when upstream changes the regexes. |
 
 `LICENSE.txt`, `COPYRIGHT.txt`, `AUTHORS.md` and upstream `README.godot-upstream.md` remain
 intact. GO.'s own MIT-notice files are additive.

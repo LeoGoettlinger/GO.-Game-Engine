@@ -71,6 +71,8 @@ repos:
     hooks:
       - id: codespell
         additional_dependencies: [tomli]
+        # GO. German user-facing docs are not English spellchecker targets.
+        exclude: ^(README\.md|Features\.md)$
 
   - repo: https://github.com/python-jsonschema/check-jsonschema
     rev: 0.34.1
