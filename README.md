@@ -4,7 +4,7 @@
 
 <h1 align="center">GO. Game Engine</h1>
 
-<p align="center"><strong>GO.</strong> + „dort“ – ein echter Full-Fork der Godot Engine mit
+<p align="center"><strong>GO.</strong> + „dot“ – ein echter Full-Fork der Godot Engine mit
 integrierter Git Suite und Code Agentics direkt im Editor.</p>
 
 > **GO. Game Engine is an unofficial fork of the Godot Engine.**
