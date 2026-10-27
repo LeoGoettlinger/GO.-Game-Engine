@@ -12,6 +12,7 @@
 #include "go_git_remote.h"
 #include "go_kilo_models.h"
 #include "go_suite_core.h"
+#include "go_system_git.h"
 
 #include <algorithm>
 #include <iostream>
@@ -282,6 +283,86 @@ void test_auto_commit_state() {
 	CHECK_EQ(stage_name(push_plan.stages.back()), std::string("push"));
 }
 
+void test_system_git() {
+	using namespace go;
+
+	const GitCommand status_cmd = status("/tmp/project");
+	CHECK(status_cmd.valid);
+	CHECK_EQ(status_cmd.executable, std::string("git"));
+	CHECK_EQ(status_cmd.arguments[0], std::string("-C"));
+	CHECK_EQ(status_cmd.arguments[1], std::string("/tmp/project"));
+	CHECK_EQ(status_cmd.arguments[2], std::string("status"));
+	CHECK(contains(command_display(status_cmd), "status"));
+
+	const GitCommand unsafe_project = status("-unsafe");
+	CHECK(!unsafe_project.valid);
+
+	const GitCommand remote_cmd = remote_add("/tmp/project", "origin", "https://codeberg.org/owner/repo.git");
+	CHECK(remote_cmd.valid);
+	CHECK_EQ(remote_cmd.arguments.back(), std::string("https://codeberg.org/owner/repo.git"));
+
+	const GitCommand bad_remote = remote_add("/tmp/project", "origin", "https://user:secret@example.com/repo.git");
+	CHECK(!bad_remote.valid);
+
+	const GitCommand push_cmd = push("/tmp/project", "origin", "main", true);
+	CHECK(push_cmd.valid);
+	CHECK_EQ(push_cmd.arguments[2], std::string("push"));
+	CHECK_EQ(push_cmd.arguments[3], std::string("-u"));
+	CHECK_EQ(push_cmd.arguments.back(), std::string("main"));
+
+	const std::string porcelain =
+			"## main...origin/main [ahead 1, behind 2]\n"
+			"M  file.gd\n"
+			"?? new.gd\n"
+			"UU conflict.txt\n"
+			"R  old.txt -> new.txt\n";
+	const GitStatus parsed = parse_status_porcelain(porcelain);
+	CHECK_EQ(parsed.branch, std::string("main"));
+	CHECK_EQ(parsed.ahead, 1);
+	CHECK_EQ(parsed.behind, 2);
+	CHECK(parsed.has_changes);
+	CHECK(parsed.merge_conflict);
+	CHECK_EQ(parsed.entries.size(), size_t(4));
+
+	int ahead = 0;
+	int behind = 0;
+	CHECK(parse_ahead_behind("3\t4", ahead, behind));
+	CHECK_EQ(ahead, 3);
+	CHECK_EQ(behind, 4);
+
+	const std::vector<GitLogEntry> entries = parse_log(
+			"abc123\x1f" "Author\x1f" "2026-10-27\x1f" "initial commit\x1e");
+	CHECK_EQ(entries.size(), size_t(1));
+	CHECK_EQ(entries.front().hash, std::string("abc123"));
+	CHECK_EQ(entries.front().subject, std::string("initial commit"));
+
+	const LfsSnapshot snapshot = parse_lfs_ls_files(
+			"oid123 * hero.png (2.0 MB)\n"
+			"oid456 - music.ogg (512 KB)\n");
+	CHECK_EQ(snapshot.files.size(), size_t(2));
+	CHECK(snapshot.files[0].materialized);
+	CHECK(!snapshot.files[1].materialized);
+	CHECK(snapshot.total_bytes >= 2ULL * 1024 * 1024);
+	CHECK_EQ(snapshot.largest.size(), size_t(2));
+
+	CHECK(is_lfs_pointer_content("version https://git-lfs.github.com/spec/v1\noid sha256:abc\nsize 123\n"));
+	CHECK(!is_lfs_pointer_content("not a pointer"));
+
+	const std::vector<std::pair<std::string, uint64_t>> files = {
+		{ "res://hero.unknown", 6ULL * 1024 * 1024 },
+	};
+	const std::vector<std::string> patterns = lfs_patterns_for_files(files, 5, GitHost::CODEBERG);
+	CHECK(!patterns.empty());
+	CHECK_EQ(patterns.front(), std::string("*.unknown"));
+
+	const GitCommand install_linux = lfs_install_linux();
+	CHECK(install_linux.valid);
+	CHECK_EQ(install_linux.executable, std::string("pkexec"));
+	const GitCommand install_windows = lfs_install_windows();
+	CHECK(install_windows.valid);
+	CHECK_EQ(install_windows.executable, std::string("winget"));
+}
+
 } // namespace
 
 int main() {
@@ -289,6 +370,7 @@ int main() {
 	test_path_guardrails();
 	test_agentics_tools();
 	test_lfs_rules();
+	test_system_git();
 	test_kilo_models();
 	test_commit_messages();
 	test_auto_commit_state();

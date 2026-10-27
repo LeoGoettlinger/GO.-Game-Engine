@@ -52,3 +52,42 @@ hard block. History migration is never automatic.
 The deterministic sequence is: preflight → UI lock → status/diff → `kilo-auto/free` message →
 LFS-aware staging → commit → push (if remote) → unlock/result. Network failure falls back to a
 conventional-commit message. Every terminal state unlocks the UI; this invariant is unit-tested.
+
+## Step 5 implementation status
+
+The following pieces are implemented as source and covered by automated checks:
+
+- `go_system_git.*` builds every Git/LFS command as an argv vector with `git -C <project>`.
+  No shell is used, remote URLs with embedded credentials are rejected, and commit messages stay
+  ordinary argv values. Output parsers cover porcelain status (including branch, ahead/behind and
+  conflicts), log records, `git lfs ls-files --size`, `git lfs status`, config values and LFS
+  pointer prefixes.
+- `go_system_git_runner.*` is the only place that calls `OS::execute`; it converts the argv vector
+  to Godot's `List<String>` and captures stdout/stderr plus the exit code.
+- `go_git_controller.*` provides `snapshot()`, `set_remote()`, `fetch()`, `pull()`, `push()`,
+  `stage_all()`, `stage_paths()`, `commit()`, `diff_stat()`, `diff_text()` and the LFS helpers.
+  `stage_all()` writes the managed `.gitattributes` block before staging and verifies that staged
+  LFS-covered files contain pointer prefixes; otherwise it re-adds those paths.
+- `GoRemoteAssistant` offers GitHub / Codeberg / GitLab / Custom host, HTTPS/SSH, URL preview,
+  a browser create-page button and `git remote set-url`/`add`. It never asks for credentials.
+- `GoLfsDialog` exposes check, system install (explicit `pkexec`/`winget` command), local init,
+  managed rules, suggested-pattern tracking, download/upload and quota output.
+- `GoGitDock` now shows real status, branch, ahead/behind, warnings and recent log; commit,
+  pull, push, remote assistant and LFS buttons are wired to the controller.
+
+Automated evidence:
+
+- `python3 misc/scripts/go_run_guardrails.py` — pure command builders/parsers, remote safety,
+  status/log/LFS parsing, pointer detection and large-file patterns.
+- `python3 misc/scripts/go_git_flow_test.py` — real system `git` against a local bare remote:
+  init → commit → push → clone → clean status, plus managed `.gitattributes`, large-file
+  classification and a synthetic LFS pointer in the index.
+- `python3 misc/scripts/go_syntax_check.py` — all 23 Godot-facing module `.cpp` files parse
+  against real Godot 4.7.2 headers (no full engine link).
+- `python3 misc/scripts/go_check_ui_guardrails.py` — no forbidden settings UI in the new dialogs.
+
+Known limits: the compiled editor has not been started yet, so no UI screenshot exists. The
+sandbox has no `git lfs` binary; real `git lfs install/pull/push` and the Windows/Linux installer
+commands are command-built and syntax-checked, but must still be smoke-tested on a developer
+machine or in the tagged CI build. Automatic Commit (§8) and project lifecycle reminders (§7)
+remain later steps.

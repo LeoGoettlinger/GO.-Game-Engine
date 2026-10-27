@@ -33,25 +33,28 @@ mit Screenshots ist 🧩.
 
 ---
 
-## 2. Host-neutrale Git Suite 🚧/🧩
+## 2. Host-neutrale Git Suite ✅/🧩
 
-Normales Godot setzt kein `origin` voraus. GO. wird eine Git Suite enthalten, die das System-`git`
+Normales Godot setzt kein `origin` voraus. GO. enthält eine Git Suite, die das System-`git`
 mit `-C <projekt>` aufruft und **keine Passwörter oder Tokens speichert**.
 
 - ✅ Remote-Parser für **GitHub, Codeberg/Forgejo, GitLab, Custom, Local**.
 - ✅ Erkennung von HTTPS, `ssh://`, SCP-Style-SSH, Ports, Owner/Repo und Web-URLs.
 - ✅ Abweisung von URLs mit eingebetteten Credentials oder Query-Tokens.
+- ✅ Reiner C++-Command-Builder und Ausgabe-Parser für Status, Branch, Ahead/Behind, Log,
+  Diff, LFS-Dateien, LFS-Status und Pointer-Präfixe.
+- ✅ Lokaler Bare-Repo-Test: `init → commit → push → clone → Status`, ohne Netzwerk.
 - 🧩 Remote-Assistent mit Host-Auswahl, Protokoll-Umschalter, URL-Vorschau und
-  „Repository im Browser anlegen“-Button.
-- 🚧 Status, Stage/Unstage, Diff, Log, Commit, Pull, Push, Fetch und LFS-Materialisierung
-  gegen das echte System-`git` verdrahten.
+  „Repository im Browser anlegen“-Button (Quelltext + Syntax-Check vorhanden).
+- 🧩 Status, Stage, Diff, Log, Commit, Pull, Push und Fetch im Dock verdrahtet
+  (Quelltext + Syntax-Check vorhanden, Editor-Screenshot steht noch aus).
 
 **Wichtig:** Codeberg ist gleichwertig zu GitHub/GitLab; LFS wird nicht an GitHub-only-Code
 gekoppelt. Authentifizierung bleibt beim Credential Helper bzw. SSH-Agent des Systems.
 
 ---
 
-## 3. Git LFS von Anfang an 🧩/🚧
+## 3. Git LFS von Anfang an ✅/🧩
 
 Godot legt bei „Version Control Metadata: Git“ bereits `.gitattributes` an, aber ohne LFS.
 GO. wird LFS-Regeln **vor dem ersten Stage** setzen:
@@ -63,8 +66,13 @@ GO. wird LFS-Regeln **vor dem ersten Stage** setzen:
 - ✅ Große-Dateien-Klassifizierung: Warnung ab 5 MiB, rot ab 50 MiB, harte GitHub-Grenze
   100 MiB ohne LFS.
 - ✅ LFS-Pointer-Erkennung am Dateianfang (`version https://git-lfs.github.com/spec/v1`).
-- 🧩 Ein-Klick-Installation, `git lfs install`, `git lfs track`, `git lfs pull/push`,
-  Quota-Anzeige und Pointer-Verifikation im Index.
+- ✅ Command-Builder für `git lfs version/install/track/pull/push/ls-files/status/env/migrate`
+  sowie explizite `pkexec`-/`winget`-Installationskommandos.
+- ✅ Bare-Repo-Test mit verwalteter `.gitattributes`, 6-MiB-Großdatei-Klassifizierung und
+  synthetischem LFS-Pointer im Index.
+- 🧩 Dialog mit Check, System-Installation, `git lfs install --local`, Regeln schreiben,
+  Große-Dateien-Tracking, Download/Upload, Pointer-Verifikation im Index und Quota-Anzeige
+  (Quelltext + Syntax-Check vorhanden).
 - 🚧 Echte `git lfs`-Binär-Installation auf Windows/Linux im kompilierten Editor testen.
 
 Bereits committete Blobs werden **nie ungefragt** migriert; `git lfs migrate` bleibt ein
@@ -151,13 +159,15 @@ erhalten. GO.-Code ist MIT, Monocraft OFL-1.1, Kilo-Konzepte MIT mit Hinweis.
 ## 8. CI, Release und Sicherheit ✅/🧩
 
 - ✅ `.github/workflows/go-quick-checks.yml`: Branding, Splash-Reproduzierbarkeit,
-  Plugin-Manifest, YAML, C++-Guardrails, UI-Scanner, Kilo-Mock, Unit-Tests, Packaging-Smoke
+  Plugin-Manifest, YAML, C++-Guardrails, UI-Scanner, Kilo-Mock, lokaler Bare-Repo-Git-Flow,
+  echte Godot-Header-Syntaxprüfung aller 23 Modul-C++-Dateien, Unit-Tests, Packaging-Smoke
   und echtes Godot-4.7.2-GDScript-Parsing.
 - ✅ `.github/workflows/go-build.yml`: Windows + Linux Editor-/Template-Builds und Release-ZIPs
   auf Tag/`workflow_dispatch`.
 - ✅ Geerbte Upstream-Static-Checks laufen auf dem GO.-Branch; die fremde Full-Matrix
   (Android/iOS/Web/macOS/Mono) ist auf diesem Branch abgeschaltet.
-- 🧩 Vollständiger C++/SCons-Editor-Build in CI noch nicht grün bewiesen.
+- 🧩 Vollständiger C++/SCons-Editor-Build in CI noch nicht grün bewiesen; der Syntax-Check
+  ersetzt ihn ausdrücklich nicht.
 - ✅ Keine Telemetrie, keine Secrets im Repo, keine echten Gateway-Calls in Tests.
 
 ---
@@ -178,10 +188,12 @@ erhalten. GO.-Code ist MIT, Monocraft OFL-1.1, Kilo-Konzepte MIT mit Hinweis.
 GO. is a Godot 4.7.2-stable fork by SampleCraft. Compared with upstream Godot it adds a
 built-in editor-only Git Suite, a native anonymous Kilo free-model chat dock, an Automatic
 Commit flow with a full UI lock, reproducible GO. branding/splashes, an offline MIT plugin
-bundle, and dedicated Windows/Linux CI/release packaging. The source, pure guardrails, mock
-gateway tests, plugin validation and fast CI checks are implemented. A fully compiled editor,
-real system-Git/LFS wiring, Kilo HTTP client, tool loop and UI screenshots are still open and
-tracked honestly in `docs/go/ROADMAP.md`.
+bundle, and dedicated Windows/Linux CI/release packaging. The source, pure guardrails, system-Git
+command builder/parsers, local bare-repo flow, LFS pointer test, mock gateway tests, plugin
+validation and fast CI checks are implemented. All 23 Godot-facing module C++ files pass a
+real-header syntax check. A fully compiled editor, real `git lfs` binary smoke test, Kilo HTTP
+client, tool loop and UI screenshots are still open and tracked honestly in
+`docs/go/ROADMAP.md`.
 
 ---
 

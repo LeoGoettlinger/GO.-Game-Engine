@@ -11,6 +11,7 @@
 #include "../go_git_remote.h"
 #include "../go_kilo_models.h"
 #include "../go_suite_core.h"
+#include "../go_system_git.h"
 
 #include "tests/test_macros.h"
 
@@ -167,6 +168,69 @@ TEST_CASE("[GO.][CommitMessage] Sanitising and secret-aware diff truncation") {
 	CHECK(go::contains(truncated, "[GO. redacted sensitive file: .env]"));
 	CHECK_FALSE(go::contains(truncated, "API_KEY=secret"));
 	CHECK(go::contains(truncated, "print('hello')"));
+}
+
+TEST_CASE("[GO.][SystemGit] Safe argv commands and Git/LFS output parsers") {
+	const go::GitCommand status_cmd = go::status("/tmp/project");
+	CHECK(status_cmd.valid);
+	CHECK(status_cmd.executable == "git");
+	CHECK(status_cmd.arguments[0] == "-C");
+	CHECK(status_cmd.arguments[1] == "/tmp/project");
+	CHECK(status_cmd.arguments[2] == "status");
+	CHECK_FALSE(go::status("-unsafe").valid);
+
+	const go::GitCommand remote_cmd = go::remote_add("/tmp/project", "origin", "https://codeberg.org/owner/repo.git");
+	CHECK(remote_cmd.valid);
+	CHECK(remote_cmd.arguments.back() == "https://codeberg.org/owner/repo.git");
+	CHECK_FALSE(go::remote_add("/tmp/project", "origin", "https://user:secret@example.com/repo.git").valid);
+
+	const go::GitCommand push_cmd = go::push("/tmp/project", "origin", "main", true);
+	CHECK(push_cmd.valid);
+	CHECK(push_cmd.arguments[3] == "-u");
+
+	const std::string porcelain =
+			"## main...origin/main [ahead 1, behind 2]\n"
+			"M  file.gd\n"
+			"?? new.gd\n"
+			"UU conflict.txt\n"
+			"R  old.txt -> new.txt\n";
+	const go::GitStatus parsed = go::parse_status_porcelain(porcelain);
+	CHECK(parsed.branch == "main");
+	CHECK(parsed.ahead == 1);
+	CHECK(parsed.behind == 2);
+	CHECK(parsed.has_changes);
+	CHECK(parsed.merge_conflict);
+	CHECK(parsed.entries.size() == 4);
+
+	int ahead = 0;
+	int behind = 0;
+	CHECK(go::parse_ahead_behind("3\t4", ahead, behind));
+	CHECK(ahead == 3);
+	CHECK(behind == 4);
+
+	const std::vector<go::GitLogEntry> entries = go::parse_log(
+			"abc123\x1f" "Author\x1f" "2026-10-27\x1f" "initial commit\x1e");
+	CHECK(entries.size() == 1);
+	CHECK(entries.front().hash == "abc123");
+	CHECK(entries.front().subject == "initial commit");
+
+	const go::LfsSnapshot snapshot = go::parse_lfs_ls_files(
+			"oid123 * hero.png (2.0 MB)\n"
+			"oid456 - music.ogg (512 KB)\n");
+	CHECK(snapshot.files.size() == 2);
+	CHECK(snapshot.files[0].materialized);
+	CHECK_FALSE(snapshot.files[1].materialized);
+	CHECK(snapshot.total_bytes >= 2ULL * 1024 * 1024);
+
+	CHECK(go::is_lfs_pointer_content("version https://git-lfs.github.com/spec/v1\noid sha256:abc\nsize 123\n"));
+	CHECK_FALSE(go::is_lfs_pointer_content("not a pointer"));
+
+	const std::vector<std::pair<std::string, uint64_t>> files = {
+		{ "res://hero.unknown", 6ULL * 1024 * 1024 },
+	};
+	const std::vector<std::string> patterns = go::lfs_patterns_for_files(files, 5, go::GitHost::CODEBERG);
+	CHECK(patterns.empty() == false);
+	CHECK(patterns.front() == "*.unknown");
 }
 
 } // namespace TestGoSuite

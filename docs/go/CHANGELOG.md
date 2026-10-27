@@ -29,3 +29,10 @@
   full-platform build matrix is gated off on the GO. branch in favor of `go-build.yml`.
 - User-facing `Features.md` comparing GO. with upstream Godot, with explicit
   implemented/partial/planned status and a short English summary.
+- Editor-only Git Suite step 5: pure `go_system_git.*` command builder/parsers,
+  `go_system_git_runner.*`, `go_git_controller.*`, `GoRemoteAssistant`, `GoLfsDialog`
+  and a fully wired `GoGitDock` for status/commit/pull/push/log/LFS.
+- `go_git_flow_test.py` local bare-repo integration test with managed `.gitattributes`,
+  large-file classification and a synthetic LFS pointer in the staged index.
+- `go_syntax_check.py` parses all 23 Godot-facing module C++ files against real Godot 4.7.2
+  headers in quick CI; it is a syntax check, not a full engine build.

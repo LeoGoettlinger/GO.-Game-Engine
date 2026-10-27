@@ -35,11 +35,15 @@ Pure logic files have no dependency on Godot classes so that `misc/scripts/go_ru
 can compile and execute them on any CI runner. The same functions are also covered by Godot's
 doctest module tests when built with `tests=yes`.
 
-**Current status:** the table is the target architecture. Step 4 adds the two docks, the launcher,
-icon generation, the pure logic layers listed above, and the standalone/doctest guardrails. The
-process wrapper (`go_system_git.*`), project lifecycle singleton, `go_project_setup.*` and
-`go_bundled_plugins.*` runtime glue are still planned; their UI buttons currently report that
-the backend is not wired. See [`ROADMAP.md`](ROADMAP.md).
+**Current status:** Step 4 added the two docks, the launcher, icon generation, the pure logic
+layers and the standalone/doctest guardrails. Step 5 adds `go_system_git.*` (argv-only command
+builder and Git/LFS output parsers), `go_system_git_runner.*` (one `OS::execute` wrapper),
+`go_git_controller.*` (high-level snapshot/staging/commit/push/LFS operations), the
+`GoRemoteAssistant` dialog and the `GoLfsDialog`. All 23 module `.cpp` files pass a real-header
+`-fsyntax-only` check in `misc/scripts/go_syntax_check.py`; the local bare-repo flow is covered by
+`misc/scripts/go_git_flow_test.py`. The project lifecycle singleton, `go_project_setup.*` and
+`go_bundled_plugins.*` runtime glue remain planned; the Automatic Commit overlay and
+`Bundled Plugins` button still report that their step is pending. See [`ROADMAP.md`](ROADMAP.md).
 
 ## Bundled data lookup
 

@@ -31,6 +31,14 @@ REQUIRED_FILES = [
 	"go_agentics_tools.cpp",
 	"go_agentics_tools.h",
 	"go_suite_icons.gen.h",
+	"go_system_git.h",
+	"go_system_git.cpp",
+	"go_git_controller.h",
+	"go_git_controller.cpp",
+	"go_remote_assistant.h",
+	"go_remote_assistant.cpp",
+	"go_lfs_dialog.h",
+	"go_lfs_dialog.cpp",
 ]
 
 SCANNED_FILES = [
@@ -44,6 +52,12 @@ SCANNED_FILES = [
 	"go_agentics_tools.h",
 	"go_suite_launcher.cpp",
 	"go_suite_launcher.h",
+	"go_git_controller.cpp",
+	"go_git_controller.h",
+	"go_remote_assistant.cpp",
+	"go_remote_assistant.h",
+	"go_lfs_dialog.cpp",
+	"go_lfs_dialog.h",
 ]
 
 FORBIDDEN_LABELS = [

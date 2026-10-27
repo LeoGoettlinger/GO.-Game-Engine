@@ -26,6 +26,7 @@ SOURCES = [
 	"go_git_remote.cpp",
 	"go_agentics_path.cpp",
 	"go_git_lfs.cpp",
+	"go_system_git.cpp",
 	"go_kilo_models.cpp",
 	"go_agentics_tools.cpp",
 	"go_commit_message.cpp",

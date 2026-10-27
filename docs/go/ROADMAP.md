@@ -14,6 +14,8 @@ compiled editor/CI, `[ ]` open. A user-facing feature comparison lives in
   all 397 vendored GDScript files; upstream static checks also pass on the GO. branch.
 - [~] Editor-only `modules/go_suite` source, docks, icons and guardrails present; full Godot
   C++/SCons compile is still CI-only.
+- [x] All 23 Godot-facing module C++ files pass a real-header `-fsyntax-only` check in quick CI
+  (`go_syntax_check.py`); this is not a full link/build.
 - [ ] Full Windows + Linux editor/template build proven green in GitHub Actions.
 - [ ] Full release ZIP verified on a clean offline machine.
 
@@ -27,10 +29,14 @@ compiled editor/CI, `[ ]` open. A user-facing feature comparison lives in
 ## Git Suite
 
 - [~] Two built-in docks with icons and side-dock buttons (source present, compiled-editor screenshot pending).
-- [~] Host parser, LFS rules, commit-message sanitising and auto-commit pure logic with standalone tests.
-- [ ] Status, stage/unstage, diff, commit, pull, push, log, remote assistant wired to system Git.
-- [ ] Git LFS install/init/`.gitattributes`/large-file/pointer/quota flows wired to system Git.
-- [ ] Local bare-remote end-to-end test.
+- [x] Host parser, LFS rules, commit-message sanitising, auto-commit state and system-Git
+  command builders/parsers with standalone and Doctest unit tests.
+- [~] Status, stage, diff, commit, pull, push, log and remote assistant wired to system Git
+  in source; all module C++ passes a real-header syntax check. Compiled-editor UI smoke test pending.
+- [~] Git LFS install/init/`.gitattributes`/large-file/pointer/quota flows wired in source;
+  real `git lfs` binary and OS installer commands still need a compiled-editor/CI smoke test.
+- [x] Local bare-remote end-to-end test (`go_git_flow_test.py`) with managed `.gitattributes`,
+  large-file classification and a synthetic LFS pointer in the staged index.
 - [ ] Open/close reminders with per-project disable switches.
 
 ## Automatic Commit

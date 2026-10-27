@@ -27,8 +27,9 @@ Dieser Fork wird gerade aus der Anforderungsdatei `PROMPT.md` heraus aufgebaut. 
 Arbeitsstand, gepinnte Referenzen und der ehrliche Fortschritt stehen in
 [`docs/go/ROADMAP.md`](docs/go/ROADMAP.md). Bereits umgesetzt sind die stabile Godot-Basis,
 GO.-Branding/Version, beide Splash-Bilder mit dem exakten Schriftzug
-`A Godot Game Engine Fork by SampleCraft` in der frei lizenzierten Monocraft-Pixel-Font sowie
-die Dokumentations- und Lizenzgrundlage. Features, die nur in CI oder einem kompilierten Editor
+`A Godot Game Engine Fork by SampleCraft` in der frei lizenzierten Monocraft-Pixel-Font,
+die Dokumentations- und Lizenzgrundlage sowie die Quelltext-/Testbasis der Git Suite mit
+System-Git-Runner, Remote-Assistent und LFS-Manager. Features, die nur in CI oder einem kompilierten Editor
 beweisbar sind, werden im Roadmap-Dokument ausdrücklich als offen markiert.
 
 ## Die zwei Suites
