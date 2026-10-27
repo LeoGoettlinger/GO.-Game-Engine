@@ -199,7 +199,9 @@ def main() -> int:
         assert large.get("ACTION") == "track-lfs", large
         assert large.get("PATTERN") == "*.unknown", large
 
-        # Simulate `git lfs track *.unknown`: preserve the user rule and the managed block.
+        # Simulate `git lfs track *.unknown`: verify the pure merge keeps a user rule.
+        # Do not actually write that rule here: CI runners have a real git-lfs binary,
+        # and enabling the filter would require uploading a real LFS object to the bare repo.
         tracked_attributes = probe(
             executable,
             "attributes",
@@ -207,17 +209,21 @@ def main() -> int:
         )
         assert_contains(tracked_attributes, "*.unknown filter=lfs diff=lfs merge=lfs -text", "tracked LFS pattern")
         assert_contains(tracked_attributes, "*.png filter=lfs diff=lfs merge=lfs -text", "managed LFS block")
-        (work / ".gitattributes").write_text(tracked_attributes, encoding="utf-8")
+        (work / ".gitattributes").write_text(attributes, encoding="utf-8")
+
+        # Keep the classification evidence, but do not stage a 6 MiB binary through a filter.
+        big.unlink()
 
         (work / "README.md").write_text("# GO. local bare-repo test\n", encoding="utf-8")
         (work / "project.godot").write_text('config_version=5\n\n[application]\nconfig/name="GO. Test"\n', encoding="utf-8")
-        (work / "assets" / "hero.png").write_text(POINTER, encoding="utf-8")
+        pointer_file = work / "assets" / "hero.pointer"
+        pointer_file.write_text(POINTER, encoding="utf-8")
 
-        staged_pointer = probe(executable, "pointer", stdin=(work / "assets" / "hero.png").read_text(encoding="utf-8"))
+        staged_pointer = probe(executable, "pointer", stdin=pointer_file.read_text(encoding="utf-8"))
         assert_contains(staged_pointer, "POINTER 1", "simulated LFS pointer file")
 
         git("add", "-A", cwd=work)
-        staged_blob = git("show", ":assets/hero.png", cwd=work)
+        staged_blob = git("show", ":assets/hero.pointer", cwd=work)
         assert_contains(probe(executable, "pointer", stdin=staged_blob + "\n"), "POINTER 1", "staged pointer")
 
         git("commit", "-m", "chore: initial GO. Git Suite test", cwd=work)
@@ -226,7 +232,7 @@ def main() -> int:
 
         git("clone", str(remote), str(clone))
         assert (clone / "README.md").is_file(), "cloned README missing"
-        assert (clone / "assets" / "hero.png").is_file(), "cloned pointer file missing"
+        assert (clone / "assets" / "hero.pointer").is_file(), "cloned pointer file missing"
 
         clean_status = git("status", "--porcelain=v1", "--branch", "--untracked-files=all", cwd=clone)
         parsed_clean = parse_key_values(probe(executable, "parse-status", stdin=clean_status + "\n"))

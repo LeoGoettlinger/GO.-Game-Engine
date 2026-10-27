@@ -87,7 +87,9 @@ Automated evidence:
 - `python3 misc/scripts/go_check_ui_guardrails.py` — no forbidden settings UI in the new dialogs.
 
 Known limits: the compiled editor has not been started yet, so no UI screenshot exists. The
-sandbox has no `git lfs` binary; real `git lfs install/pull/push` and the Windows/Linux installer
-commands are command-built and syntax-checked, but must still be smoke-tested on a developer
-machine or in the tagged CI build. Automatic Commit (§8) and project lifecycle reminders (§7)
-remain later steps.
+local sandbox has no `git lfs` binary, while GitHub runners do; the bare-repo test therefore
+deliberately keeps the synthetic pointer on a non-LFS extension and never activates a real LFS
+filter. Real `git lfs install/pull/push` and the Windows/Linux installer commands are
+command-built and syntax-checked, but must still be smoke-tested on a developer machine or in
+the tagged CI build. Automatic Commit (§8) and project lifecycle reminders (§7) remain later
+steps.
