@@ -17,9 +17,23 @@ ROOT = Path(__file__).resolve().parents[2]
 MANIFEST = ROOT / "go_bundled_plugins" / "plugins.json"
 BUNDLE = ROOT / "go_bundled_plugins"
 REQUIRED = {
-    "name", "id", "upstream_url", "license", "license_url", "tag", "commit",
-    "godot_min", "addon_path", "license_file", "type", "default_enabled",
-    "bundled", "category", "notes", "source_subdir", "license_source",
+    "name",
+    "id",
+    "upstream_url",
+    "license",
+    "license_url",
+    "tag",
+    "commit",
+    "godot_min",
+    "addon_path",
+    "license_file",
+    "type",
+    "default_enabled",
+    "bundled",
+    "category",
+    "notes",
+    "source_subdir",
+    "license_source",
     "tarball_sha256",
 }
 

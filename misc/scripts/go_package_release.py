@@ -165,8 +165,14 @@ def main() -> int:
                 shutil.copy2(console_source, staging / "GO. Game Engine.console.exe")
 
         for relative in (
-            "README.md", "README.godot-upstream.md", "LICENSE.txt", "COPYRIGHT.txt",
-            "AUTHORS.md", "DONORS.md", "CHANGELOG.md", "PROMPT.md",
+            "README.md",
+            "README.godot-upstream.md",
+            "LICENSE.txt",
+            "COPYRIGHT.txt",
+            "AUTHORS.md",
+            "DONORS.md",
+            "CHANGELOG.md",
+            "PROMPT.md",
         ):
             source = ROOT / relative
             if source.is_file():

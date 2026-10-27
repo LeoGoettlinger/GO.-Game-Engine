@@ -49,17 +49,29 @@ def main() -> int:
     values = version_values()
     require(values.get("name") == "GO. Game Engine", "version.py name is not 'GO. Game Engine'", errors)
     require(values.get("short_name") == "go", "version.py short_name is not 'go'", errors)
-    require((values.get("major"), values.get("minor"), values.get("patch")) == (4, 7, 2),
-            "version.py numerical version is not upstream-compatible 4.7.2", errors)
+    require(
+        (values.get("major"), values.get("minor"), values.get("patch")) == (4, 7, 2),
+        "version.py numerical version is not upstream-compatible 4.7.2",
+        errors,
+    )
     require(values.get("docs") == "4.7", "version.py docs branch must stay on upstream 4.7", errors)
-    require("github.com/LeoGoettlinger/GO.-Game-Engine" in str(values.get("website", "")),
-            "version.py website must point to the GO. repository", errors)
+    require(
+        "github.com/LeoGoettlinger/GO.-Game-Engine" in str(values.get("website", "")),
+        "version.py website must point to the GO. repository",
+        errors,
+    )
 
     main_cpp = (ROOT / "main" / "main.cpp").read_text(encoding="utf-8")
-    require("// GO. --version must include the product name" in main_cpp,
-            "main/main.cpp --version GO. patch is missing", errors)
-    require("String(GODOT_VERSION_NAME) + \" v\" + get_full_version_string()" in main_cpp,
-            "--version output does not include GODOT_VERSION_NAME", errors)
+    require(
+        "// GO. --version must include the product name" in main_cpp,
+        "main/main.cpp --version GO. patch is missing",
+        errors,
+    )
+    require(
+        'String(GODOT_VERSION_NAME) + " v" + get_full_version_string()' in main_cpp,
+        "--version output does not include GODOT_VERSION_NAME",
+        errors,
+    )
 
     about = (ROOT / "editor" / "gui" / "editor_about.cpp").read_text(encoding="utf-8")
     require(FORK_NOTICE in about, "About dialog is missing the exact GO. fork notice", errors)
@@ -70,14 +82,21 @@ def main() -> int:
     require((ROOT / "README.godot-upstream.md").is_file(), "upstream README was not preserved", errors)
 
     generator = (ROOT / "go_assets" / "make_splash.py").read_text(encoding="utf-8")
-    require(f'SPLASH_TEXT = "{EXACT_SPLASH_TEXT}"' in generator,
-            "splash generator does not contain the exact SampleCraft text", errors)
+    require(
+        f'SPLASH_TEXT = "{EXACT_SPLASH_TEXT}"' in generator,
+        "splash generator does not contain the exact SampleCraft text",
+        errors,
+    )
     require((ROOT / "go_assets" / "fonts" / "Monocraft.ttf").is_file(), "Monocraft TTF is missing", errors)
-    require((ROOT / "go_assets" / "fonts" / "LICENSE-Monocraft.txt").is_file(),
-            "Monocraft OFL license is missing", errors)
-    require("SIL OPEN FONT LICENSE Version 1.1" in
-            (ROOT / "go_assets" / "fonts" / "LICENSE-Monocraft.txt").read_text(encoding="utf-8"),
-            "Monocraft license is not OFL 1.1", errors)
+    require(
+        (ROOT / "go_assets" / "fonts" / "LICENSE-Monocraft.txt").is_file(), "Monocraft OFL license is missing", errors
+    )
+    require(
+        "SIL OPEN FONT LICENSE Version 1.1"
+        in (ROOT / "go_assets" / "fonts" / "LICENSE-Monocraft.txt").read_text(encoding="utf-8"),
+        "Monocraft license is not OFL 1.1",
+        errors,
+    )
 
     expected_sizes = {
         "main/splash.png": (800, 600),
@@ -98,8 +117,11 @@ def main() -> int:
         require(actual == expected, f"{relative} has size {actual}, expected {expected}", errors)
 
     require((ROOT / "editor" / "icons" / "GoLogo.svg").is_file(), "GoLogo.svg is missing", errors)
-    require("GoLogo" in (ROOT / "editor" / "gui" / "editor_about.cpp").read_text(encoding="utf-8"),
-            "About dialog does not use GoLogo", errors)
+    require(
+        "GoLogo" in (ROOT / "editor" / "gui" / "editor_about.cpp").read_text(encoding="utf-8"),
+        "About dialog does not use GoLogo",
+        errors,
+    )
 
     if errors:
         print("GO. branding check FAILED:", file=sys.stderr)

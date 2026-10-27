@@ -173,7 +173,9 @@ def main() -> int:
         assert parsed_lfs.get("FIRST") == "hero.png", parsed_lfs
 
         aheadbehind = parse_key_values(probe(executable, "aheadbehind", stdin="0\t0"))
-        assert aheadbehind.get("OK") == "1" and aheadbehind.get("AHEAD") == "0" and aheadbehind.get("BEHIND") == "0", aheadbehind
+        assert aheadbehind.get("OK") == "1" and aheadbehind.get("AHEAD") == "0" and aheadbehind.get("BEHIND") == "0", (
+            aheadbehind
+        )
 
         pointer_result = probe(executable, "pointer", stdin=POINTER)
         assert_contains(pointer_result, "POINTER 1", "LFS pointer parser")
@@ -195,7 +197,9 @@ def main() -> int:
         (work / "assets").mkdir(parents=True)
         big = work / "assets" / "big.unknown"
         big.write_bytes(b"G" * (6 * 1024 * 1024))
-        large = parse_key_values(probe(executable, "large", "res://assets/big.unknown", str(big.stat().st_size), "5", "codeberg"))
+        large = parse_key_values(
+            probe(executable, "large", "res://assets/big.unknown", str(big.stat().st_size), "5", "codeberg")
+        )
         assert large.get("ACTION") == "track-lfs", large
         assert large.get("PATTERN") == "*.unknown", large
 
@@ -215,7 +219,9 @@ def main() -> int:
         big.unlink()
 
         (work / "README.md").write_text("# GO. local bare-repo test\n", encoding="utf-8")
-        (work / "project.godot").write_text('config_version=5\n\n[application]\nconfig/name="GO. Test"\n', encoding="utf-8")
+        (work / "project.godot").write_text(
+            'config_version=5\n\n[application]\nconfig/name="GO. Test"\n', encoding="utf-8"
+        )
         pointer_file = work / "assets" / "hero.pointer"
         pointer_file.write_text(POINTER, encoding="utf-8")
 

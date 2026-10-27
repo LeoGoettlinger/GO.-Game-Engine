@@ -23,7 +23,6 @@ import json
 import shutil
 import sys
 import tarfile
-import tempfile
 import urllib.request
 from pathlib import Path, PurePosixPath
 
@@ -37,7 +36,7 @@ def tarball_url(plugin: dict) -> str:
     prefix = "https://github.com/"
     if not upstream.startswith(prefix):
         raise ValueError(f"Unsupported upstream URL: {upstream}")
-    return f"https://codeload.github.com/{upstream[len(prefix):]}/tar.gz/{plugin['commit']}"
+    return f"https://codeload.github.com/{upstream[len(prefix) :]}/tar.gz/{plugin['commit']}"
 
 
 def download(url: str) -> bytes:

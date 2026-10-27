@@ -38,7 +38,7 @@ def prepare_project(destination: Path) -> list[str]:
     (project / "project.godot").write_text(
         'config_version=5\n\n[application]\n\nconfig/name="GO. Plugin Parse Check"\n'
         'config/features=PackedStringArray("4.7", "GL Compatibility")\n\n'
-        '[editor_plugins]\n\nenabled=PackedStringArray()\n',
+        "[editor_plugins]\n\nenabled=PackedStringArray()\n",
         encoding="utf-8",
     )
     manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
@@ -55,11 +55,7 @@ def prepare_project(destination: Path) -> list[str]:
         copied += 1
     if copied == 0:
         raise RuntimeError("no bundled GDScript plugins found")
-    scripts = sorted(
-        path.relative_to(project).as_posix()
-        for path in project.rglob("*.gd")
-        if path.is_file()
-    )
+    scripts = sorted(path.relative_to(project).as_posix() for path in project.rglob("*.gd") if path.is_file())
     return scripts
 
 
@@ -67,8 +63,11 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--godot", required=True, help="Path to an official Godot 4.7.2-stable executable")
     parser.add_argument("--max-scripts", type=int, default=0, help="Optional limit for faster local runs")
-    parser.add_argument("--no-warmup", action="store_true",
-                        help="Skip the editor class-cache scan (only for fake-binary orchestration tests)")
+    parser.add_argument(
+        "--no-warmup",
+        action="store_true",
+        help="Skip the editor class-cache scan (only for fake-binary orchestration tests)",
+    )
     args = parser.parse_args()
     godot = Path(args.godot).resolve()
     if not godot.is_file():
@@ -97,7 +96,10 @@ def main() -> int:
         if not args.no_warmup:
             warmup = subprocess.run(
                 [
-                    str(godot), "--headless", "--path", str(project),
+                    str(godot),
+                    "--headless",
+                    "--path",
+                    str(project),
                     "--import",
                 ],
                 cwd=project,
@@ -109,7 +111,9 @@ def main() -> int:
             )
             cache = project / ".godot" / "global_script_class_cache.cfg"
             if not cache.is_file():
-                print("GDScript parse check FAILED: editor warm-up did not create the global class cache", file=sys.stderr)
+                print(
+                    "GDScript parse check FAILED: editor warm-up did not create the global class cache", file=sys.stderr
+                )
                 print(warmup.stdout.strip()[-2000:], file=sys.stderr)
                 return 1
             print(f"  global class cache ready ({cache.stat().st_size} bytes)")
@@ -118,8 +122,13 @@ def main() -> int:
         for index, script in enumerate(scripts, 1):
             result = subprocess.run(
                 [
-                    str(godot), "--headless", "--path", str(project),
-                    "--check-only", "--script", "res://" + script,
+                    str(godot),
+                    "--headless",
+                    "--path",
+                    str(project),
+                    "--check-only",
+                    "--script",
+                    "res://" + script,
                 ],
                 cwd=project,
                 env=env,
