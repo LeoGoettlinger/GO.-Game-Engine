@@ -117,6 +117,32 @@ def main() -> int:
         executable = root / "go_git_probe"
         compile_probe(args.compiler, executable)
 
+        # Exercise generated folder rules with Git's real attributes matcher.
+        policy_repo = Path(tmp) / "policy"
+        policy_repo.mkdir()
+        git("init", cwd=policy_repo)
+        attributes = probe(executable, "folder-attributes", "Art Pack", "audio", stdin="*.custom filter=custom\n")
+        (policy_repo / ".gitattributes").write_text(attributes + "\n", encoding="utf-8")
+        for path, expected in {
+            "Art Pack/tiny.png": "lfs",
+            "Art Pack/deep/new.bin": "lfs",
+            "audio/music.wav": "lfs",
+            "audio-other/music.wav": "unspecified",
+            "outside/large.png": "unspecified",
+            "Art Pack/main.tscn": "unspecified",
+            "Art Pack/deep/MAIN.TSCN": "unspecified",
+            "Art Pack/deep/script.gd": "unspecified",
+            "Art Pack/game.pck": "unspecified",
+            "Art Pack/exports/game.bin": "unspecified",
+            "Art Pack/.godot/imported/file.bin": "unspecified",
+            "other.custom": "custom",
+        }.items():
+            actual = git("check-attr", "filter", "--", path, cwd=policy_repo)
+            assert actual.endswith(": " + expected), (path, actual)
+        assert probe(executable, "folder-attributes", "Art Pack", "audio", stdin=attributes) == attributes
+        removed = probe(executable, "folder-attributes", stdin=attributes)
+        assert "Art Pack" not in removed and "filter=custom" in removed
+
         # 1. Pure command builders and remote safety.
         status_cmd = probe(executable, "cmd", str(root), "status")
         assert_contains(status_cmd, "ARG 0 -C", "status command")

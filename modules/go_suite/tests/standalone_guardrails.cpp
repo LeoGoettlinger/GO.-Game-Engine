@@ -164,6 +164,35 @@ void test_agentics_tools() {
 	CHECK(contains(GoAgenticsTools::execute_tool("write_file", "{\"path\":\"res://.git/config\"}"), "\"ok\":false"));
 }
 
+void test_lfs_policy() {
+	using namespace go;
+	LfsPolicy policy;
+	policy.mode = LfsMode::SIZE;
+	policy.threshold_mib = 5;
+	CHECK(!lfs_policy_selects(policy, "assets/small.png", 5 * 1024 * 1024 - 1));
+	CHECK(lfs_policy_selects(policy, "assets/large.data", 5 * 1024 * 1024));
+	CHECK(!lfs_policy_selects(policy, "assets/scene.TSCN", 100 * 1024 * 1024));
+	policy.mode = LfsMode::FOLDERS;
+	policy.folders = { "Art Pack", "audio" };
+	CHECK(lfs_policy_selects(policy, "Art Pack/nested/tiny.png", 1));
+	CHECK(lfs_policy_selects(policy, "audio/sound.wav", 1));
+	CHECK(!lfs_policy_selects(policy, "audio-other/sound.wav", 100 * 1024 * 1024));
+	CHECK(!lfs_policy_selects(policy, "outside/big.png", 100 * 1024 * 1024));
+	CHECK(!lfs_policy_selects(policy, "Art Pack/scene.gd", 1));
+	for (const char *folder : { "../escape", "/absolute", "C:/escape", ".git", "art/.godot", "art/*", "art\nrule", "", "art//bad" }) {
+		CHECK(!valid_lfs_folder(folder));
+	}
+	const auto patterns = lfs_folder_patterns(policy.folders);
+	const auto exclusions = lfs_folder_patterns(policy.folders, true);
+	const std::string original = "*.custom filter=custom\n";
+	const std::string merged = merge_gitattributes(original, patterns, exclusions);
+	CHECK_EQ(merged, merge_gitattributes(merged, patterns, exclusions));
+	const std::string removed = merge_gitattributes(merged, {});
+	CHECK(contains(removed, "*.custom filter=custom"));
+	CHECK(!contains(removed, "Art Pack"));
+	CHECK_EQ(lfs_literal_pattern("art pack/large.png"), std::string("\"/art pack/large.png\""));
+}
+
 void test_lfs_rules() {
 	using namespace go;
 	CHECK(is_text_format("res://scene.tscn"));
@@ -446,6 +475,7 @@ int main() {
 	test_path_guardrails();
 	test_agentics_tools();
 	test_lfs_rules();
+	test_lfs_policy();
 	test_system_git();
 	test_kilo_models();
 	test_commit_messages();

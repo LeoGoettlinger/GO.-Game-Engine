@@ -41,6 +41,19 @@
 
 namespace go {
 
+enum class LfsMode { FILE_TYPES,
+	SIZE,
+	FOLDERS };
+struct LfsPolicy {
+	LfsMode mode = LfsMode::FILE_TYPES;
+	uint64_t threshold_mib = 5;
+	std::vector<std::string> folders;
+};
+bool valid_lfs_folder(const std::string &p_folder);
+bool lfs_policy_selects(const LfsPolicy &p_policy, const std::string &p_path, uint64_t p_size);
+std::string lfs_literal_pattern(const std::string &p_path);
+std::vector<std::string> lfs_folder_patterns(const std::vector<std::string> &p_folders, bool p_text_exclusions = false);
+
 enum class LargeFileAction {
 	NONE,
 	TRACK_LFS,
@@ -62,7 +75,7 @@ const std::vector<std::string> &default_text_formats();
 std::string gitattributes_begin_marker();
 std::string gitattributes_end_marker();
 std::string make_gitattributes_block(const std::vector<std::string> &p_patterns = default_lfs_patterns());
-std::string merge_gitattributes(const std::string &p_existing, const std::vector<std::string> &p_patterns = default_lfs_patterns());
+std::string merge_gitattributes(const std::string &p_existing, const std::vector<std::string> &p_patterns = default_lfs_patterns(), const std::vector<std::string> &p_exclusions = {});
 bool match_glob(const std::string &p_pattern, const std::string &p_path);
 bool is_lfs_pattern(const std::string &p_path, const std::vector<std::string> &p_patterns = default_lfs_patterns());
 bool is_text_format(const std::string &p_path);

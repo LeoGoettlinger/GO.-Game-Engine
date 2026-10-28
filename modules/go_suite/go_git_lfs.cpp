@@ -5,6 +5,7 @@
 
 #include "go_suite_core.h"
 
+#include <algorithm>
 #include <sstream>
 
 namespace go {
@@ -12,16 +13,59 @@ namespace go {
 namespace {
 
 const std::vector<std::string> LFS_PATTERNS = {
-	"*.png", "*.jpg", "*.jpeg", "*.tga", "*.bmp", "*.psd", "*.aseprite",
-	"*.ttf", "*.otf", "*.woff2", "*.glb", "*.bin", "*.fbx", "*.blend",
-	"*.obj", "*.dae", "*.wav", "*.ogg", "*.mp3", "*.mp4", "*.webm",
-	"*.zip", "*.imported", "*.tres.bin",
+	"*.png",
+	"*.jpg",
+	"*.jpeg",
+	"*.tga",
+	"*.bmp",
+	"*.psd",
+	"*.aseprite",
+	"*.ttf",
+	"*.otf",
+	"*.woff2",
+	"*.glb",
+	"*.bin",
+	"*.fbx",
+	"*.blend",
+	"*.obj",
+	"*.dae",
+	"*.wav",
+	"*.ogg",
+	"*.mp3",
+	"*.mp4",
+	"*.webm",
+	"*.zip",
+	"*.imported",
+	"*.tres.bin",
 };
 
 const std::vector<std::string> TEXT_FORMATS = {
-	"gd", "tscn", "tres", "gltf", "import", "uid", "svg", "json", "cfg",
-	"godot", "md", "txt", "ini", "xml", "yml", "yaml", "csv", "shader",
-	"gdshader", "gdshaderinc", "cs", "cpp", "h", "py", "html", "css",
+	"gd",
+	"tscn",
+	"tres",
+	"gltf",
+	"import",
+	"uid",
+	"svg",
+	"json",
+	"cfg",
+	"godot",
+	"md",
+	"txt",
+	"ini",
+	"xml",
+	"yml",
+	"yaml",
+	"csv",
+	"shader",
+	"gdshader",
+	"gdshaderinc",
+	"cs",
+	"cpp",
+	"h",
+	"py",
+	"html",
+	"css",
 };
 
 constexpr uint64_t MIB = 1024ULL * 1024ULL;
@@ -52,6 +96,81 @@ bool wildcard_match(const std::string &p_pattern, const std::string &p_text, siz
 
 } // namespace
 
+bool valid_lfs_folder(const std::string &p_folder) {
+	if (p_folder.empty() || p_folder.front() == '/' || p_folder.back() == '/' || p_folder.find_first_of("\\:*?[]\"\n\r\t") != std::string::npos) {
+		return false;
+	}
+	for (const std::string &part : split(p_folder, '/')) {
+		if (part.empty() || part.front() == '.' || part == "export" || part == "exports") {
+			return false;
+		}
+	}
+	return true;
+}
+
+std::string lfs_literal_pattern(const std::string &p_path) {
+	// Quotes protect whitespace; escaped wildcards keep file names literal.
+	std::string result = "\"/";
+	for (char c : p_path) {
+		if (c == '*' || c == '?' || c == '[' || c == ']') {
+			result += "\\\\";
+		}
+		if (c == '\\' || c == '\"') {
+			result += '\\';
+		}
+		result += c;
+	}
+	return result + "\"";
+}
+
+std::vector<std::string> lfs_folder_patterns(const std::vector<std::string> &p_folders, bool p_text_exclusions) {
+	std::vector<std::string> patterns;
+	for (const std::string &folder : p_folders) {
+		if (!valid_lfs_folder(folder)) {
+			continue;
+		}
+		if (!p_text_exclusions) {
+			patterns.push_back("\"/" + folder + "/**\"");
+			continue;
+		}
+		std::vector<std::string> excluded_extensions = TEXT_FORMATS;
+		excluded_extensions.insert(excluded_extensions.end(), { "pck", "exe", "apk", "aab" });
+		for (const std::string &extension : excluded_extensions) {
+			std::string case_pattern;
+			for (char c : extension) {
+				case_pattern += "[";
+				case_pattern += c;
+				case_pattern += char(c - 'a' + 'A');
+				case_pattern += "]";
+			}
+			patterns.push_back("\"/" + folder + "/**/*." + case_pattern + "\"");
+		}
+		for (const std::string &directory : std::vector<std::string>{ ".git", ".godot", "export", "exports" }) {
+			patterns.push_back("\"/" + folder + "/**/" + directory + "/**\"");
+		}
+	}
+	return patterns;
+}
+
+bool lfs_policy_selects(const LfsPolicy &p_policy, const std::string &p_path, uint64_t p_size) {
+	const std::string lower_path = lower(p_path);
+	if (!valid_lfs_folder(p_path) || is_text_format(p_path) || ends_with(lower_path, ".pck") || ends_with(lower_path, ".exe") || ends_with(lower_path, ".apk") || ends_with(lower_path, ".aab")) {
+		return false;
+	}
+	if (p_policy.mode == LfsMode::SIZE) {
+		return p_policy.threshold_mib >= 1 && p_policy.threshold_mib <= 1048576 && p_size >= p_policy.threshold_mib * MIB;
+	}
+	if (p_policy.mode == LfsMode::FOLDERS) {
+		for (const std::string &folder : p_policy.folders) {
+			if (valid_lfs_folder(folder) && starts_with(p_path, folder + "/")) {
+				return true;
+			}
+		}
+		return false;
+	}
+	return is_lfs_pattern(p_path);
+}
+
 const std::vector<std::string> &default_lfs_patterns() {
 	return LFS_PATTERNS;
 }
@@ -77,7 +196,7 @@ std::string make_gitattributes_block(const std::vector<std::string> &p_patterns)
 	return result;
 }
 
-std::string merge_gitattributes(const std::string &p_existing, const std::vector<std::string> &p_patterns) {
+std::string merge_gitattributes(const std::string &p_existing, const std::vector<std::string> &p_patterns, const std::vector<std::string> &p_exclusions) {
 	const std::string newline = contains(p_existing, "\r\n") ? "\r\n" : "\n";
 	std::string normalized = p_existing;
 	size_t crlf = normalized.find("\r\n");
@@ -105,7 +224,7 @@ std::string merge_gitattributes(const std::string &p_existing, const std::vector
 				break;
 			}
 		}
-		if (end == lines.size()) {
+		if (end == lines.size() && (lines.empty() || lines.back() != END_MARKER)) {
 			// Legacy block without an end marker: consume LFS-looking lines only.
 			end = begin + 1;
 			while (end < lines.size() && (starts_with(lines[end], "*") || starts_with(lines[end], "# GO. Git LFS"))) {
@@ -116,6 +235,11 @@ std::string merge_gitattributes(const std::string &p_existing, const std::vector
 	}
 
 	std::string block = make_gitattributes_block(p_patterns);
+	std::string exclusions;
+	for (const std::string &pattern : p_exclusions) {
+		exclusions += pattern + " !filter !diff !merge !text\n";
+	}
+	block.insert(block.find(END_MARKER), exclusions);
 	std::vector<std::string> block_lines = split(block, '\n');
 	while (!block_lines.empty() && block_lines.back().empty()) {
 		block_lines.pop_back();

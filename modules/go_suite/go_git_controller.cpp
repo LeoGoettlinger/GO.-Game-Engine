@@ -37,6 +37,8 @@
 #include "go_git_lfs.h"
 #include "go_suite_core.h"
 
+#include "core/io/config_file.h"
+#include "core/io/dir_access.h"
 #include "core/io/file_access.h"
 
 #include <algorithm>
@@ -111,7 +113,14 @@ bool GoGitController::verify_staged_pointers(std::string &r_error) const {
 	}
 	const go::GitStatus status = go::parse_status_porcelain(status_output);
 	for (const go::GitStatusEntry &entry : status.entries) {
-		if (!go::is_lfs_pattern(entry.path)) {
+		if (!entry.staged || entry.index_status == 'D') {
+			continue;
+		}
+		std::string attribute;
+		if (!run_checked(go::git(project_path, { "check-attr", "--cached", "filter", "--", entry.path }), attribute, r_error)) {
+			return false;
+		}
+		if (!go::ends_with(go::trim(attribute), ": lfs")) {
 			continue;
 		}
 		const std::string path = full_path(project_path, entry.path);
@@ -210,8 +219,19 @@ GoGitSnapshot GoGitController::snapshot(std::string &r_error) const {
 			sized_files.push_back({ entry.path, static_cast<uint64_t>(size) });
 		}
 	}
-	snapshot.suggested_lfs_patterns = go::lfs_patterns_for_files(sized_files, 5, snapshot.remote.host_kind);
-	const std::string summary = go::summarize_large_files(sized_files, 5, snapshot.remote.host_kind);
+	const go::LfsPolicy policy = lfs_policy();
+	if (policy.mode == go::LfsMode::FILE_TYPES) {
+		snapshot.suggested_lfs_patterns = go::lfs_patterns_for_files(sized_files, policy.threshold_mib, snapshot.remote.host_kind);
+	} else if (policy.mode == go::LfsMode::FOLDERS) {
+		snapshot.suggested_lfs_patterns = go::lfs_folder_patterns(policy.folders);
+	} else {
+		for (const auto &file : sized_files) {
+			if (go::lfs_policy_selects(policy, file.first, file.second)) {
+				snapshot.suggested_lfs_patterns.push_back(go::lfs_literal_pattern(file.first));
+			}
+		}
+	}
+	const std::string summary = go::summarize_large_files(sized_files, policy.threshold_mib, snapshot.remote.host_kind);
 	if (!summary.empty()) {
 		snapshot.large_file_warnings = go::split(summary, '\n');
 	}
@@ -278,13 +298,17 @@ bool GoGitController::stage_all(std::string &r_error) const {
 		return false;
 	}
 	std::string output;
-	if (!run_checked(go::add_all(project_path), output, r_error)) {
+	if (!run_checked(go::add_all(project_path), output, r_error) ||
+			!run_checked(go::git(project_path, { "add", "--renormalize", "--", "." }), output, r_error)) {
 		return false;
 	}
 	return verify_staged_pointers(r_error);
 }
 
 bool GoGitController::stage_paths(const std::vector<std::string> &p_paths, std::string &r_error) const {
+	if (!ensure_lfs_attributes(r_error)) {
+		return false;
+	}
 	std::string output;
 	return run_checked(go::add_paths(project_path, p_paths), output, r_error);
 }
@@ -298,10 +322,121 @@ bool GoGitController::commit(const std::string &p_message, std::string &r_output
 	return run_checked(go::commit(project_path, message), r_output, r_error);
 }
 
+go::LfsPolicy GoGitController::lfs_policy() const {
+	go::LfsPolicy policy;
+	Ref<ConfigFile> config;
+	config.instantiate();
+	if (config->load(to_godot_string(full_path(project_path, ".godot/go_lfs.cfg"))) == OK) {
+		int mode = config->get_value("lfs", "mode", 0);
+		policy.mode = mode == 1 ? go::LfsMode::SIZE : (mode == 2 ? go::LfsMode::FOLDERS : go::LfsMode::FILE_TYPES);
+		policy.threshold_mib = int64_t(config->get_value("lfs", "threshold_mib", 5));
+		PackedStringArray folders = config->get_value("lfs", "folders", PackedStringArray());
+		for (const String &folder : folders) {
+			policy.folders.push_back(to_std_string(folder));
+		}
+	}
+	return policy;
+}
+
+bool GoGitController::save_lfs_policy(const go::LfsPolicy &p_policy, std::string &r_error) const {
+	if (p_policy.threshold_mib < 1 || p_policy.threshold_mib > 1048576) {
+		r_error = "LFS threshold must be between 1 and 1048576 MiB";
+		return false;
+	}
+	if (p_policy.mode == go::LfsMode::FOLDERS && p_policy.folders.empty()) {
+		r_error = "Choose at least one project folder";
+		return false;
+	}
+	Ref<DirAccess> directory = DirAccess::create(DirAccess::ACCESS_RESOURCES);
+	PackedStringArray folders;
+	for (const std::string &folder : p_policy.folders) {
+		if (!go::valid_lfs_folder(folder)) {
+			r_error = "Invalid project folder: " + folder;
+			return false;
+		}
+		std::string current = project_path;
+		for (const std::string &part : go::split(folder, '/')) {
+			current += "/" + part;
+			if (directory->is_link(to_godot_string(current)) || !directory->dir_exists(to_godot_string(current))) {
+				r_error = "Folder must exist inside the project and must not contain symlinks: " + folder;
+				return false;
+			}
+		}
+		folders.push_back(to_godot_string(folder));
+	}
+	Ref<ConfigFile> config;
+	config.instantiate();
+	config->set_value("lfs", "mode", int(p_policy.mode));
+	config->set_value("lfs", "threshold_mib", int64_t(p_policy.threshold_mib));
+	config->set_value("lfs", "folders", folders);
+	const String cache = to_godot_string(full_path(project_path, ".godot"));
+	if (directory->is_link(cache)) {
+		r_error = "Refusing symlinked editor cache";
+		return false;
+	}
+	directory->make_dir_recursive(cache);
+	const String config_path = cache.path_join("go_lfs.cfg");
+	if (directory->is_link(config_path) || config->save(config_path) != OK) {
+		r_error = "Could not save project-local LFS settings";
+		return false;
+	}
+	return true;
+}
+
 bool GoGitController::ensure_lfs_attributes(std::string &r_error) const {
 	const std::string path = full_path(project_path, ".gitattributes");
 	const std::string existing = read_text_file(path);
-	const std::string merged = go::merge_gitattributes(existing);
+	const go::LfsPolicy policy = lfs_policy();
+	std::vector<std::string> patterns;
+	std::vector<std::string> exclusions;
+	Ref<DirAccess> directory = DirAccess::create(DirAccess::ACCESS_RESOURCES);
+	if (directory->is_link(to_godot_string(path))) {
+		r_error = "Refusing symlinked .gitattributes";
+		return false;
+	}
+	if (policy.mode == go::LfsMode::FILE_TYPES) {
+		patterns = go::default_lfs_patterns();
+	} else if (policy.mode == go::LfsMode::FOLDERS) {
+		for (const std::string &folder : policy.folders) {
+			if (!go::valid_lfs_folder(folder)) {
+				r_error = "Invalid saved LFS folder";
+				return false;
+			}
+		}
+		patterns = go::lfs_folder_patterns(policy.folders);
+		exclusions = go::lfs_folder_patterns(policy.folders, true);
+	} else {
+		// Git supplies only tracked or unignored candidates; never recurse into .git.
+		std::string files;
+		if (!run_checked(go::git(project_path, { "-c", "core.quotePath=false", "ls-files", "--cached", "--others", "--exclude-standard" }), files, r_error)) {
+			return false;
+		}
+		for (const std::string &file : go::split(files, '\n')) {
+			if (file.empty()) {
+				continue;
+			}
+			if (file.front() == '\"') {
+				r_error = "Automatic LFS requires file names without control characters or quotes";
+				return false;
+			}
+			std::string current = project_path;
+			bool symlink = false;
+			for (const std::string &part : go::split(file, '/')) {
+				current += "/" + part;
+				symlink = symlink || directory->is_link(to_godot_string(current));
+			}
+			if (symlink || !go::valid_lfs_folder(file)) {
+				continue;
+			}
+			const int64_t size = FileAccess::get_size(to_godot_string(current));
+			if (size >= 0 && go::lfs_policy_selects(policy, file, uint64_t(size))) {
+				patterns.push_back(go::lfs_literal_pattern(file));
+			}
+		}
+		std::sort(patterns.begin(), patterns.end());
+		patterns.erase(std::unique(patterns.begin(), patterns.end()), patterns.end());
+	}
+	const std::string merged = go::merge_gitattributes(existing, patterns, exclusions);
 	if (merged == existing) {
 		return true;
 	}

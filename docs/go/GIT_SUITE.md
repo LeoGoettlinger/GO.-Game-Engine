@@ -93,3 +93,45 @@ filter. Real `git lfs install/pull/push` and the Windows/Linux installer command
 command-built and syntax-checked, but must still be smoke-tested on a developer machine or in
 the tagged CI build. Automatic Commit (§8) and project lifecycle reminders (§7) remain later
 steps.
+
+## LFS selection modes (2026-10-28)
+
+In **GO. Git LFS**, select a mode, then **Save LFS settings**:
+
+- **Automatic: files at or above size threshold**: choose 1–1048576 MiB
+  (default 5). On **Write LFS rules** and GO. staging, scan Git's tracked and
+  unignored files; eligible files at or above the threshold receive exact-path
+  rules, not extension-wide rules. This is not an idle/background watcher.
+- **Semi-automatic: selected folders recursively**: use **Add folder…** repeatedly
+  for multiple project subfolders; remove selected entries as needed. Recursive
+  `.gitattributes` patterns include future files, even when staging via external
+  Git. Files outside those folders receive no GO.-managed LFS rule in this mode.
+- **File types (legacy default)** retains existing behavior until explicitly changed.
+
+Selection and threshold persist locally in `.godot/go_lfs.cfg` (not shared with
+collaborators). Generated `.gitattributes` rules are shared through Git. A fresh
+clone does not inherit the local mode; select it before using GO.'s rule writer.
+**Write LFS rules** applies the saved policy; changing controls alone does not.
+GO.'s stage-all refreshes rules, stages changes and renormalizes tracked files, so
+existing blobs can become pointers in the next commit without rewriting history.
+This may also apply existing text normalization rules; review the staged diff.
+For external Git, run `git add --renormalize .` after changing folder rules.
+
+Godot/text formats (case-insensitive), PCK/EXE/APK/AAB exports and nested generated
+`.git`, `.godot`, `export`, `exports` directories are excluded from folder LFS
+rules. Ignored exports remain ignored. Root, hidden, traversal, wildcard and
+symlink folder selections are rejected. Folder names with spaces are supported.
+Size scanning conservatively skips unsupported paths and rejects Git-quoted
+control-character filenames instead of guessing. No installation or migration
+of historical commits occurs when saving settings.
+
+Only GO.'s marked block is replaced. Foreign rules and nested `.gitattributes`
+can still affect effective attributes; pointer verification consults Git's actual
+cached filter attribute, not a hardcoded extension list. Changing modes does not
+remove foreign rules. Removing a folder is not a history migration.
+
+Validation: pure C++ policy/boundary tests; generated rules checked with real Git
+for spaces, multiple folders, recursion, text/export exceptions and idempotent
+mode changes. CI real-LFS transport additionally uses these generated folder rules
+for a binary round-trip. New UI still requires a visual acceptance test; Git calls
+remain synchronous and Automatic Commit remains disabled.

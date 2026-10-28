@@ -12,7 +12,9 @@ module_obj = []
 if env.editor_build:
     # Project setup is called by libeditor, which follows module archives on
     # Linux's link line. Compile that adapter into libeditor (editor/SCsub).
-    env_go_suite.add_source_files(module_obj, [source for source in Glob("*.cpp") if source.name != "go_project_setup.cpp"])
+    env_go_suite.add_source_files(
+        module_obj, [source for source in Glob("*.cpp") if source.name != "go_project_setup.cpp"]
+    )
     # tests/standalone_guardrails.cpp is intentionally NOT compiled here:
     # misc/scripts/go_run_guardrails.py builds it without Godot headers.
 

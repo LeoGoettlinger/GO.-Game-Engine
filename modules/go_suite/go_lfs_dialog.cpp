@@ -13,7 +13,11 @@
 #include "core/string/ustring.h"
 #include "scene/gui/box_container.h"
 #include "scene/gui/button.h"
+#include "scene/gui/file_dialog.h"
+#include "scene/gui/item_list.h"
 #include "scene/gui/label.h"
+#include "scene/gui/option_button.h"
+#include "scene/gui/spin_box.h"
 #include "scene/gui/text_edit.h"
 
 void GoLfsDialog::_append(const String &p_text) {
@@ -96,6 +100,10 @@ void GoLfsDialog::_on_rules_pressed() {
 }
 
 void GoLfsDialog::_on_track_pressed() {
+	if (controller != nullptr && controller->lfs_policy().mode != go::LfsMode::FILE_TYPES) {
+		_on_rules_pressed();
+		return;
+	}
 	if (controller == nullptr) {
 		return;
 	}
@@ -161,6 +169,59 @@ void GoLfsDialog::_on_quota_pressed() {
 	}
 }
 
+void GoLfsDialog::_on_mode_selected(int p_index) {
+	threshold->set_editable(p_index == 1);
+	folder_list->set_visible(p_index == 2);
+}
+
+void GoLfsDialog::_on_add_folder() {
+	folder_picker->popup_centered_ratio();
+}
+
+void GoLfsDialog::_on_folder_selected(const String &p_path) {
+	if (!p_path.begins_with("res://")) {
+		return;
+	}
+	String folder = p_path.trim_prefix("res://").trim_suffix("/");
+	if (!go::valid_lfs_folder(go_suite::to_std_string(folder))) {
+		_append(TTR("Choose a project subfolder, not the project root, a hidden folder or an export folder."));
+		return;
+	}
+	for (int i = 0; i < folder_list->get_item_count(); ++i) {
+		if (folder_list->get_item_text(i) == folder) {
+			return;
+		}
+	}
+	folder_list->add_item(folder);
+	mode_picker->select(2);
+	_on_mode_selected(2);
+}
+
+void GoLfsDialog::_on_remove_folder() {
+	const PackedInt32Array selected = folder_list->get_selected_items();
+	for (int i = selected.size() - 1; i >= 0; --i) {
+		folder_list->remove_item(selected[i]);
+	}
+}
+
+void GoLfsDialog::_on_save_policy() {
+	if (controller == nullptr) {
+		return;
+	}
+	go::LfsPolicy policy;
+	policy.mode = static_cast<go::LfsMode>(mode_picker->get_selected());
+	policy.threshold_mib = uint64_t(threshold->get_value());
+	for (int i = 0; i < folder_list->get_item_count(); ++i) {
+		policy.folders.push_back(go_suite::to_std_string(folder_list->get_item_text(i)));
+	}
+	std::string error;
+	if (!controller->save_lfs_policy(policy, error)) {
+		_append(TTR("Could not save LFS settings: ") + go_suite::to_godot_string(error));
+		return;
+	}
+	_append(TTR("LFS settings saved locally. Write LFS rules to apply now; GO. also applies them before staging. Existing commits are unchanged."));
+}
+
 void GoLfsDialog::_bind_methods() {
 }
 
@@ -178,6 +239,51 @@ GoLfsDialog::GoLfsDialog(go_suite::GoGitController *p_controller) {
 	state_label->set_text(TTR("Press Check to read the Git LFS state."));
 	state_label->set_focus_mode(Control::FOCUS_ACCESSIBILITY);
 	root->add_child(state_label);
+
+	Label *policy_label = memnew(Label);
+	policy_label->set_text(TTR("LFS selection (text formats stay in normal Git):"));
+	root->add_child(policy_label);
+	mode_picker = memnew(OptionButton);
+	mode_picker->add_item(TTR("File types (legacy default)"));
+	mode_picker->add_item(TTR("Automatic: files at or above size threshold"));
+	mode_picker->add_item(TTR("Semi-automatic: selected folders recursively"));
+	root->add_child(mode_picker);
+	threshold = memnew(SpinBox);
+	threshold->set_min(1);
+	threshold->set_max(1048576);
+	threshold->set_suffix(TTR("MiB"));
+	root->add_child(threshold);
+	folder_list = memnew(ItemList);
+	folder_list->set_custom_minimum_size(Size2(0, 80));
+	folder_list->set_select_mode(ItemList::SELECT_MULTI);
+	root->add_child(folder_list);
+	folder_picker = memnew(FileDialog);
+	folder_picker->set_access(FileDialog::ACCESS_RESOURCES);
+	folder_picker->set_file_mode(FileDialog::FILE_MODE_OPEN_DIR);
+	folder_picker->connect("dir_selected", callable_mp(this, &GoLfsDialog::_on_folder_selected));
+	add_child(folder_picker);
+	HBoxContainer *policy_buttons = memnew(HBoxContainer);
+	root->add_child(policy_buttons);
+	Button *add_folder = memnew(Button);
+	add_folder->set_text(TTR("Add folder…"));
+	add_folder->connect("pressed", callable_mp(this, &GoLfsDialog::_on_add_folder));
+	policy_buttons->add_child(add_folder);
+	Button *remove_folder = memnew(Button);
+	remove_folder->set_text(TTR("Remove selected folders"));
+	remove_folder->connect("pressed", callable_mp(this, &GoLfsDialog::_on_remove_folder));
+	policy_buttons->add_child(remove_folder);
+	Button *save_policy = memnew(Button);
+	save_policy->set_text(TTR("Save LFS settings"));
+	save_policy->connect("pressed", callable_mp(this, &GoLfsDialog::_on_save_policy));
+	policy_buttons->add_child(save_policy);
+	const go::LfsPolicy policy = controller != nullptr ? controller->lfs_policy() : go::LfsPolicy();
+	mode_picker->select(int(policy.mode));
+	threshold->set_value(policy.threshold_mib);
+	for (const std::string &folder : policy.folders) {
+		folder_list->add_item(go_suite::to_godot_string(folder));
+	}
+	mode_picker->connect("item_selected", callable_mp(this, &GoLfsDialog::_on_mode_selected));
+	_on_mode_selected(int(policy.mode));
 
 	HBoxContainer *row_one = memnew(HBoxContainer);
 	root->add_child(row_one);

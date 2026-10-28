@@ -117,3 +117,18 @@ compiled editor/CI, `[ ]` open. A user-facing feature comparison lives in
 - Requested LFS extension remains open: automatic size-based selection versus one
   or more recursively tracked folders, persisted configuration and preview. No
   history rewriting or silent activation; text-format exclusions must be explicit.
+
+## 2026-10-28 — LFS policy implementation
+
+- Previous full build `40702540665` passed Windows/Linux editor, startup smoke and
+  templates for `bfd78bf7`; this does not validate the new LFS code.
+- Added selectable size threshold and recursive multi-folder modes, project-local
+  persistence, native folder picker, rule generation before staging and effective
+  Git attribute pointer checks. Legacy file-type mode remains the default.
+- Fixed managed-block replacement at end-of-file; switching modes no longer leaves
+  obsolete exact-path/folder rules behind.
+- Added policy boundary tests and real Git attribute matcher tests; CI real-LFS
+  transport now exercises generated multi-folder rules and text exclusions.
+- Still open: visual UI acceptance, asynchronous Git, safer native tool protocol,
+  approvals/Undo and Automatic Commit activation. Size mode runs on rule refresh /
+  staging, not continuously. Local LFS config is intentionally not cloned/shared.

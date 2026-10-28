@@ -228,3 +228,21 @@ Link-/Startfehler aufgedeckt; Korrekturen benötigen einen erneuten CI-Nachweis.
 
 Zusätzlich angefragt, noch offen: LFS vollautomatisch nach Dateigröße oder
 halbautomatisch für einen bzw. mehrere ausgewählte Ordner samt Unterordnern.
+
+### Aktueller Stand: zwei zusätzliche LFS-Modi implementiert
+
+Im Dialog **GO. Git LFS** gibt es jetzt neben den bisherigen Dateityp-Regeln:
+
+| Modus | Verhalten |
+| --- | --- |
+| **Automatisch nach Größe** | Einstellbare MiB-Grenze; GO. erfasst passende Dateien beim Schreiben der Regeln und vor dem Staging. Kein Hintergrund-Watcher. |
+| **Halbautomatisch nach Ordnern** | Einen oder mehrere Projektordner auswählen; rekursive Regeln gelten auch für neue Dateien darin. Außerhalb keine zusätzlichen GO.-Regeln. |
+
+Text-/Godot-Dateien und Export-Artefakte bleiben ausgenommen. Einstellungen sind
+lokal gespeichert, `.gitattributes` wird mit dem Projekt geteilt. Fremde Regeln
+bleiben erhalten; bestehende Commits werden nicht umgeschrieben. Details und
+Bedienung: [Git Suite](docs/go/GIT_SUITE.md#lfs-selection-modes-2026-10-28).
+
+Die Implementierung und lokalen Regeltests sind vorhanden; visuelle Abnahme und
+CI des neuen Stands stehen noch aus. Kilo-Toolausführung und Automatic Commit
+sind weiterhin nicht freigeschaltet.

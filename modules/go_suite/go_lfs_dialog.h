@@ -40,6 +40,10 @@
 class Button;
 class Label;
 class TextEdit;
+class OptionButton;
+class SpinBox;
+class ItemList;
+class FileDialog;
 
 class GoLfsDialog : public AcceptDialog {
 	GDCLASS(GoLfsDialog, AcceptDialog);
@@ -56,6 +60,15 @@ class GoLfsDialog : public AcceptDialog {
 	Button *push_button = nullptr;
 	Button *quota_button = nullptr;
 
+	OptionButton *mode_picker = nullptr;
+	SpinBox *threshold = nullptr;
+	ItemList *folder_list = nullptr;
+	FileDialog *folder_picker = nullptr;
+	void _on_add_folder();
+	void _on_folder_selected(const String &p_path);
+	void _on_remove_folder();
+	void _on_save_policy();
+	void _on_mode_selected(int p_index);
 	void _append(const String &p_text);
 	void _refresh_state();
 	void _on_check_pressed();

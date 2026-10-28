@@ -160,6 +160,18 @@ int main(int argc, char **argv) {
 		return 0;
 	}
 
+	if (mode == "folder-attributes") {
+		std::vector<std::string> folders;
+		for (int i = 2; i < argc; ++i) {
+			if (!go::valid_lfs_folder(argv[i])) {
+				return 2;
+			}
+			folders.push_back(argv[i]);
+		}
+		std::cout << go::merge_gitattributes(read_stdin(), go::lfs_folder_patterns(folders), go::lfs_folder_patterns(folders, true));
+		return 0;
+	}
+
 	if (mode == "attributes") {
 		std::cout << go::merge_gitattributes(read_stdin());
 		return 0;

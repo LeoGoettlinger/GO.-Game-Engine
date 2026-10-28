@@ -33,6 +33,7 @@
 // GO. Game Engine — Copyright (c) 2026 SampleCraft / GO. contributors
 // SPDX-License-Identifier: MIT
 
+#include "go_git_lfs.h"
 #include "go_system_git.h"
 #include "go_system_git_runner.h"
 
@@ -86,6 +87,8 @@ public:
 	bool stage_paths(const std::vector<std::string> &p_paths, std::string &r_error) const;
 	bool commit(const std::string &p_message, std::string &r_output, std::string &r_error) const;
 
+	go::LfsPolicy lfs_policy() const;
+	bool save_lfs_policy(const go::LfsPolicy &p_policy, std::string &r_error) const;
 	bool ensure_lfs_attributes(std::string &r_error) const;
 	bool lfs_install_local(std::string &r_output, std::string &r_error) const;
 	bool lfs_install_global(std::string &r_output, std::string &r_error) const;
