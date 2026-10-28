@@ -86,9 +86,17 @@ jobs:
       - name: Build editor
         shell: bash
         run: |
+          set +e
           python -m SCons platform=${{ matrix.scons_platform }} target=editor arch=x86_64 \
             module_mono_enabled=no no_editor_splash=no production=yes tests=no \
-            cache_path="$SCONS_CACHE_PATH" cache_limit=2 -j${{ matrix.jobs }}
+            cache_path="$SCONS_CACHE_PATH" cache_limit=2 -j${{ matrix.jobs }} \
+            2>&1 | tee go-build-editor.log
+          status=${PIPESTATUS[0]}
+          set -e
+          if [ "$status" -ne 0 ]; then
+            python misc/scripts/go_annotate_build_log.py go-build-editor.log
+            exit "$status"
+          fi
 
       - name: Verify --version branding
         shell: bash
