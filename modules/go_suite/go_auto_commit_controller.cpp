@@ -157,7 +157,7 @@ void GoAutoCommitController::_build_ui() {
 	panel->add_child(root);
 
 	Label *title = memnew(Label);
-	title->set_text(TTR("Automatic Commit läuft …"));
+	title->set_text(TTR("Automatic Commit running…"));
 	title->set_focus_mode(Control::FOCUS_ACCESSIBILITY);
 	root->add_child(title);
 
@@ -282,7 +282,7 @@ void GoAutoCommitController::_advance() {
 			} break;
 			case go::AutoCommitStage::GENERATE_MESSAGE: {
 				const std::string prompt = go::build_commit_prompt(status_text, diff_stat, diff_text);
-				const String system_prompt = TTR("You write git commit messages. Output only a Conventional Commit subject and optional short bullet body. Summarise what changed and why.");
+				const String system_prompt = TTR("You write git commit messages. Output only a Conventional Commit subject and optional short bullet body. Summarize what changed and why.");
 				kilo_client->request_chat_simple(String::utf8(go::DEFAULT_FREE_MODEL), go_suite::to_godot_string(prompt), system_prompt);
 				_update_overlay();
 				return;

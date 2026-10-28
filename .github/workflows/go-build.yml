@@ -112,6 +112,16 @@ jobs:
           "$EDITOR" --version | tee go-version.txt
           grep -F "GO. Game Engine" go-version.txt
 
+      - name: Headless native editor startup smoke test
+        shell: bash
+        run: |
+          if [ "${{ matrix.platform }}" = "linux" ]; then
+            EDITOR=bin/godot.linuxbsd.editor.x86_64
+          else
+            EDITOR=bin/godot.windows.editor.x86_64.exe
+          fi
+          python misc/scripts/go_editor_smoke.py --editor "$EDITOR"
+
       - name: Build release template
         shell: bash
         run: |

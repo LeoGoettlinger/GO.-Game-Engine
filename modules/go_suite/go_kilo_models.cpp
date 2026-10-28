@@ -37,6 +37,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cmath>
 #include <cstdlib>
 #include <iomanip>
 #include <sstream>
@@ -79,6 +80,7 @@ int hex_value(char c) {
 class JsonParser {
 	const std::string &text;
 	size_t pos = 0;
+	unsigned depth = 0;
 	std::string error;
 
 public:
@@ -321,6 +323,15 @@ private:
 	}
 
 	bool parse_value(JsonValue &r_value) {
+		if (depth >= 64) {
+			fail("JSON nesting limit exceeded");
+			return false;
+		}
+		struct DepthGuard {
+			unsigned &value;
+			explicit DepthGuard(unsigned &p_value) : value(p_value) { ++value; }
+			~DepthGuard() { --value; }
+		} guard(depth);
 		skip_ws();
 		if (pos >= text.size()) {
 			fail("unexpected end of JSON");
@@ -359,7 +370,7 @@ double price_from_json(const JsonValue *p_value) {
 		const std::string value = trim(p_value->string_value);
 		char *end = nullptr;
 		const double result = std::strtod(value.c_str(), &end);
-		if (end != value.c_str() + value.size()) {
+		if (value.empty() || end == value.c_str() || end != value.c_str() + value.size() || !std::isfinite(result) || result < 0.0) {
 			return 1.0;
 		}
 		return result;

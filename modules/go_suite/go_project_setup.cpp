@@ -103,10 +103,23 @@ bool GoProjectSetup::apply(const String &p_project_path, bool p_git_suite, bool 
 			if (!DirAccess::dir_exists_absolute(source)) {
 				continue;
 			}
-			Ref<DirAccess> access = DirAccess::create_for_path(source);
-			if (access.is_valid() && access->copy_dir(source, addons_target) == OK) {
-				copied++;
+			Ref<DirAccess> access = DirAccess::open(source);
+			if (access.is_null()) {
+				continue;
 			}
+			access->list_dir_begin();
+			String addon = access->get_next();
+			while (!addon.is_empty()) {
+				const String destination = addons_target.path_join(addon);
+				if (addon != "." && addon != ".." && access->current_is_dir() && !access->is_link(addon) &&
+						!DirAccess::dir_exists_absolute(destination) && !FileAccess::exists(destination)) {
+					if (access->copy_dir(source.path_join(addon), destination) == OK) {
+						copied++;
+					}
+				}
+				addon = access->get_next();
+			}
+			access->list_dir_end();
 		}
 		config->set_value("go", "bundled_plugins/copied", copied > 0);
 		if (copied == 0) {
@@ -119,7 +132,7 @@ bool GoProjectSetup::apply(const String &p_project_path, bool p_git_suite, bool 
 			int exit_code = -1;
 			const go::GitCommand init = go::git(go_suite::to_std_string(p_project_path), { "init", "-b", "main" });
 			if (!runner.run(init, output, exit_code) || exit_code != 0) {
-				warnings += TTR("Project was created, but git init failed. Use the Git Suite to initialise it later.") + "\n";
+				warnings += TTR("Project was created, but git init failed. Use the Git Suite to initialize it later.") + "\n";
 			}
 		}
 

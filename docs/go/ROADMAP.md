@@ -96,3 +96,13 @@ compiled editor/CI, `[ ]` open. A user-facing feature comparison lives in
 - Existing manual Git operations still run synchronously. Stage/Unstage/Diff UI, correct
   effective LFS attribute queries, real LFS transport tests and lifecycle reminders remain open.
 - Header syntax checks now disable C++ exceptions like Godot. They are not runtime tests.
+
+### Additional validation queued
+
+- `go_lfs_transport_test.py` requires real git-lfs in CI and round-trips an actual binary
+  through a local bare remote. Local execution explicitly skipped because git-lfs is absent.
+- `go_editor_smoke.py` runs the compiled editor with `--headless --import` in an isolated
+  project and fails on startup errors. It is queued after the editor build, not yet proven.
+- JSON parsing now rejects excessive nesting and empty/malformed price strings; catalog-based
+  request validation prevents selecting models solely by an unverified `/free` suffix.
+- Setup preserves existing addon directories instead of overwriting project plugin sources.

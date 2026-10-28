@@ -237,6 +237,10 @@ void test_kilo_models() {
 	std::string invalid_error;
 	parse_json("{not json", invalid_error);
 	CHECK(!invalid_error.empty());
+	parse_json(std::string(100, '[') + "0" + std::string(100, ']'), invalid_error);
+	CHECK(!invalid_error.empty());
+	const auto invalid_prices = parse_models_response(R"({"data":[{"id":"bad-price","pricing":{"prompt":"","completion":""}}]})", error);
+	CHECK_EQ(free_models_for_picker(invalid_prices).size(), size_t(1));
 
 	CHECK(is_free_model_id(DEFAULT_FREE_MODEL));
 	CHECK(is_free_model_id("vendor/model:free"));
