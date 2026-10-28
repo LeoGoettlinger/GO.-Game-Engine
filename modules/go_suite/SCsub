@@ -10,7 +10,9 @@ module_obj = []
 # The module is absent from export templates; config.py already gates it on
 # env.editor_build. Keep the guard so a custom editor-less build is safe.
 if env.editor_build:
-    env_go_suite.add_source_files(module_obj, "*.cpp")
+    # Project setup is called by libeditor, which follows module archives on
+    # Linux's link line. Compile that adapter into libeditor (editor/SCsub).
+    env_go_suite.add_source_files(module_obj, [source for source in Glob("*.cpp") if source.name != "go_project_setup.cpp"])
     # tests/standalone_guardrails.cpp is intentionally NOT compiled here:
     # misc/scripts/go_run_guardrails.py builds it without Godot headers.
 

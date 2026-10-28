@@ -1,6 +1,9 @@
 # Code Agentics
 
 Status: implementation in progress; see [`ROADMAP.md`](ROADMAP.md) for exact completion.
+Original-source provenance and missing port work: [`KILO_PORT.md`](KILO_PORT.md).
+Tool execution is currently disabled; the protocol and permissions below describe
+the target, not completed runtime behavior.
 
 Code Agentics is a native Godot port of Kilo's **anonymous free** chat loop. It is not the
 TypeScript extension and does not embed Node.js.

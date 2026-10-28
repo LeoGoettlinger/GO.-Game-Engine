@@ -70,6 +70,9 @@ if env.editor_build:
             env.Run(editor_builders.make_translations),
         )
 
+    # GO. ProjectDialog adapter must live in libeditor for static link order.
+    if "go_suite" in env.module_list:
+        env.add_source_files(env.editor_sources, "../modules/go_suite/go_project_setup.cpp")
     env.add_source_files(env.editor_sources, "*.cpp")
     env.add_source_files(env.editor_sources, gen_exporters)
     env.add_source_files(env.editor_sources, translation_targets.keys())

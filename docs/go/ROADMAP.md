@@ -106,3 +106,14 @@ compiled editor/CI, `[ ]` open. A user-facing feature comparison lives in
 - JSON parsing now rejects excessive nesting and empty/malformed price strings; catalog-based
   request validation prevents selecting models solely by an unverified `/free` suffix.
 - Setup preserves existing addon directories instead of overwriting project plugin sources.
+
+## 2026-10-28 — full Kilo reference and build failures
+
+- Full unfiltered Kilo clone verified at the existing pin (10 audited source hashes);
+  `KILO_PORT.md` maps original sources to native implementation and missing ports.
+- Latest full run `40660072217` failed: Linux static link of ProjectDialog setup;
+  Windows startup inherited signal connection. Adapter placement and early class
+  registration corrected; new full CI required before claiming either fixed at runtime.
+- Requested LFS extension remains open: automatic size-based selection versus one
+  or more recursively tracked folders, persisted configuration and preview. No
+  history rewriting or silent activation; text-format exclusions must be explicit.

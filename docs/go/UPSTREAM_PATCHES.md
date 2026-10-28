@@ -28,3 +28,11 @@ with every new upstream-file patch so a later rebase/merge can be audited.
 
 `LICENSE.txt`, `COPYRIGHT.txt`, `AUTHORS.md` and upstream `README.godot-upstream.md` remain
 intact. GO.'s own MIT-notice files are additive.
+
+## Editor adapter link order (2026-10-28)
+
+- `editor/SCsub`: compile `modules/go_suite/go_project_setup.cpp` into `libeditor`
+  only when the GO. module is enabled. Its caller is ProjectDialog; Linux places
+  module archives before libeditor, so an otherwise unreferenced adapter was not
+  extracted. The module SCsub excludes this one source to avoid duplicate symbols.
+  Preserve this placement when merging upstream build changes. Full CI must verify it.

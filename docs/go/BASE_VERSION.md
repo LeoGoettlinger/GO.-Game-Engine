@@ -28,10 +28,15 @@ release artifact names.
 
 - **Repository:** <https://github.com/Kilo-Org/kilocode.git>
 - **Pinned audited commit:** `54bff5dcbd0ae8c11adad618f32c9255583699d0` (2026-10-26)
-- **Clone:** full Git history with blob filtering and a sparse checkout of `packages/kilo-gateway`,
-  `packages/core`, `packages/kilo-vscode`, `LICENSE` and `README.md`, located outside the
-  Godot source at `/home/user/kilocode-reference` in the build sandbox. No Kilo source or
-  `node_modules` is copied into the GO. Git tree.
+- **Clone:** full, unfiltered Git clone and complete working tree, checked out detached
+  at the pinned commit in `/home/user/kilocode-reference` (2026-10-28).
+  `git rev-parse --is-shallow-repository` returns `false`; neither sparse checkout
+  nor partial-clone filtering is configured. Earlier work used a sparse reference;
+  this checkout replaces it. No Node dependencies were installed.
+- **Reproduction:** `git clone https://github.com/Kilo-Org/kilocode.git ../kilocode-reference`,
+  then `git -C ../kilocode-reference checkout --detach 54bff5dcbd0ae8c11adad618f32c9255583699d0`.
+  Run `python misc/scripts/go_verify_kilo_reference.py ../kilocode-reference`.
+  Source hashes are recorded in `kilo-reference.json`; see `KILO_PORT.md` for the port map.
 - **Audited files:** `packages/kilo-gateway/src/api/constants.ts`, `api/url.ts`, `api/models.ts`,
   `headers.ts`, `loader.ts`, `provider.ts`, and the root `LICENSE`.
 - **Verified facts:** gateway base `https://ai-gateway.kilo.ai/api/v1`, anonymous key

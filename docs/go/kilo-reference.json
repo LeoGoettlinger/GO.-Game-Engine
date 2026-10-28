@@ -1,0 +1,16 @@
+{
+  "repository": "https://github.com/Kilo-Org/kilocode.git",
+  "commit": "54bff5dcbd0ae8c11adad618f32c9255583699d0",
+  "files": {
+    "LICENSE": "8a088af74e19c37e62906321b1072f593113058ed9eae507d899d41e6e5e5bb4",
+    "packages/kilo-gateway/src/api/constants.ts": "230fa928a6f26142ed767e21ddb93be38c7131d1b583902f6c54083ffaaae9c7",
+    "packages/kilo-gateway/src/api/models.ts": "e2593d6b88e068b1ff9e924239549a34d9cf2ff2ee732514029b136ab0877e5a",
+    "packages/kilo-gateway/src/api/url.ts": "bdd177956661fcf7ec3affec3ed5d6a78178f7dd25a70530ed2ac741ea17c2de",
+    "packages/kilo-gateway/src/headers.ts": "23615a12b869af8f2f627805cfec31a7d45af458878407ffa9a24ed99bf1efff",
+    "packages/kilo-gateway/src/loader.ts": "27018c1b12d6e27c2b982bc1a88064756cf5f981ee1fbb5a2ff20270b8159e38",
+    "packages/kilo-gateway/src/provider.ts": "37a80b2c3e88004bf8fd6366a19ff09c0e6efa9ec58e0842be6fac1f2fe081f1",
+    "packages/core/src/session/execution.ts": "c6e75839aeddfd0fd387e045a346b1ea159b3c84bf15ceefd33c528eb3dab7d1",
+    "packages/core/src/permission.ts": "f5d5b295452f2ddf17c475a24e77e302bb2b4b65d8a9e02a0f7bc5ef5504a0ba",
+    "packages/kilo-vscode/src/KiloProvider.ts": "111718a27066dfc98a515ec612c57daf0483c0c912a92227d201c28a7150f1a5"
+  }
+}

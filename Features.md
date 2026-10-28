@@ -218,3 +218,13 @@ Agenten-Toolausführung und Automatic Commit sind absichtlich deaktivierte Entw�
 Bestätigungsdialoge, Undo/Redo, asynchrone Git-Ausführung, Lifecycle-Reminder und
 End-to-End-Tests fehlen noch. Frühere Aussagen „vollständig verdrahtet“ bedeuten
 nicht, dass die Git Suite bereits alle Anforderungen erfüllt.
+
+### Nachtrag: Original-Kilo und LFS-Modi
+
+Das vollständige Kilo-Repository ist auf dem dokumentierten Commit geklont und
+über Quelltext-Hashes geprüft. Die native Portierung ist **noch nicht vollständig**;
+[Zuordnung zum Originalcode](docs/go/KILO_PORT.md). Die letzten Vollbuilds haben
+Link-/Startfehler aufgedeckt; Korrekturen benötigen einen erneuten CI-Nachweis.
+
+Zusätzlich angefragt, noch offen: LFS vollautomatisch nach Dateigröße oder
+halbautomatisch für einen bzw. mehrere ausgewählte Ordner samt Unterordnern.
