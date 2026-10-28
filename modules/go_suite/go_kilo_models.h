@@ -99,6 +99,18 @@ struct GoKiloToolCall {
 	std::string arguments;
 };
 
+struct GoKiloMessage {
+	std::string role;
+	std::string content;
+	std::vector<GoKiloToolCall> tool_calls;
+	std::string tool_call_id;
+};
+
+// Fail closed on incomplete or mismatched native tool rounds.
+std::string build_conversation_request_json(const std::string &p_model,
+		const std::vector<GoKiloMessage> &p_messages, bool p_tools_enabled,
+		const std::string &p_tool_definitions_json, std::string &r_error);
+
 struct GoKiloChatResponse {
 	std::string content;
 	std::string tool_calls_json;

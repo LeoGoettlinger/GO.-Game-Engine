@@ -132,3 +132,17 @@ compiled editor/CI, `[ ]` open. A user-facing feature comparison lives in
 - Still open: visual UI acceptance, asynchronous Git, safer native tool protocol,
   approvals/Undo and Automatic Commit activation. Size mode runs on rule refresh /
   staging, not continuously. Local LFS config is intentionally not cloned/shared.
+
+## 2026-10-28 — native tool conversation prerequisite
+
+- LFS quick checks `40745850623` passed, including real generated-folder LFS
+  transport; full build `40745850770` was still running at this checkpoint.
+- Added typed native conversation serialization and wired the HTTP client to it.
+  Tool call IDs/results must match; invalid/incomplete batches fail before HTTP.
+  Catalog tool capability is checked before sending native definitions.
+- Pure tests cover parallel calls, two rounds, orphan/duplicate IDs, malformed
+  arguments and the history round cap. 26 native C++ syntax checks pass.
+- Found missing upstream copyright banners in touched sources; added them to
+  address static hook failures. Full static CI still needs confirmation.
+- Execution remains disabled: per-action approvals, Undo/Redo, asynchronous Git,
+  complete session lifecycle and Automatic Commit are still unfinished.

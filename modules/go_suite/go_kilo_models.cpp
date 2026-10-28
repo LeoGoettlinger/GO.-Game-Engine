@@ -40,6 +40,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <iomanip>
+#include <set>
 #include <sstream>
 
 namespace go {
@@ -697,6 +698,89 @@ std::string sanitize_chat_content(const std::string &p_text, size_t p_max_chars)
 		return p_text;
 	}
 	return p_text.substr(0, p_max_chars) + "\n[truncated by GO.]";
+}
+
+std::string build_conversation_request_json(const std::string &p_model,
+		const std::vector<GoKiloMessage> &p_messages, bool p_tools_enabled,
+		const std::string &p_tool_definitions_json, std::string &r_error) {
+	r_error.clear();
+	auto fail = [&r_error](const std::string &p_reason) -> std::string {
+		r_error = p_reason;
+		return "";
+	};
+	if (p_messages.empty() || p_messages.size() > 256) {
+		return fail("Conversation must contain between 1 and 256 messages");
+	}
+	if (p_tools_enabled) {
+		const JsonValue definitions = parse_json(p_tool_definitions_json, r_error);
+		if (!r_error.empty() || definitions.type != JsonValue::Type::ARRAY || definitions.array_value.empty()) {
+			return fail("Tool definitions must be a nonempty JSON array");
+		}
+		for (const JsonValue &definition : definitions.array_value) {
+			const JsonValue *type = definition.get("type");
+			const JsonValue *function = definition.get("function");
+			if (type == nullptr || type->as_string() != "function" || function == nullptr || function->get("name") == nullptr || function->get("name")->as_string().empty()) {
+				return fail("Invalid native function definition");
+			}
+		}
+	}
+	std::set<std::string> pending;
+	std::set<std::string> seen;
+	size_t rounds = 0;
+	std::ostringstream stream;
+	stream << "{\"model\":" << escape_json_string(p_model) << ",\"stream\":false,\"messages\":[";
+	for (size_t i = 0; i < p_messages.size(); ++i) {
+		const GoKiloMessage &message = p_messages[i];
+		if (message.role != "system" && message.role != "user" && message.role != "assistant" && message.role != "tool") {
+			return fail("Unsupported message role");
+		}
+		if (message.role == "tool") {
+			if (!message.tool_calls.empty() || pending.erase(message.tool_call_id) != 1) {
+				return fail("Tool result has no matching pending call");
+			}
+		} else if (!pending.empty() || !message.tool_call_id.empty()) {
+			return fail("All tool results must precede the next conversation message");
+		}
+		if (!message.tool_calls.empty() && (message.role != "assistant" || ++rounds > 20 || message.tool_calls.size() > 20)) {
+			return fail("Invalid assistant tool round or tool limit exceeded");
+		}
+		if (i > 0) {
+			stream << ",";
+		}
+		stream << "{\"role\":" << escape_json_string(message.role)
+			   << ",\"content\":" << escape_json_string(sanitize_chat_content(message.content));
+		if (message.role == "tool") {
+			stream << ",\"tool_call_id\":" << escape_json_string(message.tool_call_id);
+		}
+		if (!message.tool_calls.empty()) {
+			stream << ",\"tool_calls\":[";
+			for (size_t j = 0; j < message.tool_calls.size(); ++j) {
+				const GoKiloToolCall &call = message.tool_calls[j];
+				std::string error;
+				const JsonValue arguments = parse_json(call.arguments, error);
+				if (call.id.empty() || call.id.size() > 256 || call.name.empty() || call.name.size() > 128 || !seen.insert(call.id).second || !error.empty() || arguments.type != JsonValue::Type::OBJECT) {
+					return fail("Invalid or duplicate tool call identity or arguments");
+				}
+				pending.insert(call.id);
+				if (j > 0) {
+					stream << ",";
+				}
+				stream << "{\"id\":" << escape_json_string(call.id) << ",\"type\":\"function\",\"function\":{\"name\":"
+					   << escape_json_string(call.name) << ",\"arguments\":" << escape_json_string(call.arguments) << "}}";
+			}
+			stream << "]";
+		}
+		stream << "}";
+	}
+	if (!pending.empty()) {
+		return fail("Conversation has unresolved tool calls");
+	}
+	stream << "]";
+	if (p_tools_enabled) {
+		stream << ",\"tools\":" << p_tool_definitions_json << ",\"tool_choice\":\"auto\"";
+	}
+	stream << "}";
+	return stream.str();
 }
 
 std::string build_chat_request_json(

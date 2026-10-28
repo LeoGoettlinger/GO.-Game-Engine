@@ -34,8 +34,9 @@ need Godot Undo/Redo and protection for unsaved user changes.
 
 ## Required next implementation work
 
-1. Represent assistant tool calls and matching `tool_call_id` results, not merely
-   role/content pairs; add multi-round protocol fixtures before enabling tools.
+1. Typed assistant tool calls and matching `tool_call_id` results now exist in
+   the HTTP client, with multi-round serializer tests. The dock runner still needs
+   to produce this history; no tool execution is enabled.
 2. Port session ownership/cancellation and permission request/reply semantics into
    native asynchronous state transitions, capped at 20 steps.
 3. Add strict tool schemas, per-action approval, path confinement and Undo/Redo.

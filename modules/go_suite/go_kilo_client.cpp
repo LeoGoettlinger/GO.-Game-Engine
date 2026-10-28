@@ -119,6 +119,32 @@ void GoKiloClient::request_models() {
 }
 
 void GoKiloClient::request_chat(const String &p_model, const Vector<String> &p_roles, const Vector<String> &p_contents, bool p_tools_enabled, const String &p_tool_definitions_json) {
+	if (is_busy()) {
+		emit_signal("request_failed", TTR("A Kilo request is already running."));
+		return;
+	}
+	if (p_roles.size() != p_contents.size() || p_roles.is_empty()) {
+		_fail(TTR("The chat request has no messages."));
+		return;
+	}
+	std::vector<go::GoKiloMessage> messages;
+	messages.reserve(p_roles.size());
+	for (int i = 0; i < p_roles.size(); ++i) {
+		std::string role = go_suite::to_std_string(p_roles[i]);
+		if (role != "system" && role != "user" && role != "assistant") {
+			_fail(TTR("Native tool messages require a matching tool call ID."));
+			return;
+		}
+		messages.push_back({ role, go_suite::to_std_string(p_contents[i]), {}, "" });
+	}
+	request_conversation(p_model, messages, p_tools_enabled, p_tool_definitions_json);
+}
+
+void GoKiloClient::request_conversation(const String &p_model, const std::vector<go::GoKiloMessage> &p_messages, bool p_tools_enabled, const String &p_tool_definitions_json) {
+	if (is_busy()) {
+		emit_signal("request_failed", TTR("A Kilo request is already running."));
+		return;
+	}
 	const std::string model = go_suite::to_std_string(p_model);
 	bool allowed = false;
 	for (const go::GoKiloModel &candidate : allowed_models) {
@@ -128,24 +154,22 @@ void GoKiloClient::request_chat(const String &p_model, const Vector<String> &p_r
 		_fail(TTR("Only free Kilo models are allowed in GO. Game Engine."));
 		return;
 	}
-	if (p_roles.size() != p_contents.size() || p_roles.is_empty()) {
-		_fail(TTR("The chat request has no messages."));
+	if (p_tools_enabled) {
+		bool supported = false;
+		for (const go::GoKiloModel &candidate : allowed_models) {
+			supported = supported || (candidate.id == model && candidate.supports_tools);
+		}
+		if (!supported) {
+			_fail(TTR("The selected model has no verified native tool support."));
+			return;
+		}
+	}
+	std::string error;
+	const std::string body = go::build_conversation_request_json(model, p_messages, p_tools_enabled, go_suite::to_std_string(p_tool_definitions_json), error);
+	if (!error.empty()) {
+		_fail(TTR("Invalid chat conversation: ") + go_suite::to_godot_string(error));
 		return;
 	}
-	std::vector<std::pair<std::string, std::string>> messages;
-	messages.reserve(p_roles.size());
-	for (int i = 0; i < p_roles.size(); ++i) {
-		std::string role = go_suite::to_std_string(p_roles[i]);
-		if (role != "system" && role != "user" && role != "assistant" && role != "tool") {
-			role = "user";
-		}
-		messages.emplace_back(role, go_suite::to_std_string(p_contents[i]));
-	}
-	const std::string body = go::build_chat_request_json(
-			model,
-			messages,
-			p_tools_enabled,
-			go_suite::to_std_string(p_tool_definitions_json));
 	_begin_request(RequestKind::CHAT, chat_url(), "POST", go_suite::to_godot_string(body));
 }
 

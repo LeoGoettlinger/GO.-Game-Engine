@@ -164,6 +164,66 @@ void test_agentics_tools() {
 	CHECK(contains(GoAgenticsTools::execute_tool("write_file", "{\"path\":\"res://.git/config\"}"), "\"ok\":false"));
 }
 
+void test_native_conversation() {
+	using namespace go;
+	std::string error;
+	const std::string tools = R"([{"type":"function","function":{"name":"read_file","parameters":{"type":"object"}}}])";
+	std::vector<GoKiloMessage> messages = {
+		{ "user", "Read two files", {}, "" },
+		{ "assistant", "", { { "call-a", "read_file", "{}" }, { "call-b", "read_file", "{}" } }, "" },
+		{ "tool", "first file", {}, "call-a" },
+		{ "tool", "second file", {}, "call-b" },
+	};
+	const std::string request = build_conversation_request_json(DEFAULT_FREE_MODEL, messages, true, tools, error);
+	CHECK(error.empty());
+	const JsonValue root = parse_json(request, error);
+	CHECK(error.empty());
+	const JsonValue *wire_messages = root.get("messages");
+	CHECK(wire_messages != nullptr);
+	if (wire_messages != nullptr && wire_messages->array_value.size() == 4) {
+		const auto &wire = wire_messages->array_value;
+		CHECK_EQ(wire[2].get("tool_call_id")->as_string(), std::string("call-a"));
+		const auto &calls = wire[1].get("tool_calls")->array_value;
+		CHECK_EQ(calls.size(), size_t(2));
+		CHECK_EQ(calls[0].get("type")->as_string(), std::string("function"));
+		CHECK_EQ(calls[0].get("function")->get("arguments")->as_string(), std::string("{}"));
+	} else {
+		CHECK(false);
+	}
+	auto rejects = [&](const std::vector<GoKiloMessage> &p_messages) {
+		CHECK(build_conversation_request_json(DEFAULT_FREE_MODEL, p_messages, true, tools, error).empty());
+		CHECK(!error.empty());
+	};
+	auto invalid = messages;
+	invalid.pop_back();
+	rejects(invalid);
+	invalid = messages;
+	invalid[3].tool_call_id = "call-a";
+	rejects(invalid);
+	invalid = messages;
+	invalid[1].tool_calls[1].id = "call-a";
+	rejects(invalid);
+	invalid = messages;
+	invalid[1].tool_calls[0].arguments = "[]";
+	rejects(invalid);
+	invalid = messages;
+	invalid[2].role = "user";
+	rejects(invalid);
+	rejects({ { "tool", "orphan", {}, "unknown" } });
+	CHECK(build_conversation_request_json(DEFAULT_FREE_MODEL, messages, true, "{}", error).empty());
+	// A second round keeps original call IDs and all previous results.
+	messages.push_back({ "assistant", "", { { "call-c", "read_file", "{}" } }, "" });
+	messages.push_back({ "tool", "third file", {}, "call-c" });
+	CHECK(!build_conversation_request_json(DEFAULT_FREE_MODEL, messages, true, tools, error).empty());
+	messages.clear();
+	for (int i = 0; i < 21; ++i) {
+		const std::string id = "round-" + std::to_string(i);
+		messages.push_back({ "assistant", "", { { id, "read_file", "{}" } }, "" });
+		messages.push_back({ "tool", "result", {}, id });
+	}
+	rejects(messages);
+}
+
 void test_lfs_policy() {
 	using namespace go;
 	LfsPolicy policy;
@@ -476,6 +536,7 @@ int main() {
 	test_agentics_tools();
 	test_lfs_rules();
 	test_lfs_policy();
+	test_native_conversation();
 	test_system_git();
 	test_kilo_models();
 	test_commit_messages();

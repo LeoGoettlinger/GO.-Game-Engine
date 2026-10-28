@@ -246,3 +246,14 @@ Bedienung: [Git Suite](docs/go/GIT_SUITE.md#lfs-selection-modes-2026-10-28).
 Die Implementierung und lokalen Regeltests sind vorhanden; visuelle Abnahme und
 CI des neuen Stands stehen noch aus. Kilo-Toolausführung und Automatic Commit
 sind weiterhin nicht freigeschaltet.
+
+### Code Agentics: weiterer Implementierungsschritt
+
+Der native HTTP-Client prüft jetzt strukturierte Tool-Aufrufe und zugehörige
+Antwort-IDs. Ungültige oder unvollständige Gesprächsrunden werden vor dem Senden
+abgewiesen. Dies ist eine getestete Protokollgrundlage, **noch keine freigeschaltete
+Agenten-Ausführung**; Bestätigungen, Undo/Redo und Laufzeit-Abnahme fehlen weiterhin.
+
+Die Quick Checks für den LFS-Stand `7c32b017` sind inzwischen einschließlich des
+echten LFS-Binärtransfers erfolgreich. Der zugehörige Vollbuild lief beim Nachtrag
+noch.

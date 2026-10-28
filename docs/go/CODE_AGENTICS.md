@@ -47,3 +47,19 @@ from `GoAgenticsTools::tool_definitions()` and listed in the dock's About dialog
 Known limits: free models can be unreliable at tool calling; the JSON fallback is weaker.
 `validate_script` uses Godot's resource loader and reports parse results honestly; editor-log
 access is best-effort.
+
+## Native conversation wire validation (2026-10-28)
+
+`GoKiloMessage` retains assistant `tool_calls` and result `tool_call_id` values.
+The HTTP client now uses `build_conversation_request_json`, which serializes the
+OpenAI function envelope and rejects incomplete rounds, orphan/duplicate results,
+reused call IDs, non-object arguments, unknown roles and more than 20 tool rounds
+in the submitted history. A batch may contain up to 20 calls and the history up to
+256 messages. This bounds serialization; it is not yet the execution-step counter.
+
+Native tool requests additionally require catalog-confirmed tool support and
+function definitions. The old role/content-only client entry point rejects `tool`
+messages rather than emitting invalid wire messages. The structured entry point
+is ready for the future runner; the dock still sends chat-only requests.
+Tests cover multiple results, a second round, malformed histories and limits.
+These are local serializer tests, not an end-to-end executing agent test.
