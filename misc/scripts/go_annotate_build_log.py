@@ -17,6 +17,7 @@ import argparse
 import re
 from pathlib import Path
 
+ANSI = re.compile(r"\x1b\[[0-9;?]*[ -/]*[@-~]")
 IMPORTANT = re.compile(
     r"(error:|fatal error:|undefined reference|unresolved external|scons: \*\*\*|failed building|fatal error |ninja: build stopped|LNK\d+)",
     re.IGNORECASE,
@@ -48,7 +49,7 @@ def main() -> int:
     parser.add_argument("--max-lines", type=int, default=MAX_LINES)
     args = parser.parse_args()
 
-    text = args.log.read_text(encoding="utf-8", errors="replace")
+    text = ANSI.sub("", args.log.read_text(encoding="utf-8", errors="replace"))
     summary, hit_count = summarize(text, args.max_lines)
     message = f"GO. build log {args.log.name} ({hit_count} error-like lines):\n{summary}"[:MAX_CHARS]
     print(f"::error title=GO. full build failure::{escape_command(message)}")

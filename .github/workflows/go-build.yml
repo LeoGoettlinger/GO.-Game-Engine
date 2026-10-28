@@ -39,10 +39,13 @@ jobs:
             scons_platform: linuxbsd
             runner: ubuntu-22.04
             jobs: 2
+            extra_flags: ''
           - platform: windows
             scons_platform: windows
             runner: windows-2022
             jobs: 2
+            # The hosted runner has no AccessKit/D3D12 SDK sources vendored.
+            extra_flags: 'accesskit=no d3d12=no'
 
     steps:
       - name: Checkout GO.
@@ -88,7 +91,7 @@ jobs:
         run: |
           set +e
           python -m SCons platform=${{ matrix.scons_platform }} target=editor arch=x86_64 \
-            module_mono_enabled=no no_editor_splash=no production=yes tests=no \
+            module_mono_enabled=no no_editor_splash=no production=yes tests=no ${{ matrix.extra_flags }} \
             cache_path="$SCONS_CACHE_PATH" cache_limit=2 -j${{ matrix.jobs }} \
             2>&1 | tee go-build-editor.log
           status=${PIPESTATUS[0]}
@@ -113,14 +116,14 @@ jobs:
         shell: bash
         run: |
           python -m SCons platform=${{ matrix.scons_platform }} target=template_release arch=x86_64 \
-            module_mono_enabled=no production=yes tests=no \
+            module_mono_enabled=no production=yes tests=no ${{ matrix.extra_flags }} \
             cache_path="$SCONS_CACHE_PATH" cache_limit=2 -j${{ matrix.jobs }}
 
       - name: Build debug template
         shell: bash
         run: |
           python -m SCons platform=${{ matrix.scons_platform }} target=template_debug arch=x86_64 \
-            module_mono_enabled=no production=yes tests=no \
+            module_mono_enabled=no production=yes tests=no ${{ matrix.extra_flags }} \
             cache_path="$SCONS_CACHE_PATH" cache_limit=2 -j${{ matrix.jobs }}
 
       - name: Validate plugin manifest

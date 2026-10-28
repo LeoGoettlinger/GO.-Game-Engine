@@ -450,10 +450,10 @@ uint64_t parse_size_string(const std::string &p_text) {
 	while (unit_start < text.size() && (std::isdigit(static_cast<unsigned char>(text[unit_start])) || text[unit_start] == '.')) {
 		++unit_start;
 	}
-	double value = 0.0;
-	try {
-		value = std::stod(text.substr(0, unit_start));
-	} catch (...) {
+	const std::string number = text.substr(0, unit_start);
+	char *end = nullptr;
+	const double value = std::strtod(number.c_str(), &end);
+	if (end != number.c_str() + number.size()) {
 		return 0;
 	}
 	const std::string unit = lower(trim(text.substr(unit_start)));

@@ -46,7 +46,7 @@ class GoLfsDialog : public AcceptDialog {
 
 	go_suite::GoGitController *controller = nullptr;
 	Label *state_label = nullptr;
-	TextEdit *output = nullptr;
+	TextEdit *output_view = nullptr;
 	Button *check_button = nullptr;
 	Button *install_button = nullptr;
 	Button *init_button = nullptr;

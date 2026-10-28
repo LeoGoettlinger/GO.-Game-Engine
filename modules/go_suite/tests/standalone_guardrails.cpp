@@ -316,6 +316,11 @@ void test_auto_commit_state() {
 void test_system_git() {
 	using namespace go;
 
+	// Godot builds with C++ exceptions disabled. Size parsing must be exception-free.
+	CHECK_EQ(parse_size_string(""), uint64_t(0));
+	CHECK_EQ(parse_size_string("not-a-size"), uint64_t(0));
+	CHECK_EQ(parse_size_string("2.0 MB"), uint64_t(2 * 1024 * 1024));
+
 	const GitCommand status_cmd = status("/tmp/project");
 	CHECK(status_cmd.valid);
 	CHECK_EQ(status_cmd.executable, std::string("git"));

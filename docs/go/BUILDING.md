@@ -32,6 +32,9 @@ scons platform=windows target=template_debug arch=x86_64 production=yes
 ```
 
 C#/.NET is disabled in the GO. default build; do not pass `module_mono_enabled=yes`.
+On a clean GitHub-hosted Windows runner, add `accesskit=no d3d12=no` to each SCons command
+unless you have installed those SDK dependencies first; the GO. workflow does this via
+`matrix.extra_flags`. A developer machine with the SDKs installed can keep both drivers.
 
 ## Editor splash
 

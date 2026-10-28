@@ -17,8 +17,8 @@
 #include "scene/gui/text_edit.h"
 
 void GoLfsDialog::_append(const String &p_text) {
-	if (output != nullptr) {
-		output->set_text(output->get_text() + p_text + "\n");
+	if (output_view != nullptr) {
+		output_view->set_text(output_view->get_text() + p_text + "\n");
 	}
 }
 
@@ -225,11 +225,11 @@ GoLfsDialog::GoLfsDialog(go_suite::GoGitController *p_controller) {
 	push_button->connect("pressed", callable_mp(this, &GoLfsDialog::_on_push_pressed));
 	row_three->add_child(push_button);
 
-	output = memnew(TextEdit);
-	output->set_editable(false);
-	output->set_custom_minimum_size(Size2(0, 160));
-	output->set_v_size_flags(Control::SIZE_EXPAND_FILL);
-	root->add_child(output);
+	output_view = memnew(TextEdit);
+	output_view->set_editable(false);
+	output_view->set_custom_minimum_size(Size2(0, 160));
+	output_view->set_v_size_flags(Control::SIZE_EXPAND_FILL);
+	root->add_child(output_view);
 
 	_refresh_state();
 }
