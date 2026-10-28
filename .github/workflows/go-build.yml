@@ -4,6 +4,9 @@ name: GO. Build and Release
 on:
   workflow_dispatch:
   push:
+    # GO. full build validation on the active development branch.
+    branches:
+      - arena/a15e5657-go-game-engine
     tags:
       - 'go-v*'
   pull_request:
@@ -22,6 +25,7 @@ jobs:
     # Only spend full engine-build minutes on explicit requests, tags or the build-engine label.
     if: >-
       github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/arena/a15e5657-go-game-engine') ||
       startsWith(github.ref, 'refs/tags/go-v') ||
       contains(github.event.pull_request.labels.*.name, 'build-engine')
     name: ${{ matrix.platform }} editor + templates
