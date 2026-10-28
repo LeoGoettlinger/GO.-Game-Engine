@@ -42,6 +42,7 @@ class ItemList;
 class Label;
 class LineEdit;
 class TextEdit;
+class GoAutoCommitController;
 class GoLfsDialog;
 class GoRemoteAssistant;
 
@@ -51,6 +52,7 @@ class GoGitDock : public VBoxContainer {
 	go_suite::GoGitController controller;
 	GoRemoteAssistant *remote_dialog = nullptr;
 	GoLfsDialog *lfs_dialog = nullptr;
+	GoAutoCommitController *auto_commit_controller = nullptr;
 
 	Label *host_label = nullptr;
 	Label *state_label = nullptr;
@@ -73,6 +75,7 @@ class GoGitDock : public VBoxContainer {
 	void _on_pull_pressed();
 	void _on_push_pressed();
 	void _on_auto_commit_pressed();
+	void _on_auto_commit_finished(bool p_success, const String &p_message);
 	void _on_remote_pressed();
 	void _on_lfs_pressed();
 	void _on_log_pressed();

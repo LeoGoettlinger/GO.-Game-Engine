@@ -155,6 +155,8 @@ void test_agentics_tools() {
 	CHECK_EQ(definitions.array_value.size(), GoAgenticsTools::allowed_tool_names().size());
 	CHECK(GoAgenticsTools::is_tool_allowed("read_file"));
 	CHECK(GoAgenticsTools::is_tool_allowed("auto_commit"));
+	CHECK(GoAgenticsTools::is_write_tool("write_file"));
+	CHECK(!GoAgenticsTools::is_write_tool("read_file"));
 	CHECK(!GoAgenticsTools::is_tool_allowed("run_shell"));
 	CHECK(!GoAgenticsTools::is_tool_allowed("set_api_key"));
 	CHECK(contains(GoAgenticsTools::validate_tool_path("res://player.gd", false), "\"ok\":true"));
@@ -235,6 +237,38 @@ void test_kilo_models() {
 	std::string invalid_error;
 	parse_json("{not json", invalid_error);
 	CHECK(!invalid_error.empty());
+
+	CHECK(is_free_model_id(DEFAULT_FREE_MODEL));
+	CHECK(is_free_model_id("vendor/model:free"));
+	CHECK(!is_free_model_id("vendor/paid-model"));
+	CHECK(!is_free_model_id("a model with spaces"));
+
+	const std::string request = build_chat_request_json(
+			DEFAULT_FREE_MODEL,
+			{ { "system", "You are helpful." }, { "user", "List files" } },
+			true,
+			"[{\"name\":\"list_files\"}]");
+	CHECK(contains(request, "\"model\":\"kilo-auto/free\""));
+	CHECK(contains(request, "\"tool_choice\":\"auto\""));
+	CHECK(contains(request, "List files"));
+
+	const std::string native_chat = R"JSON({"choices":[{"message":{"content":"Working","tool_calls":[{"id":"call-1","function":{"name":"read_file","arguments":"{\"path\":\"res://player.gd\"}"}}]}}]})JSON";
+	const GoKiloChatResponse native = parse_chat_response(native_chat, error);
+	CHECK(native.error.empty());
+	CHECK_EQ(native.content, std::string("Working"));
+	const std::vector<GoKiloToolCall> native_calls = parse_tool_calls_json(native.tool_calls_json);
+	CHECK_EQ(native_calls.size(), size_t(1));
+	CHECK_EQ(native_calls.front().name, std::string("read_file"));
+	CHECK(contains(native_calls.front().arguments, "res://player.gd"));
+
+	const std::string fallback_chat = R"JSON({"choices":[{"message":{"content":"```json\n{\"tool\":\"write_file\",\"arguments\":{\"path\":\"res://test.gd\"}}\n```"}}]})JSON";
+	const GoKiloChatResponse fallback = parse_chat_response(fallback_chat, error);
+	CHECK(fallback.error.empty());
+	CHECK(fallback.used_json_fallback);
+	const std::vector<GoKiloToolCall> fallback_calls = parse_tool_calls_json(fallback.tool_calls_json);
+	CHECK_EQ(fallback_calls.size(), size_t(1));
+	CHECK_EQ(fallback_calls.front().name, std::string("write_file"));
+	CHECK(contains(fallback_calls.front().arguments, "res://test.gd"));
 }
 
 void test_commit_messages() {

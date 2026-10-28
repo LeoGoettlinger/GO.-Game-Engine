@@ -66,6 +66,9 @@ jobs:
           python misc/scripts/go_run_guardrails.py
           python misc/scripts/go_check_ui_guardrails.py
 
+      - name: Upstream patch register check
+        run: python misc/scripts/go_upstream_patch_check.py
+
       - name: Kilo Gateway mock test (no live network)
         run: python misc/scripts/go_mock_gateway_test.py
 

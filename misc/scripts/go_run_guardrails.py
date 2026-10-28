@@ -50,6 +50,7 @@ def main() -> int:
         command = [
             args.compiler,
             "-std=c++17",
+            "-fno-exceptions",
             "-Wall",
             "-Wextra",
             "-Wpedantic",

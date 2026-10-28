@@ -36,6 +36,7 @@
 #include <cstdint>
 #include <map>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace go {
@@ -92,12 +93,35 @@ struct KiloHttpError {
 	bool is_rate_limit = false;
 };
 
+struct GoKiloToolCall {
+	std::string id;
+	std::string name;
+	std::string arguments;
+};
+
+struct GoKiloChatResponse {
+	std::string content;
+	std::string tool_calls_json;
+	std::string error;
+	bool used_json_fallback = false;
+};
+
 std::vector<GoKiloModel> parse_models_response(const std::string &p_json, std::string &r_error);
 bool is_free_model(const GoKiloModel &p_model);
+bool is_free_model_id(const std::string &p_model_id);
 std::vector<GoKiloModel> free_models_for_picker(const std::vector<GoKiloModel> &p_models);
 KiloHttpError parse_http_error(int p_status, const std::vector<std::string> &p_headers, const std::string &p_body);
 std::string find_header_value(const std::vector<std::string> &p_headers, const std::string &p_name);
 std::string models_endpoint(const std::string &p_base_url = DEFAULT_KILO_GATEWAY_URL);
 std::string chat_endpoint(const std::string &p_base_url = DEFAULT_KILO_GATEWAY_URL);
+std::string sanitize_chat_content(const std::string &p_text, size_t p_max_chars = 50000);
+std::string build_chat_request_json(
+		const std::string &p_model,
+		const std::vector<std::pair<std::string, std::string>> &p_messages,
+		bool p_tools_enabled,
+		const std::string &p_tool_definitions_json = "");
+GoKiloChatResponse parse_chat_response(const std::string &p_json, std::string &r_error);
+std::vector<GoKiloToolCall> parse_tool_calls_json(const std::string &p_json);
+std::string serialise_tool_calls(const std::vector<GoKiloToolCall> &p_tool_calls);
 
 } // namespace go

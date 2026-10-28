@@ -53,6 +53,21 @@
 #include "servers/display/display_server.h"
 #include "servers/rendering/rendering_server.h"
 
+#include "modules/modules_enabled.gen.h" // GO. Optional built-in suite.
+#ifdef MODULE_GO_SUITE_ENABLED
+#include "modules/go_suite/go_project_setup.h"
+#endif
+
+void ProjectDialog::_go_update_options() {
+	if (go_options == nullptr) {
+		return;
+	}
+	go_options->set_visible(mode == MODE_NEW);
+	const bool git_metadata = vcs_metadata_selection->get_selected_id() == (int)EditorVCSInterface::VCSMetadata::GIT;
+	go_git_enabled->set_disabled(!git_metadata);
+	go_lfs_enabled->set_disabled(!git_metadata || !go_git_enabled->is_pressed());
+}
+
 void ProjectDialog::_set_message(const String &p_msg, MessageType p_type, InputType p_input_type) {
 	msg->set_text(p_msg);
 
@@ -616,6 +631,15 @@ void ProjectDialog::ok_pressed() {
 		fa_icon->store_string(get_default_project_icon());
 
 		EditorVCSInterface::create_vcs_metadata_files(EditorVCSInterface::VCSMetadata(vcs_metadata_selection->get_selected()), path);
+#ifdef MODULE_GO_SUITE_ENABLED
+		// GO. Preserve upstream project creation; setup failures never discard the project.
+		const bool enable_go_git = go_git_enabled != nullptr && !go_git_enabled->is_disabled() && go_git_enabled->is_pressed();
+		String go_warning;
+		GoProjectSetup::apply(path, enable_go_git, enable_go_git && go_lfs_enabled->is_pressed(), go_warning);
+		if (!go_warning.is_empty()) {
+			WARN_PRINT(go_warning);
+		}
+#endif
 
 		// Ensures external editors and IDEs use UTF-8 encoding.
 		const String editor_config_path = path.path_join(".editorconfig");
@@ -835,6 +859,7 @@ void ProjectDialog::set_duplicate_can_edit(bool p_duplicate_can_edit) {
 
 void ProjectDialog::set_mode(Mode p_mode) {
 	mode = p_mode;
+	_go_update_options();
 }
 
 void ProjectDialog::set_project_name(const String &p_name) {
@@ -1214,6 +1239,24 @@ ProjectDialog::ProjectDialog() {
 	Control *spacer = memnew(Control);
 	spacer->set_h_size_flags(Control::SIZE_EXPAND_FILL);
 	default_files_container->add_child(spacer);
+#ifdef MODULE_GO_SUITE_ENABLED
+	// GO. Only new projects may opt into repository initialization.
+	go_options = memnew(VBoxContainer);
+	vb->add_child(go_options);
+	go_git_enabled = memnew(CheckBox);
+	go_git_enabled->set_text(TTR("Enable GO. Git Suite for this project (initialize Git repository)"));
+	go_git_enabled->set_tooltip_text(TTR("Requires Git metadata. Initializes Git, enables reminders and copies available bundled plugins. No initial commit or remote is created."));
+	go_git_enabled->set_pressed(true);
+	go_options->add_child(go_git_enabled);
+	go_lfs_enabled = memnew(CheckBox);
+	go_lfs_enabled->set_text(TTR("Enable Git LFS"));
+	go_lfs_enabled->set_pressed(true);
+	go_options->add_child(go_lfs_enabled);
+	go_git_enabled->connect("toggled", callable_mp(this, &ProjectDialog::_go_update_options).unbind(1));
+	vcs_metadata_selection->connect("item_selected", callable_mp(this, &ProjectDialog::_go_update_options).unbind(1));
+	_go_update_options();
+#endif
+
 	fdialog_install = memnew(EditorFileDialog);
 	fdialog_install->set_access(EditorFileDialog::ACCESS_FILESYSTEM);
 	add_child(fdialog_install);

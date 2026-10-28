@@ -44,10 +44,17 @@ def load_builder(path: Path, name: str):
 
 
 def generate_headers(stub_root: Path) -> None:
-    extension_dir = stub_root / "core/extension"
-    object_dir = stub_root / "core/object"
+    core_dir = stub_root / "core"
+    extension_dir = core_dir / "extension"
+    object_dir = core_dir / "object"
     extension_dir.mkdir(parents=True, exist_ok=True)
     object_dir.mkdir(parents=True, exist_ok=True)
+
+    # No classes are disabled by this syntax-only check; SCons normally generates this header.
+    (core_dir / "disabled_classes.gen.h").write_text(
+        "#pragma once\n// Generated empty stub for GO. header syntax checks.\n",
+        encoding="utf-8",
+    )
 
     interface = load_builder(ROOT / "core/extension/make_interface_header.py", "go_make_interface_header")
     interface.run(
@@ -58,6 +65,9 @@ def generate_headers(stub_root: Path) -> None:
 
     virtuals = load_builder(ROOT / "core/object/make_virtuals.py", "go_make_virtuals")
     virtuals.run([Target(object_dir / "gdvirtual.gen.h")], [], None)
+
+    wrappers = load_builder(ROOT / "core/extension/make_wrappers.py", "go_make_wrappers")
+    wrappers.run([Target(extension_dir / "ext_wrappers.gen.h")], [], None)
 
 
 def main() -> int:
@@ -88,7 +98,7 @@ def main() -> int:
         ]
         failures: list[tuple[Path, str]] = []
         for source in sources:
-            command = [args.compiler, "-std=c++17", "-fsyntax-only", "-DTOOLS_ENABLED"]
+            command = [args.compiler, "-std=c++17", "-fsyntax-only", "-fno-exceptions", "-DTOOLS_ENABLED"]
             for include in includes:
                 command += ["-I", str(include)]
             command.append(str(source))

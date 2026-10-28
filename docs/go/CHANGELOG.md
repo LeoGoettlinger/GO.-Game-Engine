@@ -36,3 +36,12 @@
   large-file classification and a synthetic LFS pointer in the staged index.
 - `go_syntax_check.py` parses all 23 Godot-facing module C++ files against real Godot 4.7.2
   headers in quick CI; it is a syntax check, not a full engine build.
+
+### In progress — 2026-10-28
+
+- Fixed the first full-build failures: exception-free size parsing and explicit Windows
+  SDK configuration. Compiler failures are exposed as GitHub API-readable annotations.
+- Added native anonymous Kilo HTTP requests, chat cancellation and live free-model catalog.
+- Added new-project Git/LFS options and offline source-copy setup.
+- Added disabled drafts for editor tool execution and Automatic Commit; runtime safety,
+  asynchronous execution and integration tests remain required before activation.

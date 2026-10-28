@@ -30,6 +30,10 @@ REQUIRED_FILES = [
     "go_kilo_client.h",
     "go_agentics_tools.cpp",
     "go_agentics_tools.h",
+    "go_agentics_tool_bridge.cpp",
+    "go_agentics_tool_bridge.h",
+    "go_auto_commit_controller.cpp",
+    "go_auto_commit_controller.h",
     "go_suite_icons.gen.h",
     "go_system_git.h",
     "go_system_git.cpp",
@@ -50,6 +54,10 @@ SCANNED_FILES = [
     "go_kilo_client.h",
     "go_agentics_tools.cpp",
     "go_agentics_tools.h",
+    "go_agentics_tool_bridge.cpp",
+    "go_agentics_tool_bridge.h",
+    "go_auto_commit_controller.cpp",
+    "go_auto_commit_controller.h",
     "go_suite_launcher.cpp",
     "go_suite_launcher.h",
     "go_git_controller.cpp",
@@ -213,6 +221,16 @@ def main() -> int:
     for required in ["validate_res_path", "PathOperation::WRITE"]:
         if required not in tools:
             errors.append(f"go_agentics_tools.cpp: missing path-guard invariant {required!r}")
+
+    bridge = contents.get("go_agentics_tool_bridge.cpp", "")
+    for required in ["is_tool_allowed", "validate_res_path", "ACCESS_RESOURCES"]:
+        if required not in bridge:
+            errors.append(f"go_agentics_tool_bridge.cpp: missing tool-bridge invariant {required!r}")
+
+    auto_commit = contents.get("go_auto_commit_controller.cpp", "")
+    for required in ["set_editor_input_locked", "set_disable_input(true)", "state.fail", "stage_text"]:
+        if required not in auto_commit:
+            errors.append(f"go_auto_commit_controller.cpp: missing guaranteed-unlock invariant {required!r}")
 
     icon_check = subprocess.run(
         [sys.executable, str(ROOT / "misc/scripts/go_update_dock_icons.py"), "--check"],

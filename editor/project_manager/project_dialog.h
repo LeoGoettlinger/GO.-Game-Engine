@@ -97,6 +97,11 @@ private:
 	TextureRect *install_status_rect = nullptr;
 
 	OptionButton *vcs_metadata_selection = nullptr;
+	// GO. New-project choices; absent when the suite module is disabled.
+	VBoxContainer *go_options = nullptr;
+	CheckBox *go_git_enabled = nullptr;
+	CheckBox *go_lfs_enabled = nullptr;
+	void _go_update_options();
 
 	CheckBox *edit_check_box = nullptr;
 

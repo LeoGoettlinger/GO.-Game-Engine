@@ -1,11 +1,43 @@
+/**************************************************************************/
+/*  go_git_dock.cpp                                                       */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
+
 // GO. Game Engine — Copyright (c) 2026 SampleCraft / GO. contributors
 // SPDX-License-Identifier: MIT
 
 #include "go_git_dock.h"
 
+#include "go_auto_commit_controller.h"
 #include "go_git_remote.h"
 #include "go_lfs_dialog.h"
 #include "go_remote_assistant.h"
+#include "go_suite_registry.h"
 #include "go_system_git_runner.h"
 
 #include "core/config/project_settings.h"
@@ -77,7 +109,21 @@ void GoGitDock::_on_push_pressed() {
 }
 
 void GoGitDock::_on_auto_commit_pressed() {
-	_append_output(TTR("Automatic Commit is added in a later step; the Git operations themselves are available now."));
+	if (auto_commit_controller == nullptr || auto_commit_controller->is_running()) {
+		return;
+	}
+	if (auto_commit_button != nullptr) {
+		auto_commit_button->set_disabled(true);
+	}
+	if (!auto_commit_controller->start()) {
+		_append_output(TTR("Automatic Commit could not start. Check the Git status and user configuration."));
+		refresh_status();
+	}
+}
+
+void GoGitDock::_on_auto_commit_finished(bool p_success, const String &p_message) {
+	_append_output((p_success ? TTR("Success: ") : TTR("Error: ")) + p_message);
+	refresh_status();
 }
 
 void GoGitDock::_on_remote_pressed() {
@@ -196,6 +242,12 @@ GoGitDock::GoGitDock() {
 	add_child(remote_dialog);
 	lfs_dialog = memnew(GoLfsDialog(&controller));
 	add_child(lfs_dialog);
+
+	auto_commit_controller = memnew(GoAutoCommitController);
+	auto_commit_controller->set_git_controller(&controller);
+	auto_commit_controller->connect("finished", callable_mp(this, &GoGitDock::_on_auto_commit_finished));
+	add_child(auto_commit_controller);
+	// GO. Keep Automatic Commit disabled until worker-thread and UI-lock tests pass.
 
 	Label *title = memnew(Label);
 	title->set_text(TTR("GO. Git Suite"));

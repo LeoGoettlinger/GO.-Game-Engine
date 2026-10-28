@@ -37,10 +37,30 @@
 
 #include "scene/main/node.h"
 
+#include <string>
 #include <vector>
+
+class HTTPRequest;
 
 class GoKiloClient : public Node {
 	GDCLASS(GoKiloClient, Node);
+
+public:
+	enum class RequestKind {
+		NONE,
+		MODELS,
+		CHAT,
+	};
+
+private:
+	HTTPRequest *http = nullptr;
+	RequestKind request_kind = RequestKind::NONE;
+	std::vector<go::GoKiloModel> allowed_models = go::free_models_for_picker({});
+
+	void _on_request_completed(int p_result, int p_code, const PackedStringArray &p_headers, const PackedByteArray &p_body);
+	void _fail(const String &p_message);
+	bool _begin_request(RequestKind p_kind, const String &p_url, const String &p_method, const String &p_body);
+	Vector<String> _headers() const;
 
 protected:
 	static void _bind_methods();
@@ -52,4 +72,12 @@ public:
 	String anonymous_key() const;
 	String user_agent() const;
 	std::vector<go::GoKiloModel> offline_models() const;
+
+	void request_models();
+	void request_chat(const String &p_model, const Vector<String> &p_roles, const Vector<String> &p_contents, bool p_tools_enabled, const String &p_tool_definitions_json);
+	void request_chat_simple(const String &p_model, const String &p_prompt, const String &p_system_prompt = String());
+	void cancel_request();
+	bool is_busy() const { return request_kind != RequestKind::NONE; }
+
+	GoKiloClient();
 };

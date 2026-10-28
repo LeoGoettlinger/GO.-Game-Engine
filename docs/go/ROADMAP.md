@@ -77,3 +77,22 @@ compiled editor/CI, `[ ]` open. A user-facing feature comparison lives in
 - This sandbox does not ship a prebuilt 4.7.2 editor; UI screenshots and compiled-editor
   smoke tests must be produced by CI or on a developer machine. The GitHub release-asset CDN
   is not in the sandbox host allow-list, so the real GDScript parse check is CI-only.
+
+## Current implementation checkpoint (2026-10-28)
+
+- Full CI run `40649672758` has passed **Build editor** and **Verify --version branding**
+  on Linux and Windows for commit `6a5596e5`. Templates were still running when checked.
+  This evidence does not cover later unbuilt changes.
+- Native Kilo HTTPRequest client and chat are now implemented: explicit Send/Refresh Models,
+  timeout, cancellation, anonymous headers, catalog-based free-model validation and HTTP errors.
+  Live gateway requests have not been tested here; mock HTTP tests cover request/response parsing.
+- ProjectDialog now exposes Git Suite/LFS choices for new projects. Setup copies available
+  plugin sources without enabling unproven defaults, sets splash/settings and initializes Git.
+  Runtime verification and a visible nonfatal setup-warning dialog are still pending.
+- Agent tool bridge and Automatic Commit controller are **drafts**, not completed features.
+  Tool execution is disabled, and Automatic Commit has no active callback/button, until
+  per-action confirmation, native tool-result messages, Undo/Redo, filesystem race protection,
+  worker-thread Git execution and modal lock tests are implemented.
+- Existing manual Git operations still run synchronously. Stage/Unstage/Diff UI, correct
+  effective LFS attribute queries, real LFS transport tests and lifecycle reminders remain open.
+- Header syntax checks now disable C++ exceptions like Godot. They are not runtime tests.

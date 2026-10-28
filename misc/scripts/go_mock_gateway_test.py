@@ -21,6 +21,7 @@ import tempfile
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from typing import Any, cast
 
 ROOT = Path(__file__).resolve().parents[2]
 MODULE = ROOT / "modules/go_suite"
@@ -63,6 +64,11 @@ class MockHandler(BaseHTTPRequestHandler):
         self.wfile.write(body)
         self.wfile.flush()
 
+    def _read_body(self) -> dict[str, Any]:
+        length = int(self.headers.get("Content-Length", "0"))
+        raw = self.rfile.read(length) if length else b"{}"
+        return cast(dict[str, Any], json.loads(raw.decode("utf-8")))
+
     def do_GET(self) -> None:  # noqa: N802 - http.server API
         if self.path == "/models":
             self._send(200, json.dumps(MODELS_RESPONSE).encode("utf-8"), "application/json")
@@ -71,6 +77,33 @@ class MockHandler(BaseHTTPRequestHandler):
             self._send(429, body, "application/json", {"Retry-After": "17"})
         else:
             self._send(404, b"not found", "text/plain")
+
+    def do_POST(self) -> None:  # noqa: N802 - http.server API
+        if self.path != "/chat/completions":
+            self._send(404, b"not found", "text/plain")
+            return
+        request = self._read_body()
+        assert request["model"] == "kilo-auto/free"
+        assert request["tool_choice"] == "auto"
+        response = {
+            "choices": [
+                {
+                    "message": {
+                        "content": "I will inspect the project.",
+                        "tool_calls": [
+                            {
+                                "id": "call-1",
+                                "function": {
+                                    "name": "list_files",
+                                    "arguments": '{"path":"res://"}',
+                                },
+                            }
+                        ],
+                    }
+                }
+            ]
+        }
+        self._send(200, json.dumps(response).encode("utf-8"), "application/json")
 
 
 def compile_probe(compiler: str, executable: Path) -> None:
@@ -127,6 +160,9 @@ def main() -> int:
                 "MODEL kilo-auto/free",
                 "MODEL zero/model",
                 "MODEL flag-free/model",
+                "CHAT_STATUS 200",
+                "CHAT_CONTENT I will inspect the project.",
+                "CHAT_TOOL list_files",
                 "RATE_LIMIT status=429 retry=17 message=slow down",
             ]
             for expected in required:

@@ -1,3 +1,33 @@
+/**************************************************************************/
+/*  go_agentics_tools.cpp                                                 */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
+
 // GO. Game Engine — Copyright (c) 2026 SampleCraft / GO. contributors
 // SPDX-License-Identifier: MIT
 
@@ -15,19 +45,54 @@ namespace go {
 namespace {
 
 const std::vector<std::string> TOOL_NAMES = {
-	"list_files", "read_file", "write_file", "edit_file", "create_folder", "delete_file",
-	"search_text", "create_script", "validate_script", "attach_script", "create_scene",
-	"open_scene", "save_current_scene", "save_scene_as", "set_main_scene", "get_current_scene_tree",
-	"add_node", "remove_node", "rename_node", "set_node_property", "get_node_property",
-	"scan_filesystem", "get_editor_selection", "select_node", "run_project", "run_current_scene",
-	"stop_project", "get_editor_log", "git_status", "auto_commit",
+	"list_files",
+	"read_file",
+	"write_file",
+	"edit_file",
+	"create_folder",
+	"delete_file",
+	"search_text",
+	"create_script",
+	"validate_script",
+	"attach_script",
+	"create_scene",
+	"open_scene",
+	"save_current_scene",
+	"save_scene_as",
+	"set_main_scene",
+	"get_current_scene_tree",
+	"add_node",
+	"remove_node",
+	"rename_node",
+	"set_node_property",
+	"get_node_property",
+	"scan_filesystem",
+	"get_editor_selection",
+	"select_node",
+	"run_project",
+	"run_current_scene",
+	"stop_project",
+	"get_editor_log",
+	"git_status",
+	"auto_commit",
 };
 
-bool is_write_tool(const std::string &p_name) {
+bool is_write_tool_name(const std::string &p_name) {
 	static const char *write_tools[] = {
-		"write_file", "edit_file", "create_folder", "delete_file", "create_script",
-		"attach_script", "create_scene", "save_current_scene", "save_scene_as",
-		"set_main_scene", "add_node", "remove_node", "rename_node", "set_node_property",
+		"write_file",
+		"edit_file",
+		"create_folder",
+		"delete_file",
+		"create_script",
+		"attach_script",
+		"create_scene",
+		"save_current_scene",
+		"save_scene_as",
+		"set_main_scene",
+		"add_node",
+		"remove_node",
+		"rename_node",
+		"set_node_property",
 		"auto_commit",
 	};
 	for (const char *tool : write_tools) {
@@ -46,6 +111,10 @@ std::vector<std::string> GoAgenticsTools::allowed_tool_names() {
 
 bool GoAgenticsTools::is_tool_allowed(const std::string &p_name) {
 	return std::find(TOOL_NAMES.begin(), TOOL_NAMES.end(), p_name) != TOOL_NAMES.end();
+}
+
+bool GoAgenticsTools::is_write_tool(const std::string &p_name) {
+	return is_write_tool_name(p_name);
 }
 
 std::string GoAgenticsTools::tool_definitions_json() {
@@ -86,7 +155,7 @@ std::string GoAgenticsTools::execute_tool(const std::string &p_name, const std::
 	}
 	const JsonValue *path_value = arguments.get("path");
 	if (path_value != nullptr) {
-		const std::string path_validation = validate_tool_path(path_value->as_string(), is_write_tool(p_name));
+		const std::string path_validation = validate_tool_path(path_value->as_string(), is_write_tool_name(p_name));
 		if (contains(path_validation, "\"ok\":false")) {
 			return path_validation;
 		}

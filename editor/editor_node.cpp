@@ -207,6 +207,11 @@
 
 #include "modules/modules_enabled.gen.h" // For gdscript, mono.
 
+#ifdef MODULE_GO_SUITE_ENABLED
+// GO.: honor the Automatic Commit input lock while the editor is closing.
+#include "modules/go_suite/go_suite_registry.h"
+#endif
+
 #include <cstdlib>
 
 EditorNode *EditorNode::singleton = nullptr;
@@ -1078,6 +1083,12 @@ void EditorNode::_notification(int p_what) {
 		} break;
 
 		case NOTIFICATION_WM_CLOSE_REQUEST: {
+#ifdef MODULE_GO_SUITE_ENABLED
+			// GO.: Automatic Commit owns a modal editor-wide lock; never quit behind it.
+			if (GoSuiteRegistry::is_editor_input_locked()) {
+				break;
+			}
+#endif
 			_menu_option_confirm(SCENE_QUIT, false);
 		} break;
 
@@ -3372,6 +3383,13 @@ static String _get_unsaved_scene_dialog_text(String p_scene_filename, uint64_t p
 }
 
 void EditorNode::_menu_option_confirm(int p_option, bool p_confirmed) {
+#ifdef MODULE_GO_SUITE_ENABLED
+	// GO.: the Automatic Commit overlay must finish before any quit/restart path.
+	if (GoSuiteRegistry::is_editor_input_locked() &&
+			(p_option == SCENE_QUIT || p_option == PROJECT_QUIT_TO_PROJECT_MANAGER || p_option == PROJECT_RELOAD_CURRENT_PROJECT)) {
+		return;
+	}
+#endif
 	if (!p_confirmed) { // FIXME: this may be a hack.
 		current_menu_option = (MenuOptions)p_option;
 	}

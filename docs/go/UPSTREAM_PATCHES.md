@@ -15,8 +15,8 @@ with every new upstream-file patch so a later rebase/merge can be audited.
 | `editor/project_manager/project_manager.cpp` | GO. title-bar logo and About tooltip. | Two one-line GO. patches around `title_bar_logo`. |
 | `editor/icons/GoLogo.svg` | **Added** original GO. mark used by About/Project Manager. | New file; no upstream counterpart. |
 | `README.md` / `README.godot-upstream.md` | New German GO. README; upstream README preserved under its own name. | Preserve both files during merges. |
-| `editor/project_manager/project_dialog.h/.cpp` | **Planned:** GO. Git Suite and Git LFS checkboxes; call `GoProjectSetup` after upstream VCS metadata creation. Not patched yet. | Reapply the small `// GO.` blocks after upstream refactors of `ProjectDialog`. |
-| `editor/editor_node.cpp` | **Planned:** optional close-reminder hook in existing `SCENE_QUIT` flow. Not patched yet. | Do not duplicate save-confirmation logic; keep hook before final quit. |
+| `editor/project_manager/project_dialog.h/.cpp` | GO. Git Suite and Git LFS checkboxes (new projects only); call `GoProjectSetup` after upstream VCS metadata creation. | Reapply the small `// GO.` blocks after upstream refactors of `ProjectDialog`. |
+| `editor/editor_node.cpp` | Under `MODULE_GO_SUITE_ENABLED`, includes `GoSuiteRegistry` and blocks `WM_CLOSE_REQUEST` plus `SCENE_QUIT`/project-restart paths while the Automatic Commit overlay holds the editor-wide input lock. | Two small `// GO.`-marked guards; preserve upstream save-confirmation logic unchanged. |
 | `editor/gui/editor_about.cpp` | Add fork notice and GO. release label while preserving Godot credits. | Keep all upstream credits untouched. |
 | `editor/project_manager/project_manager.cpp` | Product title/footer adjustments. | `GODOT_VERSION_NAME` already supplies the product name in most places. |
 | `.github/workflows/go-build.yml` | New GO.-specific build/release workflow. | Independent new file; compare with upstream workflow changes at merge time. |

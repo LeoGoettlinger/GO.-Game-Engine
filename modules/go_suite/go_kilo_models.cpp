@@ -1,3 +1,33 @@
+/**************************************************************************/
+/*  go_kilo_models.cpp                                                    */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
+
 // GO. Game Engine — Copyright (c) 2026 SampleCraft / GO. contributors
 // SPDX-License-Identifier: MIT
 
@@ -130,14 +160,30 @@ private:
 				}
 				const char escaped = text[pos++];
 				switch (escaped) {
-					case '"': result.push_back('"'); break;
-					case '\\': result.push_back('\\'); break;
-					case '/': result.push_back('/'); break;
-					case 'b': result.push_back('\b'); break;
-					case 'f': result.push_back('\f'); break;
-					case 'n': result.push_back('\n'); break;
-					case 'r': result.push_back('\r'); break;
-					case 't': result.push_back('\t'); break;
+					case '"':
+						result.push_back('"');
+						break;
+					case '\\':
+						result.push_back('\\');
+						break;
+					case '/':
+						result.push_back('/');
+						break;
+					case 'b':
+						result.push_back('\b');
+						break;
+					case 'f':
+						result.push_back('\f');
+						break;
+					case 'n':
+						result.push_back('\n');
+						break;
+					case 'r':
+						result.push_back('\r');
+						break;
+					case 't':
+						result.push_back('\t');
+						break;
 					case 'u': {
 						if (pos + 4 > text.size()) {
 							fail("unterminated unicode escape");
@@ -282,16 +328,22 @@ private:
 		}
 		const char c = text[pos];
 		switch (c) {
-			case '{': return parse_object(r_value);
-			case '[': return parse_array(r_value);
+			case '{':
+				return parse_object(r_value);
+			case '[':
+				return parse_array(r_value);
 			case '"': {
 				r_value.type = JsonValue::Type::STRING;
 				return parse_string(r_value.string_value);
 			}
-			case 't': return parse_literal("true", r_value);
-			case 'f': return parse_literal("false", r_value);
-			case 'n': return parse_literal("null", r_value);
-			default: return parse_number(r_value);
+			case 't':
+				return parse_literal("true", r_value);
+			case 'f':
+				return parse_literal("false", r_value);
+			case 'n':
+				return parse_literal("null", r_value);
+			default:
+				return parse_number(r_value);
 		}
 	}
 };
@@ -313,6 +365,80 @@ double price_from_json(const JsonValue *p_value) {
 		return result;
 	}
 	return 1.0;
+}
+
+std::string json_value_to_string(const JsonValue &p_value) {
+	std::ostringstream stream;
+	switch (p_value.type) {
+		case JsonValue::Type::NUL:
+			return "null";
+		case JsonValue::Type::BOOL:
+			return p_value.bool_value ? "true" : "false";
+		case JsonValue::Type::NUMBER:
+			stream << std::setprecision(17) << p_value.number_value;
+			return stream.str();
+		case JsonValue::Type::STRING:
+			return escape_json_string(p_value.string_value);
+		case JsonValue::Type::ARRAY:
+			stream << "[";
+			for (size_t i = 0; i < p_value.array_value.size(); ++i) {
+				if (i > 0) {
+					stream << ",";
+				}
+				stream << json_value_to_string(p_value.array_value[i]);
+			}
+			stream << "]";
+			return stream.str();
+		case JsonValue::Type::OBJECT:
+			stream << "{";
+			bool first = true;
+			for (const auto &entry : p_value.object_value) {
+				if (!first) {
+					stream << ",";
+				}
+				first = false;
+				stream << escape_json_string(entry.first) << ":" << json_value_to_string(entry.second);
+			}
+			stream << "}";
+			return stream.str();
+	}
+	return "null";
+}
+
+std::string extract_first_json_object(const std::string &p_text) {
+	std::string text = trim(p_text);
+	const std::string fence = "```";
+	const size_t fence_start = text.find(fence);
+	if (fence_start != std::string::npos) {
+		const size_t line_end = text.find('\n', fence_start);
+		if (line_end != std::string::npos) {
+			const size_t fence_end = text.find(fence, line_end);
+			if (fence_end != std::string::npos) {
+				text = trim(text.substr(line_end + 1, fence_end - line_end - 1));
+			}
+		}
+	}
+	const size_t start = text.find('{');
+	const size_t end = text.rfind('}');
+	if (start == std::string::npos || end == std::string::npos || end <= start) {
+		return "";
+	}
+	return text.substr(start, end - start + 1);
+}
+
+std::string serialise_tool_calls_impl(const std::vector<GoKiloToolCall> &p_tool_calls) {
+	std::ostringstream stream;
+	stream << "[";
+	for (size_t i = 0; i < p_tool_calls.size(); ++i) {
+		if (i > 0) {
+			stream << ",";
+		}
+		stream << "{\"id\":" << escape_json_string(p_tool_calls[i].id)
+			   << ",\"name\":" << escape_json_string(p_tool_calls[i].name)
+			   << ",\"arguments\":" << escape_json_string(p_tool_calls[i].arguments) << "}";
+	}
+	stream << "]";
+	return stream.str();
 }
 
 } // namespace
@@ -353,13 +479,27 @@ std::string escape_json_string(const std::string &p_text) {
 	stream << '"';
 	for (const char c : p_text) {
 		switch (c) {
-			case '"': stream << "\\\""; break;
-			case '\\': stream << "\\\\"; break;
-			case '\b': stream << "\\b"; break;
-			case '\f': stream << "\\f"; break;
-			case '\n': stream << "\\n"; break;
-			case '\r': stream << "\\r"; break;
-			case '\t': stream << "\\t"; break;
+			case '"':
+				stream << "\\\"";
+				break;
+			case '\\':
+				stream << "\\\\";
+				break;
+			case '\b':
+				stream << "\\b";
+				break;
+			case '\f':
+				stream << "\\f";
+				break;
+			case '\n':
+				stream << "\\n";
+				break;
+			case '\r':
+				stream << "\\r";
+				break;
+			case '\t':
+				stream << "\\t";
+				break;
 			default:
 				if (static_cast<unsigned char>(c) < 32) {
 					stream << "\\u" << std::hex << std::setw(4) << std::setfill('0') << static_cast<int>(c) << std::dec;
@@ -441,6 +581,13 @@ bool is_free_model(const GoKiloModel &p_model) {
 		return true;
 	}
 	return p_model.has_pricing && p_model.prompt_price == 0.0 && p_model.completion_price == 0.0;
+}
+
+bool is_free_model_id(const std::string &p_model_id) {
+	if (p_model_id.empty() || contains(p_model_id, " ") || p_model_id.size() > 128) {
+		return false;
+	}
+	return p_model_id == DEFAULT_FREE_MODEL || ends_with(p_model_id, ":free");
 }
 
 std::vector<GoKiloModel> free_models_for_picker(const std::vector<GoKiloModel> &p_models) {
@@ -532,6 +679,126 @@ std::string models_endpoint(const std::string &p_base_url) {
 
 std::string chat_endpoint(const std::string &p_base_url) {
 	return strip_suffix(p_base_url, "/") + "/chat/completions";
+}
+
+std::string sanitize_chat_content(const std::string &p_text, size_t p_max_chars) {
+	if (p_text.size() <= p_max_chars) {
+		return p_text;
+	}
+	return p_text.substr(0, p_max_chars) + "\n[truncated by GO.]";
+}
+
+std::string build_chat_request_json(
+		const std::string &p_model,
+		const std::vector<std::pair<std::string, std::string>> &p_messages,
+		bool p_tools_enabled,
+		const std::string &p_tool_definitions_json) {
+	std::ostringstream stream;
+	stream << "{\"model\":" << escape_json_string(p_model) << ",\"stream\":false,\"messages\":[";
+	for (size_t i = 0; i < p_messages.size(); ++i) {
+		if (i > 0) {
+			stream << ",";
+		}
+		stream << "{\"role\":" << escape_json_string(p_messages[i].first)
+			   << ",\"content\":" << escape_json_string(sanitize_chat_content(p_messages[i].second)) << "}";
+	}
+	stream << "]";
+	if (p_tools_enabled && !trim(p_tool_definitions_json).empty()) {
+		stream << ",\"tools\":" << trim(p_tool_definitions_json) << ",\"tool_choice\":\"auto\"";
+	}
+	stream << "}";
+	return stream.str();
+}
+
+GoKiloChatResponse parse_chat_response(const std::string &p_json, std::string &r_error) {
+	GoKiloChatResponse result;
+	r_error.clear();
+	const JsonValue root = parse_json(p_json, r_error);
+	if (!r_error.empty()) {
+		result.error = r_error;
+		return result;
+	}
+	const JsonValue *choices = root.get("choices");
+	if (choices == nullptr || choices->type != JsonValue::Type::ARRAY || choices->array_value.empty()) {
+		result.error = "gateway chat response has no choices";
+		return result;
+	}
+	const JsonValue *message = choices->array_value[0].get("message");
+	if (message == nullptr || message->type != JsonValue::Type::OBJECT) {
+		result.error = "gateway chat response has no message";
+		return result;
+	}
+	const JsonValue *content = message->get("content");
+	result.content = content != nullptr ? sanitize_chat_content(content->as_string()) : "";
+
+	std::vector<GoKiloToolCall> calls;
+	const JsonValue *native_calls = message->get("tool_calls");
+	if (native_calls != nullptr && native_calls->type == JsonValue::Type::ARRAY) {
+		for (const JsonValue &call : native_calls->array_value) {
+			const JsonValue *function = call.get("function");
+			const JsonValue *name = function != nullptr ? function->get("name") : nullptr;
+			if (name == nullptr || name->as_string().empty()) {
+				continue;
+			}
+			GoKiloToolCall parsed;
+			const JsonValue *id = call.get("id");
+			parsed.id = id != nullptr ? id->as_string() : "native-" + std::to_string(calls.size());
+			parsed.name = name->as_string();
+			const JsonValue *arguments = function->get("arguments");
+			parsed.arguments = arguments == nullptr ? "{}" : (arguments->type == JsonValue::Type::STRING ? arguments->as_string() : json_value_to_string(*arguments));
+			calls.push_back(parsed);
+		}
+	}
+
+	// Models without native tool calling may return a compact JSON object instead.
+	if (calls.empty()) {
+		const std::string candidate = extract_first_json_object(result.content);
+		if (!candidate.empty()) {
+			std::string fallback_error;
+			const JsonValue fallback = parse_json(candidate, fallback_error);
+			if (fallback_error.empty()) {
+				const JsonValue *tool = fallback.get("tool");
+				const JsonValue *arguments = fallback.get("arguments");
+				if (tool != nullptr && !tool->as_string().empty()) {
+					GoKiloToolCall parsed;
+					parsed.id = "json-fallback-0";
+					parsed.name = tool->as_string();
+					parsed.arguments = arguments == nullptr ? "{}" : (arguments->type == JsonValue::Type::STRING ? arguments->as_string() : json_value_to_string(*arguments));
+					calls.push_back(parsed);
+					result.used_json_fallback = true;
+				}
+			}
+		}
+	}
+
+	result.tool_calls_json = serialise_tool_calls_impl(calls);
+	return result;
+}
+
+std::vector<GoKiloToolCall> parse_tool_calls_json(const std::string &p_json) {
+	std::vector<GoKiloToolCall> result;
+	std::string error;
+	const JsonValue root = parse_json(p_json, error);
+	if (!error.empty() || root.type != JsonValue::Type::ARRAY) {
+		return result;
+	}
+	for (const JsonValue &item : root.array_value) {
+		GoKiloToolCall call;
+		const JsonValue *id = item.get("id");
+		const JsonValue *name = item.get("name");
+		const JsonValue *arguments = item.get("arguments");
+		call.id = id != nullptr ? id->as_string() : "";
+		call.name = name != nullptr ? name->as_string() : "";
+		call.arguments = arguments != nullptr ? arguments->as_string("{}") : "{}";
+		if (!call.name.empty()) {
+			result.push_back(call);
+		}
+	}
+	return result;
+}
+
+std::string serialise_tool_calls(const std::vector<GoKiloToolCall> &p_tool_calls) {
+	return serialise_tool_calls_impl(p_tool_calls);
 }
 
 } // namespace go

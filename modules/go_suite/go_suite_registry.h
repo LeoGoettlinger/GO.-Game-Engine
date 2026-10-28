@@ -38,10 +38,18 @@
 class GoSuiteRegistry {
 	static EditorDock *git_dock;
 	static EditorDock *agentics_dock;
+	static bool editor_input_locked;
+	static bool (*auto_commit_callback)();
 
 public:
 	static void set_git_dock(EditorDock *p_dock) { git_dock = p_dock; }
 	static EditorDock *get_git_dock() { return git_dock; }
 	static void set_agentics_dock(EditorDock *p_dock) { agentics_dock = p_dock; }
 	static EditorDock *get_agentics_dock() { return agentics_dock; }
+
+	static void set_editor_input_locked(bool p_locked) { editor_input_locked = p_locked; }
+	static bool is_editor_input_locked() { return editor_input_locked; }
+
+	static void set_auto_commit_callback(bool (*p_callback)()) { auto_commit_callback = p_callback; }
+	static bool request_auto_commit() { return auto_commit_callback != nullptr && auto_commit_callback(); }
 };

@@ -1,5 +1,7 @@
 # GO. Game Engine – Features
 
+**Stand: 28.10.2026 – Entwicklung, kein fertiges Release.**
+
 **GO. Game Engine** ist ein Fork von Godot `4.7.2-stable`. Ziel ist nicht, Godot zu ersetzen,
 sondern den Editor um zwei fest eingebaute Suites, ein eigenes Branding, ein Offline-Plugin-Paket
 und einen automatisierten Commit-Ablauf zu erweitern. Alle Godot-Funktionen bleiben erhalten.
@@ -205,3 +207,14 @@ client, tool loop and UI screenshots are still open and tracked honestly in
 - [`docs/go/CODE_AGENTICS.md`](docs/go/CODE_AGENTICS.md) – Code Agentics
 - [`docs/go/PLUGINS.md`](docs/go/PLUGINS.md) – Plugin-Katalog
 - [`docs/go/ROADMAP.md`](docs/go/ROADMAP.md) – offener, ehrlicher Status
+
+## Aktueller Prüfstand
+
+Der vollständige CI-Lauf `40649672758` hat für `6a5596e5` beide Editor-Builds und
+Branding-Prüfungen bestanden. Die Templates liefen beim letzten Prüfen noch.
+Neu hinzugekommen sind Kilo-HTTP-Client/Chat und die Projektanlage-Anbindung; diese
+neueren Änderungen sind noch nicht durch einen vollständigen Editor-Build belegt.
+Agenten-Toolausführung und Automatic Commit sind absichtlich deaktivierte Entwürfe.
+Bestätigungsdialoge, Undo/Redo, asynchrone Git-Ausführung, Lifecycle-Reminder und
+End-to-End-Tests fehlen noch. Frühere Aussagen „vollständig verdrahtet“ bedeuten
+nicht, dass die Git Suite bereits alle Anforderungen erfüllt.
