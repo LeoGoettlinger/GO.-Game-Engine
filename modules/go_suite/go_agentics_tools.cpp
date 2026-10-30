@@ -77,6 +77,50 @@ const std::vector<std::string> TOOL_NAMES = {
 	"auto_commit",
 };
 
+struct ToolArgument {
+	std::string name;
+	bool required = false;
+	bool scalar = false;
+};
+
+std::vector<ToolArgument> tool_arguments(const std::string &p_name) {
+	std::vector<ToolArgument> arguments;
+	if (p_name == "list_files" || p_name == "search_text") {
+		arguments.push_back({ "path", false, false });
+	} else if (p_name == "read_file" || p_name == "write_file" || p_name == "edit_file" || p_name == "create_folder" || p_name == "delete_file" || p_name == "create_script" || p_name == "validate_script" || p_name == "create_scene" || p_name == "open_scene" || p_name == "save_scene_as" || p_name == "set_main_scene") {
+		arguments.push_back({ "path", true, false });
+	}
+	if (p_name == "write_file" || p_name == "create_script") {
+		arguments.push_back({ "content", true, false });
+	}
+	if (p_name == "edit_file") {
+		arguments.push_back({ "old_text", true, false });
+		arguments.push_back({ "new_text", true, false });
+	}
+	if (p_name == "search_text") {
+		arguments.push_back({ "query", true, false });
+	}
+	if (p_name == "add_node" || p_name == "remove_node" || p_name == "rename_node" || p_name == "set_node_property" || p_name == "get_node_property" || p_name == "attach_script" || p_name == "select_node") {
+		arguments.push_back({ "node_path", false, false });
+	}
+	if (p_name == "add_node") {
+		arguments.push_back({ "type", true, false });
+	}
+	if (p_name == "add_node" || p_name == "rename_node") {
+		arguments.push_back({ "name", true, false });
+	}
+	if (p_name == "set_node_property" || p_name == "get_node_property") {
+		arguments.push_back({ "property", true, false });
+	}
+	if (p_name == "set_node_property") {
+		arguments.push_back({ "value", true, true });
+	}
+	if (p_name == "attach_script") {
+		arguments.push_back({ "script_path", true, false });
+	}
+	return arguments;
+}
+
 bool is_write_tool_name(const std::string &p_name) {
 	static const char *write_tools[] = {
 		"write_file",
@@ -94,6 +138,15 @@ bool is_write_tool_name(const std::string &p_name) {
 		"rename_node",
 		"set_node_property",
 		"auto_commit",
+		// These actions can execute scripts or change editor state even without
+		// directly writing a file. They must not bypass future approval gates.
+		"validate_script",
+		"open_scene",
+		"scan_filesystem",
+		"select_node",
+		"run_project",
+		"run_current_scene",
+		"stop_project",
 	};
 	for (const char *tool : write_tools) {
 		if (p_name == tool) {
@@ -124,15 +177,75 @@ std::string GoAgenticsTools::tool_definitions_json() {
 		if (i > 0) {
 			stream << ",";
 		}
-		const std::string description = std::string("Whitelisted GO. Godot editor tool: ") + TOOL_NAMES[i];
-		stream << "{\"type\":\"function\",\"function\":{"
-			   << "\"name\":" << escape_json_string(TOOL_NAMES[i]) << ","
-			   << "\"description\":" << escape_json_string(description) << ","
-			   << "\"parameters\":{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\",\"description\":\"res:// project path\"}},\"required\":[]}"
-			   << "}}";
+		const std::string &name = TOOL_NAMES[i];
+		stream << "{\"type\":\"function\",\"function\":{\"name\":" << escape_json_string(name)
+			   << ",\"description\":" << escape_json_string("GO. project editor tool: " + name)
+			   << ",\"parameters\":{\"type\":\"object\",\"additionalProperties\":false,\"properties\":{";
+		const auto arguments = tool_arguments(name);
+		std::vector<std::string> required;
+		for (size_t j = 0; j < arguments.size(); ++j) {
+			const ToolArgument &argument = arguments[j];
+			if (j > 0) {
+				stream << ",";
+			}
+			stream << escape_json_string(argument.name) << ":{\"type\":"
+				   << (argument.scalar ? "[\"string\",\"number\",\"boolean\"]" : "\"string\"") << "}";
+			if (argument.required) {
+				required.push_back(escape_json_string(argument.name));
+			}
+		}
+		stream << "},\"required\":[" << join(required, ",") << "]}}}";
 	}
 	stream << "]";
 	return stream.str();
+}
+
+std::string GoAgenticsTools::validate_arguments(const std::string &p_name, const std::string &p_arguments_json) {
+	if (!is_tool_allowed(p_name) || p_arguments_json.size() > 512000) {
+		return "Unknown tool or oversized argument envelope";
+	}
+	std::string error;
+	const JsonValue arguments = parse_json(p_arguments_json, error);
+	if (!error.empty() || arguments.type != JsonValue::Type::OBJECT) {
+		return "Tool arguments must be a JSON object";
+	}
+	const auto specifications = tool_arguments(p_name);
+	for (const ToolArgument &specification : specifications) {
+		if (specification.required && arguments.get(specification.name) == nullptr) {
+			return "Missing required argument: " + specification.name;
+		}
+	}
+	for (const auto &entry : arguments.object_value) {
+		const auto specification = std::find_if(specifications.begin(), specifications.end(), [&](const ToolArgument &p_argument) { return p_argument.name == entry.first; });
+		if (specification == specifications.end()) {
+			return "Unexpected argument: " + entry.first;
+		}
+		const JsonValue &value = entry.second;
+		if (value.type != JsonValue::Type::STRING && !(specification->scalar && (value.type == JsonValue::Type::BOOL || value.type == JsonValue::Type::NUMBER))) {
+			return "Wrong argument type: " + entry.first;
+		}
+		if (value.type != JsonValue::Type::STRING) {
+			continue;
+		}
+		const std::string &text = value.string_value;
+		const bool content = entry.first == "content" || entry.first == "old_text" || entry.first == "new_text" || entry.first == "value";
+		if (text.size() > (content ? 200000 : 4096) || text.find('\0') != std::string::npos) {
+			return "Oversized argument or embedded NUL: " + entry.first;
+		}
+		if (text.empty() && entry.first != "content" && entry.first != "new_text" && entry.first != "value") {
+			return "Empty argument: " + entry.first;
+		}
+		if (entry.first == "path" || entry.first == "script_path") {
+			const auto path = validate_res_path(text, is_write_tool(p_name) && entry.first != "script_path" ? PathOperation::WRITE : PathOperation::READ);
+			if (!path.ok) {
+				return path.error;
+			}
+		}
+		if (entry.first == "node_path" && (text.front() == '/' || text.find("..") != std::string::npos || text.find(':') != std::string::npos)) {
+			return "Node path must stay inside the edited scene";
+		}
+	}
+	return "";
 }
 
 std::string GoAgenticsTools::validate_tool_path(const std::string &p_path, bool p_for_write) {

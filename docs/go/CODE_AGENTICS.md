@@ -63,3 +63,20 @@ messages rather than emitting invalid wire messages. The structured entry point
 is ready for the future runner; the dock still sends chat-only requests.
 Tests cover multiple results, a second round, malformed histories and limits.
 These are local serializer tests, not an end-to-end executing agent test.
+
+## Tool argument contract (2026-10-30)
+
+Tool definitions now declare per-tool fields and required arguments with
+`additionalProperties: false`. `validate_arguments` rejects unknown tools/fields,
+non-object envelopes, wrong value types, missing fields, oversize/NUL strings,
+invalid project paths and escaping node paths before the native bridge touches
+Godot APIs. The schema and validator share the same argument specification.
+Property values currently accept JSON strings, numbers or booleans only, not
+arbitrary resource objects. This does not yet constitute a safe property whitelist.
+
+Opening scenes, parsing scripts, filesystem scanning, selecting nodes and running
+or stopping playback are classified as side-effecting for future approval gates,
+not as automatically safe reads. Auto-Approve is visibly disabled while execution
+is disabled; the UI no longer tells users to enable it to bypass that restriction.
+Per-action confirmations, Undo/Redo, race-resistant file access and the runnable
+session loop remain incomplete. Schema validation alone does not enable tools.

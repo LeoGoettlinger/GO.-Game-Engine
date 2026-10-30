@@ -91,7 +91,7 @@ jobs:
         run: |
           set +e
           python -m SCons platform=${{ matrix.scons_platform }} target=editor arch=x86_64 \
-            module_mono_enabled=no no_editor_splash=no production=yes tests=no ${{ matrix.extra_flags }} \
+            module_mono_enabled=no no_editor_splash=no production=yes tests=yes ${{ matrix.extra_flags }} \
             cache_path="$SCONS_CACHE_PATH" cache_limit=2 -j${{ matrix.jobs }} \
             2>&1 | tee go-build-editor.log
           status=${PIPESTATUS[0]}
@@ -121,6 +121,24 @@ jobs:
             EDITOR=bin/godot.windows.editor.x86_64.exe
           fi
           python misc/scripts/go_editor_smoke.py --editor "$EDITOR"
+
+      - name: Native nonblocking Git process tests
+        shell: bash
+        run: |
+          if [ "${{ matrix.platform }}" = "linux" ]; then
+            EDITOR=bin/godot.linuxbsd.editor.x86_64
+          else
+            EDITOR=bin/godot.windows.editor.x86_64.exe
+          fi
+          set +e
+          "$EDITOR" --headless --test --test-case="[GO.][GitProcess]*" 2>&1 | tee go-git-process-tests.log
+          status=${PIPESTATUS[0]}
+          set -e
+          if [ "$status" -ne 0 ]; then
+            python misc/scripts/go_annotate_build_log.py go-git-process-tests.log
+            exit "$status"
+          fi
+          grep -E "[1-9][0-9]* passed" go-git-process-tests.log
 
       - name: Build release template
         shell: bash

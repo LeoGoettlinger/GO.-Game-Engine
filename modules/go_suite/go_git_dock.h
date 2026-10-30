@@ -34,6 +34,7 @@
 // SPDX-License-Identifier: MIT
 
 #include "go_git_controller.h"
+#include "go_git_process.h"
 
 #include "scene/gui/box_container.h"
 
@@ -50,6 +51,25 @@ class GoGitDock : public VBoxContainer {
 	GDCLASS(GoGitDock, VBoxContainer);
 
 	go_suite::GoGitController controller;
+	GoGitProcess git_process;
+	enum class GitAction { NONE,
+		FETCH,
+		PULL,
+		PUSH,
+		COMMIT };
+	GitAction git_action = GitAction::NONE;
+	int git_phase = 0;
+	std::string git_branch;
+	bool git_cancelled = false;
+	Button *fetch_button = nullptr;
+	Button *cancel_git_button = nullptr;
+	void _start_git(GitAction p_action);
+	bool _launch_git(const go::GitCommand &p_command);
+	void _finish_git();
+	void _poll_git();
+	void _set_git_busy(bool p_busy);
+	void _on_fetch_pressed();
+	void _on_cancel_git_pressed();
 	GoRemoteAssistant *remote_dialog = nullptr;
 	GoLfsDialog *lfs_dialog = nullptr;
 	GoAutoCommitController *auto_commit_controller = nullptr;
@@ -82,6 +102,7 @@ class GoGitDock : public VBoxContainer {
 	void _on_plugins_pressed();
 
 protected:
+	void _notification(int p_what);
 	static void _bind_methods();
 
 public:

@@ -135,3 +135,28 @@ for spaces, multiple folders, recursion, text/export exceptions and idempotent
 mode changes. CI real-LFS transport additionally uses these generated folder rules
 for a binary round-trip. New UI still requires a visual acceptance test; Git calls
 remain synchronous and Automatic Commit remains disabled.
+
+## Nonblocking dock commands (2026-10-30)
+
+Fetch, Pull, Push and Commit in the Git dock now use `GoGitProcess` with Godot's
+nonblocking `execute_with_pipe` API. Commands use argv, never a shell. Branch and
+upstream resolution are asynchronous phases too. During a job the dock rejects
+another operation and disables its Git actions. **Cancel Git** terminates the
+owned Git process; leaving the editor tree also closes it. The command timeout is
+120 seconds, retained stdout/stderr are capped at 1 MiB each, and per-frame pipe
+draining is bounded. Use **Refresh** after a job to inspect the resulting state.
+
+Cancellation is not rollback: remote updates may already have happened. Godot's
+kill API terminates the owned process, not a guaranteed whole descendant process
+tree; external credential helpers, hooks and SSH children can outlive that process.
+Inspect state before retrying. No global environment or credentials are changed.
+Local status refresh, the LFS dialog, project setup and the disabled Automatic
+Commit controller still use synchronous paths. This is not yet a complete async
+Git conversion or a whole-editor transaction lock.
+
+Native tests in `tests/test_go_git_process.h` cover stdout, nonzero exit, concurrent
+start rejection, cancellation, timeout, reuse and invalid commands. CI editor
+builds now enable `tests=yes` and run `[GO.][GitProcess]*` on Windows and Linux.
+These tests use system Git only, with no remote, shell command or project writes.
+Runtime results for this change remain pending; local syntax tests include both
+native test headers as well as all module translation units.

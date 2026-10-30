@@ -78,7 +78,7 @@ void GoAgenticsDock::_update_busy_state() {
 		refresh_models_button->set_disabled(request_active);
 	}
 	if (auto_approve != nullptr) {
-		auto_approve->set_disabled(request_active);
+		auto_approve->set_disabled(true);
 	}
 	if (model_picker != nullptr) {
 		model_picker->set_disabled(request_active);
@@ -235,7 +235,7 @@ void GoAgenticsDock::_on_chat_completed(const String &p_content, const String &p
 	bool continue_loop = false;
 	if (agent_loop_active && has_tool_calls) {
 		if (auto_approve == nullptr || !auto_approve->is_pressed()) {
-			_append_message(TTR("System"), TTR("Tool calls were returned. Enable Auto-Approve to execute them."));
+			_append_message(TTR("System"), TTR("Tool calls were returned, but execution remains disabled pending safety and Undo/Redo validation."));
 			agent_loop_active = false;
 		} else if (agent_loop_steps >= MAX_AGENT_LOOP_STEPS) {
 			_append_message(TTR("System"), TTR("Agent loop stopped after 20 steps."));
@@ -318,6 +318,8 @@ GoAgenticsDock::GoAgenticsDock() {
 
 	auto_approve = memnew(CheckButton);
 	auto_approve->set_text(TTR("Auto-Approve"));
+	auto_approve->set_disabled(true);
+	auto_approve->set_tooltip_text(TTR("Unavailable while tool execution is disabled."));
 	top_row->add_child(auto_approve);
 
 	model_status = memnew(Label);

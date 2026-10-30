@@ -146,3 +146,21 @@ compiled editor/CI, `[ ]` open. A user-facing feature comparison lives in
   address static hook failures. Full static CI still needs confirmation.
 - Execution remains disabled: per-action approvals, Undo/Redo, asynchronous Git,
   complete session lifecycle and Automatic Commit are still unfinished.
+
+## 2026-10-30 — asynchronous dock Git and strict tool contracts
+
+- Baseline `56ab458c`: full Windows/Linux build `40746646418`, quick checks
+  `40746646940` and static checks `40746646586` all passed. LFS full build
+  `40745850770` also passed.
+- Implemented nonblocking Fetch/Pull/Push/Commit, including branch/upstream phases,
+  timeout, bounded logs, cancellation and teardown. Native process tests added;
+  CI editor builds now include tests and execute that subset. New runtime proof
+  is pending; status/LFS/setup/Automatic Commit are not yet async.
+- Replaced generic tool parameter schemas with per-tool arguments and strict
+  bridge validation. Actions that may execute scripts now require approval
+  classification. Auto-Approve cannot imply that disabled execution is available.
+- Local guardrails, real Git local flow, 27 C++ translation units and both native
+  test header syntax checks pass. These are not a visual/UI execution acceptance.
+- Remaining: confirmations, scene/resource Undo/Redo, complete safe agent loop,
+  lifecycle reminders, remaining async Git paths, Automatic Commit activation,
+  screenshots and full player/export E2E acceptance. Do not mark the prompt done.

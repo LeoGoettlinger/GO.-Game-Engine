@@ -157,6 +157,33 @@ void test_agentics_tools() {
 	CHECK(GoAgenticsTools::is_tool_allowed("auto_commit"));
 	CHECK(GoAgenticsTools::is_write_tool("write_file"));
 	CHECK(!GoAgenticsTools::is_write_tool("read_file"));
+	CHECK(GoAgenticsTools::is_write_tool("open_scene"));
+	CHECK(GoAgenticsTools::is_write_tool("run_project"));
+	CHECK(GoAgenticsTools::is_write_tool("validate_script"));
+	CHECK(GoAgenticsTools::validate_arguments("read_file", R"({"path":"res://player.gd"})").empty());
+	CHECK(!GoAgenticsTools::validate_arguments("read_file", R"({"path":false})").empty());
+	CHECK(!GoAgenticsTools::validate_arguments("read_file", R"({"path":"res://player.gd","shell":"whoami"})").empty());
+	CHECK(!GoAgenticsTools::validate_arguments("write_file", R"({"path":"res://player.gd"})").empty());
+	CHECK(!GoAgenticsTools::validate_arguments("write_file", R"({"path":"res://../outside","content":"bad"})").empty());
+	CHECK(GoAgenticsTools::validate_arguments("write_file", R"({"path":"res://player.gd","content":""})").empty());
+	CHECK(!GoAgenticsTools::validate_arguments("rename_node", R"({"node_path":"../Other","name":"Oops"})").empty());
+	CHECK(!GoAgenticsTools::validate_arguments("set_node_property", R"({"property":"visible","value":{}})").empty());
+	CHECK(GoAgenticsTools::validate_arguments("set_node_property", R"({"property":"visible","value":true})").empty());
+	CHECK(!GoAgenticsTools::validate_arguments("run_project", R"({"path":"res://other"})").empty());
+	CHECK(!GoAgenticsTools::validate_arguments("read_file", "[]").empty());
+	CHECK(!GoAgenticsTools::validate_arguments("run_shell", "{}").empty());
+	for (const JsonValue &definition : definitions.array_value) {
+		const JsonValue *function = definition.get("function");
+		CHECK(function != nullptr);
+		if (function != nullptr) {
+			const JsonValue *parameters = function->get("parameters");
+			CHECK(parameters != nullptr);
+			if (parameters != nullptr) {
+				CHECK(parameters->get("additionalProperties") != nullptr);
+				CHECK(!parameters->get("additionalProperties")->as_bool(true));
+			}
+		}
+	}
 	CHECK(!GoAgenticsTools::is_tool_allowed("run_shell"));
 	CHECK(!GoAgenticsTools::is_tool_allowed("set_api_key"));
 	CHECK(contains(GoAgenticsTools::validate_tool_path("res://player.gd", false), "\"ok\":true"));

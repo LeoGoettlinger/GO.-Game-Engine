@@ -34,6 +34,7 @@
 #include "go_git_dock.h"
 
 #include "go_auto_commit_controller.h"
+#include "go_commit_message.h"
 #include "go_git_remote.h"
 #include "go_lfs_dialog.h"
 #include "go_remote_assistant.h"
@@ -60,52 +61,131 @@ void GoGitDock::_on_refresh_pressed() {
 	refresh_status();
 }
 
+void GoGitDock::_set_git_busy(bool p_busy) {
+	for (Button *button : { refresh_button, commit_button, pull_button, push_button, fetch_button, remote_button, lfs_button, log_button }) {
+		if (button != nullptr) {
+			button->set_disabled(p_busy);
+		}
+	}
+	commit_input->set_editable(!p_busy);
+	cancel_git_button->set_disabled(!p_busy);
+	set_process(p_busy);
+}
+
+bool GoGitDock::_launch_git(const go::GitCommand &p_command) {
+	if (!git_process.start(p_command)) {
+		_append_output(TTR("Could not start Git: ") + git_process.get_output());
+		git_action = GitAction::NONE;
+		git_phase = 0;
+		_set_git_busy(false);
+		return false;
+	}
+	return true;
+}
+
+void GoGitDock::_start_git(GitAction p_action) {
+	if (git_action != GitAction::NONE || git_process.is_running()) {
+		return;
+	}
+	git_action = p_action;
+	git_cancelled = false;
+	git_branch.clear();
+	git_phase = 3;
+	_set_git_busy(true);
+	_append_output(TTR("Git operation running. Cancel does not undo completed local or remote changes."));
+	const std::string &project = controller.get_project_path();
+	if (p_action == GitAction::PULL || p_action == GitAction::PUSH) {
+		git_phase = 1;
+		_launch_git(go::branch_show_current(project));
+	} else if (p_action == GitAction::FETCH) {
+		_launch_git(go::fetch(project));
+	} else if (p_action == GitAction::COMMIT) {
+		_launch_git(go::commit(project, go::sanitize_commit_message(go_suite::to_std_string(commit_input->get_text()))));
+	}
+}
+
+void GoGitDock::_finish_git() {
+	const bool success = git_process.succeeded() && !git_cancelled;
+	_append_output(success ? TTR("Git operation finished.") : TTR("Git operation did not complete successfully. Inspect repository status before retrying."));
+	_append_output(git_process.get_output());
+	if (success && git_action == GitAction::COMMIT) {
+		commit_input->clear();
+	}
+	git_action = GitAction::NONE;
+	git_phase = 0;
+	_set_git_busy(false);
+	// Do not immediately issue synchronous status commands after cancellation:
+	// credential helpers or remote hooks may still be terminating.
+}
+
+void GoGitDock::_poll_git() {
+	if (git_action == GitAction::NONE || !git_process.poll()) {
+		return;
+	}
+	const std::string &project = controller.get_project_path();
+	if (git_phase == 1 && git_process.succeeded()) {
+		git_branch = go::parse_branch_name(go_suite::to_std_string(git_process.get_stdout()));
+		if (git_branch.empty()) {
+			_append_output(TTR("Detached HEAD: select a branch before pull or push."));
+			git_cancelled = true;
+			_finish_git();
+			return;
+		}
+		if (git_action == GitAction::PUSH) {
+			git_phase = 2;
+			_launch_git(go::git(project, { "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}" }));
+		} else {
+			git_phase = 3;
+			_launch_git(go::pull(project, "origin", git_branch));
+		}
+		return;
+	}
+	if (git_phase == 2 && !git_process.has_process_error()) {
+		const bool upstream = git_process.succeeded();
+		git_phase = 3;
+		_launch_git(go::push(project, "origin", git_branch, !upstream));
+		return;
+	}
+	_finish_git();
+}
+
+void GoGitDock::_on_cancel_git_pressed() {
+	if (git_action == GitAction::NONE) {
+		return;
+	}
+	git_cancelled = true;
+	git_process.cancel();
+	_finish_git();
+}
+
+void GoGitDock::_notification(int p_what) {
+	if (p_what == NOTIFICATION_PROCESS) {
+		_poll_git();
+	} else if (p_what == NOTIFICATION_EXIT_TREE) {
+		git_process.cancel();
+		git_action = GitAction::NONE;
+		set_process(false);
+	}
+}
+
 void GoGitDock::_on_commit_pressed() {
 	if (commit_input == nullptr || commit_input->get_text().strip_edges().is_empty()) {
 		_append_output(TTR("Enter a commit message first."));
 		return;
 	}
-	const std::string message = go_suite::to_std_string(commit_input->get_text().strip_edges());
-	std::string output_text;
-	std::string error;
-	if (controller.commit(message, output_text, error)) {
-		_append_output(TTR("Commit created."));
-		if (!output_text.empty()) {
-			_append_output(go_suite::to_godot_string(output_text));
-		}
-		commit_input->clear();
-		refresh_status();
-	} else {
-		_append_output(TTR("Commit failed: ") + go_suite::to_godot_string(error));
-	}
+	_start_git(GitAction::COMMIT);
+}
+
+void GoGitDock::_on_fetch_pressed() {
+	_start_git(GitAction::FETCH);
 }
 
 void GoGitDock::_on_pull_pressed() {
-	std::string output_text;
-	std::string error;
-	if (controller.pull(output_text, error)) {
-		_append_output(TTR("Pull finished."));
-		if (!output_text.empty()) {
-			_append_output(go_suite::to_godot_string(output_text));
-		}
-		refresh_status();
-	} else {
-		_append_output(TTR("Pull failed: ") + go_suite::to_godot_string(error));
-	}
+	_start_git(GitAction::PULL);
 }
 
 void GoGitDock::_on_push_pressed() {
-	std::string output_text;
-	std::string error;
-	if (controller.push(false, output_text, error)) {
-		_append_output(TTR("Push finished."));
-		if (!output_text.empty()) {
-			_append_output(go_suite::to_godot_string(output_text));
-		}
-		refresh_status();
-	} else {
-		_append_output(TTR("Push failed: ") + go_suite::to_godot_string(error));
-	}
+	_start_git(GitAction::PUSH);
 }
 
 void GoGitDock::_on_auto_commit_pressed() {
@@ -161,6 +241,9 @@ void GoGitDock::set_host_text(const String &p_text) {
 }
 
 void GoGitDock::refresh_status() {
+	if (git_action != GitAction::NONE) {
+		return;
+	}
 	std::string error;
 	const go_suite::GoGitSnapshot snapshot = controller.snapshot(error);
 	if (output != nullptr) {
@@ -176,7 +259,7 @@ void GoGitDock::refresh_status() {
 			changes_list->clear();
 			changes_list->add_item(TTR("Initialize Git or open a project with a repository."));
 		}
-		for (Button *button : { commit_button, pull_button, push_button, remote_button, lfs_button, log_button }) {
+		for (Button *button : { commit_button, pull_button, push_button, fetch_button, remote_button, lfs_button, log_button }) {
 			if (button != nullptr) {
 				button->set_disabled(true);
 			}
@@ -219,7 +302,7 @@ void GoGitDock::refresh_status() {
 		}
 	}
 
-	for (Button *button : { commit_button, pull_button, push_button, remote_button, lfs_button, log_button }) {
+	for (Button *button : { commit_button, pull_button, push_button, fetch_button, remote_button, lfs_button, log_button }) {
 		if (button != nullptr) {
 			button->set_disabled(false);
 		}
@@ -284,6 +367,17 @@ GoGitDock::GoGitDock() {
 	push_button->set_disabled(true);
 	push_button->connect("pressed", callable_mp(this, &GoGitDock::_on_push_pressed));
 	toolbar->add_child(push_button);
+
+	fetch_button = memnew(Button);
+	fetch_button->set_text(TTR("Fetch"));
+	fetch_button->set_disabled(true);
+	fetch_button->connect("pressed", callable_mp(this, &GoGitDock::_on_fetch_pressed));
+	toolbar->add_child(fetch_button);
+	cancel_git_button = memnew(Button);
+	cancel_git_button->set_text(TTR("Cancel Git"));
+	cancel_git_button->set_disabled(true);
+	cancel_git_button->connect("pressed", callable_mp(this, &GoGitDock::_on_cancel_git_pressed));
+	toolbar->add_child(cancel_git_button);
 
 	HBoxContainer *toolbar_secondary = memnew(HBoxContainer);
 	add_child(toolbar_secondary);

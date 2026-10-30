@@ -163,6 +163,10 @@ Variant json_to_variant(const go::JsonValue *p_value) {
 
 String GoAgenticsToolBridge::execute(const go::GoKiloToolCall &p_call) const {
 	const std::string tool = p_call.name;
+	const std::string argument_error = go::GoAgenticsTools::validate_arguments(tool, p_call.arguments);
+	if (!argument_error.empty()) {
+		return to_godot(error_json(argument_error));
+	}
 	if (!go::GoAgenticsTools::is_tool_allowed(tool)) {
 		return to_godot(error_json("tool is not whitelisted"));
 	}

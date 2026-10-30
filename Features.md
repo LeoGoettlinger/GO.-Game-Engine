@@ -257,3 +257,17 @@ Agenten-Ausführung**; Bestätigungen, Undo/Redo und Laufzeit-Abnahme fehlen wei
 Die Quick Checks für den LFS-Stand `7c32b017` sind inzwischen einschließlich des
 echten LFS-Binärtransfers erfolgreich. Der zugehörige Vollbuild lief beim Nachtrag
 noch.
+
+### Stand 30.10.2026: Git-Dock ohne blockierende Netzwerkaufrufe
+
+Fetch, Pull, Push und Commit verwenden jetzt einen nichtblockierenden Git-Prozess
+mit Zeitlimit, begrenzter Ausgabe und **Cancel Git**. Ein Abbruch macht bereits
+abgeschlossene Änderungen nicht rückgängig; externe Git-Hilfsprozesse können
+weiterlaufen. Statusabfrage, LFS-Dialog und Automatic Commit sind noch nicht
+vollständig auf asynchrone Abläufe umgestellt.
+
+Code Agentics hat jetzt strikte, pro Tool definierte Argumente und prüft sie vor
+Editor-Zugriffen. Tool-Ausführung bleibt bis zu Bestätigungen, Undo/Redo und
+Laufzeittests gesperrt. Die neuen nativen Prozesstests laufen mit dem nächsten
+CI-Build; die vorherige Version `56ab458c` hat sämtliche Build-/Quick-/Stilprüfungen
+bestanden. Die Gesamtanforderung ist weiterhin nicht vollständig abgeschlossen.

@@ -73,3 +73,13 @@ git fetch upstream --tags
 git rebase upstream/<new-stable-tag>   # or git merge, on the GO. working branch
 # Resolve conflicts using docs/go/UPSTREAM_PATCHES.md, then rebuild and rerun guardrails.
 ```
+
+### Native process tests
+
+GO. CI editor builds use `tests=yes` (templates remain `tests=no`) to exercise
+nonblocking process behavior on both host platforms. Run the compiled editor with
+`--headless --test --test-case="[GO.][GitProcess]*"` and system Git on PATH.
+The tests wait on Git's stdin to test cancellation/timeout without shell scripts
+or a remote. Shipping CI editors currently include test support; use `tests=no`
+for a local editor without this test harness. Native test results do not replace
+manual interaction, approval, Undo/Redo or cancellation-of-descendants acceptance.
