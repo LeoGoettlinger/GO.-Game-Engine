@@ -154,6 +154,15 @@ void test_agentics_tools() {
 	CHECK(definitions.type == JsonValue::Type::ARRAY);
 	CHECK_EQ(definitions.array_value.size(), GoAgenticsTools::allowed_tool_names().size());
 	CHECK(GoAgenticsTools::is_tool_allowed("read_file"));
+	const auto scene_definitions = parse_json(GoAgenticsTools::tool_definitions_json(true), parse_error);
+	CHECK(parse_error.empty());
+	CHECK_EQ(scene_definitions.array_value.size(), size_t(4));
+	CHECK(GoAgenticsTools::is_scene_tool("add_node"));
+	CHECK(GoAgenticsTools::is_scene_tool("rename_node"));
+	CHECK(!GoAgenticsTools::is_scene_tool("write_file"));
+	CHECK(!GoAgenticsTools::is_scene_tool("auto_commit"));
+	CHECK(!GoAgenticsTools::is_scene_tool("attach_script"));
+	CHECK(!GoAgenticsTools::is_scene_tool("run_project"));
 	CHECK(GoAgenticsTools::is_tool_allowed("auto_commit"));
 	CHECK(GoAgenticsTools::is_write_tool("write_file"));
 	CHECK(!GoAgenticsTools::is_write_tool("read_file"));

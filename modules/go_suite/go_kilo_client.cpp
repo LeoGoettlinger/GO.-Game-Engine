@@ -114,6 +114,16 @@ bool GoKiloClient::_begin_request(RequestKind p_kind, const String &p_url, const
 	return true;
 }
 
+bool GoKiloClient::supports_native_tools(const String &p_model) const {
+	const std::string id = go_suite::to_std_string(p_model);
+	for (const go::GoKiloModel &model : allowed_models) {
+		if (model.id == id && go::is_free_model(model)) {
+			return model.supports_tools;
+		}
+	}
+	return false;
+}
+
 void GoKiloClient::request_models() {
 	_begin_request(RequestKind::MODELS, models_url(), "GET", String());
 }

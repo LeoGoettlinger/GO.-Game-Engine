@@ -83,3 +83,9 @@ The tests wait on Git's stdin to test cancellation/timeout without shell scripts
 or a remote. Shipping CI editors currently include test support; use `tests=no`
 for a local editor without this test harness. Native test results do not replace
 manual interaction, approval, Undo/Redo or cancellation-of-descendants acceptance.
+
+The scene-only agent adds a separate native test invocation:
+`--headless --test --test-case="[GO.][SceneUndo]*"`. It tests the shared operation
+recording methods against an isolated fixed editor history, without a live editor
+scene or a gateway request. Run this subset in its own process. Modal approval,
+target changes during approval and visible editor Undo remain UI acceptance cases.

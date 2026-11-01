@@ -40,6 +40,7 @@
 #include "core/variant/variant.h"
 #include "scene/gui/box_container.h"
 
+class ConfirmationDialog;
 class Button;
 class CheckButton;
 class GoKiloClient;
@@ -64,6 +65,21 @@ class GoAgenticsDock : public VBoxContainer {
 	Label *model_status = nullptr;
 	GoKiloClient *kilo_client = nullptr;
 	GoAgenticsToolBridge tool_bridge;
+	CheckButton *scene_tools = nullptr;
+	ConfirmationDialog *approval = nullptr;
+	std::vector<go::GoKiloMessage> conversation;
+	std::vector<go::GoKiloToolCall> pending_calls;
+	size_t next_call = 0;
+	bool waiting_approval = false;
+	bool native_tools_requested = false;
+	ObjectID approval_scene;
+	ObjectID approval_target;
+	void _advance_tools();
+	void _record_tool_result(const String &p_result);
+	void _on_tool_confirmed();
+	void _on_tool_rejected();
+	void _on_approval_action(const String &p_action);
+	void _discard_pending();
 
 	PackedStringArray available_models;
 	Vector<String> conversation_roles;
@@ -91,6 +107,7 @@ class GoAgenticsDock : public VBoxContainer {
 	void _on_request_cancelled();
 
 protected:
+	void _notification(int p_what);
 	static void _bind_methods();
 
 public:

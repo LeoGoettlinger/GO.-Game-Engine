@@ -78,6 +78,7 @@ public:
 	void request_conversation(const String &p_model, const std::vector<go::GoKiloMessage> &p_messages, bool p_tools_enabled, const String &p_tool_definitions_json);
 	void request_chat_simple(const String &p_model, const String &p_prompt, const String &p_system_prompt = String());
 	void cancel_request();
+	bool supports_native_tools(const String &p_model) const;
 	bool is_busy() const { return request_kind != RequestKind::NONE; }
 
 	GoKiloClient();

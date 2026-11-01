@@ -164,3 +164,19 @@ compiled editor/CI, `[ ]` open. A user-facing feature comparison lives in
 - Remaining: confirmations, scene/resource Undo/Redo, complete safe agent loop,
   lifecycle reminders, remaining async Git paths, Automatic Commit activation,
   screenshots and full player/export E2E acceptance. Do not mark the prompt done.
+
+## Scene-only execution checkpoint
+
+- `5c1cc216` passed full build `41069106792`, quick checks `41069106910`, and
+  static checks `41069107083`, including native process tests on both platforms.
+- Added opt-in experimental native scene-tool loop with four enabled tools, default
+  per-write confirmation, denial, Stop during approval, target/scene identity checks,
+  strict runtime subset, correlated history and 20-individual-call budget.
+- Add/rename use fixed scene undo history; creation is limited to six basic built-in
+  classes and rejects scripted ancestors. New-conversation resets Auto-Approve.
+- Added native fixed-history add/rename/owner restoration tests to both CI builds.
+  Local guardrails and 27 source / 3 test-header syntax checks pass. New native runtime
+  tests and visual modal/Undo acceptance remain pending.
+- Still NOT complete: unrestricted Godot tool suite, JSON fallback execution,
+  file/resource edits and their safety, persisted chat history, lifecycle reminders,
+  remaining async Git paths, deterministic Automatic Commit and full export/player E2E.

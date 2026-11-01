@@ -51,6 +51,7 @@
 #include "core/variant/variant.h"
 #include "editor/editor_data.h"
 #include "editor/editor_interface.h"
+#include "editor/editor_undo_redo_manager.h"
 #include "editor/file_system/editor_file_system.h"
 #include "scene/2d/node_2d.h"
 #include "scene/main/node.h"
@@ -131,14 +132,17 @@ void collect_files(const String &p_directory, Vector<String> &r_files, int p_dep
 	directory->list_dir_end();
 }
 
-std::string describe_node(const Node *p_node, int p_depth) {
-	if (p_node == nullptr || p_depth > 10) {
+std::string describe_node(const Node *p_node, int p_depth, int &r_budget) {
+	if (p_node == nullptr || p_depth > 10 || r_budget-- <= 0) {
 		return "";
 	}
 	std::ostringstream out;
-	out << std::string(p_depth * 2, ' ') << to_std(p_node->get_name()) << " [" << to_std(p_node->get_class()) << "]\n";
+	out << std::string(p_depth * 2, ' ') << to_std(String(p_node->get_name()).substr(0, 128)) << " [" << to_std(p_node->get_class()) << "]\n";
 	for (int i = 0; i < p_node->get_child_count(); ++i) {
-		out << describe_node(p_node->get_child(i), p_depth + 1);
+		if (r_budget <= 0 || out.tellp() >= MAX_TEXT_CHARS) {
+			break;
+		}
+		out << describe_node(p_node->get_child(i), p_depth + 1, r_budget);
 	}
 	return out.str();
 }
@@ -160,6 +164,18 @@ Variant json_to_variant(const go::JsonValue *p_value) {
 }
 
 } // namespace
+
+void GoAgenticsToolBridge::record_add_node(EditorUndoRedoManager *p_undo, Node *p_parent, Node *p_child, Node *p_owner) {
+	p_undo->add_do_method(p_parent, "add_child", p_child, true);
+	p_undo->add_do_method(p_child, "set_owner", p_owner);
+	p_undo->add_undo_method(p_parent, "remove_child", p_child);
+	p_undo->add_do_reference(p_child);
+}
+
+void GoAgenticsToolBridge::record_rename_node(EditorUndoRedoManager *p_undo, Node *p_node, const String &p_name) {
+	p_undo->add_do_method(p_node, "set_name", p_name);
+	p_undo->add_undo_method(p_node, "set_name", p_node->get_name());
+}
 
 String GoAgenticsToolBridge::execute(const go::GoKiloToolCall &p_call) const {
 	const std::string tool = p_call.name;
@@ -416,7 +432,8 @@ String GoAgenticsToolBridge::execute(const go::GoKiloToolCall &p_call) const {
 	if (tool == "get_current_scene_tree" || tool == "get_editor_selection" || tool == "select_node" || tool == "add_node" || tool == "remove_node" || tool == "rename_node" || tool == "set_node_property" || tool == "get_node_property" || tool == "attach_script") {
 		Node *root = editor->get_edited_scene_root();
 		if (tool == "get_current_scene_tree") {
-			return root == nullptr ? to_godot(error_json("no scene is open")) : to_godot(ok_json(describe_node(root, 0)));
+			int budget = MAX_FILES;
+			return root == nullptr ? to_godot(error_json("no scene is open")) : to_godot(ok_json(describe_node(root, 0, budget).substr(0, MAX_TEXT_CHARS)));
 		}
 		if (tool == "get_editor_selection") {
 			std::ostringstream out;
@@ -446,9 +463,33 @@ String GoAgenticsToolBridge::execute(const go::GoKiloToolCall &p_call) const {
 			editor->get_selection()->update();
 			return to_godot(ok_json("selected " + to_std(String(node->get_path()))));
 		}
+		if (tool == "add_node" || tool == "rename_node") {
+			if (node != root && node->get_owner() != root) {
+				return to_godot(error_json("Only nodes owned by the edited scene may be changed"));
+			}
+			for (Node *ancestor = node; ancestor != nullptr; ancestor = ancestor == root ? nullptr : ancestor->get_parent()) {
+				if (!ancestor->get_script().is_null()) {
+					return to_godot(error_json("Scene tools do not modify scripted nodes or their descendants"));
+				}
+			}
+			const String name = to_godot(argument_string(arguments, "name"));
+			if (name.is_empty() || name != name.validate_node_name() || name.length() > 128 || name.begins_with("@")) {
+				return to_godot(error_json("A valid unique node name is required"));
+			}
+			Node *parent = tool == "add_node" ? node : node->get_parent();
+			if (parent != nullptr && parent->has_node(NodePath(name)) && parent->get_node(NodePath(name)) != node) {
+				return to_godot(error_json("A sibling already has that name"));
+			}
+			if (EditorUndoRedoManager::get_singleton() == nullptr) {
+				return to_godot(error_json("Editor undo history is unavailable"));
+			}
+		}
 		if (tool == "add_node") {
 			const std::string type = argument_string(arguments, "type", "Node");
 			const std::string name = argument_string(arguments, "name", "Node");
+			if (type != "Node" && type != "Node2D" && type != "Node3D" && type != "Control" && type != "Sprite2D" && type != "Label") {
+				return to_godot(error_json("Only basic built-in node types are enabled"));
+			}
 			Object *instance = ClassDB::instantiate(StringName(to_godot(type)));
 			Node *child = Object::cast_to<Node>(instance);
 			if (child == nullptr) {
@@ -458,8 +499,11 @@ String GoAgenticsToolBridge::execute(const go::GoKiloToolCall &p_call) const {
 				return to_godot(error_json("node type is not a Node"));
 			}
 			child->set_name(to_godot(name));
-			node->add_child(child);
-			child->set_owner(root);
+			EditorUndoRedoManager *undo = EditorUndoRedoManager::get_singleton();
+			undo->create_action(TTR("Code Agentics: Add Node"), UndoRedo::MERGE_DISABLE, root);
+			undo->force_fixed_history();
+			record_add_node(undo, node, child, root);
+			undo->commit_action();
 			return to_godot(ok_json("added " + type + " at " + to_std(String(child->get_path()))));
 		}
 		if (tool == "remove_node") {
@@ -476,7 +520,11 @@ String GoAgenticsToolBridge::execute(const go::GoKiloToolCall &p_call) const {
 			if (name.empty()) {
 				return to_godot(error_json("rename_node requires a name"));
 			}
-			node->set_name(to_godot(name));
+			EditorUndoRedoManager *undo = EditorUndoRedoManager::get_singleton();
+			undo->create_action(TTR("Code Agentics: Rename Node"), UndoRedo::MERGE_DISABLE, root);
+			undo->force_fixed_history();
+			record_rename_node(undo, node, to_godot(name));
+			undo->commit_action();
 			return to_godot(ok_json("renamed node to " + name));
 		}
 		if (tool == "set_node_property") {

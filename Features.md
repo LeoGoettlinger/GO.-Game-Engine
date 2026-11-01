@@ -271,3 +271,21 @@ Editor-Zugriffen. Tool-Ausführung bleibt bis zu Bestätigungen, Undo/Redo und
 Laufzeittests gesperrt. Die neuen nativen Prozesstests laufen mit dem nächsten
 CI-Build; die vorherige Version `56ab458c` hat sämtliche Build-/Quick-/Stilprüfungen
 bestanden. Die Gesamtanforderung ist weiterhin nicht vollständig abgeschlossen.
+
+### Neuer Stand: experimenteller Szenen-Agent
+
+Über **Scene tools (experimental)** lässt sich jetzt ein begrenzter Agentenmodus
+aktivieren. Er liest Szenenbaum/Auswahl und kann einfache Nodes **hinzufügen oder
+umbenennen**. Voraussetzungen: aktualisierter Modellkatalog und ein kostenloses
+Modell mit nativer Tool-Unterstützung.
+
+Änderungen werden standardmäßig einzeln bestätigt. Ablehnen und Stoppen sind auch
+im Bestätigungsdialog möglich. Add/Rename verwenden die Godot-Undo-Historie;
+Auto-Approve ist optional und wird bei einer neuen Konversation zurückgesetzt.
+Pro Nutzeranfrage gilt eine Grenze von 20 einzelnen Tool-Aufrufen.
+
+Das ersetzt die frühere Aussage „sämtliche Tool-Ausführung deaktiviert“ nur für
+diese vier ausdrücklich freigegebenen Szenen-Tools. Dateiänderungen, Scripts,
+beliebige Properties und Automatic Commit bleiben gesperrt. Die neuen nativen
+Undo/Redo-Tests sind in CI eingebunden; Ergebnisse und visuelle Abnahme stehen
+noch aus. Die vollständige Umsetzung von PROMPT.md ist damit weiterhin offen.

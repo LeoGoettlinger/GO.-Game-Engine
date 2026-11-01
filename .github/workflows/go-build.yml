@@ -140,6 +140,24 @@ jobs:
           fi
           grep -E "[1-9][0-9]* passed" go-git-process-tests.log
 
+      - name: Native scene undo and redo tests
+        shell: bash
+        run: |
+          if [ "${{ matrix.platform }}" = "linux" ]; then
+            EDITOR=bin/godot.linuxbsd.editor.x86_64
+          else
+            EDITOR=bin/godot.windows.editor.x86_64.exe
+          fi
+          set +e
+          "$EDITOR" --headless --test --test-case="[GO.][SceneUndo]*" 2>&1 | tee go-scene-undo-tests.log
+          status=${PIPESTATUS[0]}
+          set -e
+          if [ "$status" -ne 0 ]; then
+            python misc/scripts/go_annotate_build_log.py go-scene-undo-tests.log
+            exit "$status"
+          fi
+          grep -E "[1-9][0-9]* passed" go-scene-undo-tests.log
+
       - name: Build release template
         shell: bash
         run: |

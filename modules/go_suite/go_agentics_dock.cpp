@@ -42,9 +42,11 @@
 #include "core/object/callable_mp.h"
 #include "core/os/keyboard.h"
 #include "core/string/ustring.h"
+#include "editor/editor_interface.h"
 #include "editor/themes/editor_scale.h"
 #include "scene/gui/button.h"
 #include "scene/gui/check_button.h"
+#include "scene/gui/dialogs.h"
 #include "scene/gui/label.h"
 #include "scene/gui/option_button.h"
 #include "scene/gui/rich_text_label.h"
@@ -65,6 +67,9 @@ void GoAgenticsDock::_append_message(const String &p_role, const String &p_text)
 }
 
 void GoAgenticsDock::_update_busy_state() {
+	if (scene_tools != nullptr) {
+		scene_tools->set_disabled(request_active);
+	}
 	if (send_button != nullptr) {
 		send_button->set_disabled(request_active);
 	}
@@ -78,7 +83,7 @@ void GoAgenticsDock::_update_busy_state() {
 		refresh_models_button->set_disabled(request_active);
 	}
 	if (auto_approve != nullptr) {
-		auto_approve->set_disabled(true);
+		auto_approve->set_disabled(request_active);
 	}
 	if (model_picker != nullptr) {
 		model_picker->set_disabled(request_active);
@@ -94,15 +99,157 @@ void GoAgenticsDock::_send_agent_request() {
 		conversation_roles.insert(0, "system");
 		conversation_contents.insert(0, system_prompt);
 	}
+	if (conversation.empty()) {
+		conversation.push_back({ "system", "You are Code Agentics. Use only the offered tools. Scene edits require user approval. Do not claim unexecuted actions succeeded.", {}, "" });
+		for (int i = 0; i < conversation_roles.size(); ++i) {
+			if (conversation_roles[i] != "system") {
+				conversation.push_back({ go_suite::to_std_string(conversation_roles[i]), go_suite::to_std_string(conversation_contents[i]), {}, "" });
+			}
+		}
+	}
+	native_tools_requested = scene_tools->is_pressed() && kilo_client->supports_native_tools(selected_model_id);
 	request_active = true;
 	_update_busy_state();
-	kilo_client->request_chat(selected_model_id, conversation_roles, conversation_contents, false, String());
+	kilo_client->request_conversation(selected_model_id, conversation, native_tools_requested,
+			native_tools_requested ? go_suite::to_godot_string(go::GoAgenticsTools::tool_definitions_json(true)) : String());
 }
 
 bool GoAgenticsDock::_process_tool_calls(const String &p_tool_calls_json) {
-	(void)p_tool_calls_json;
-	_append_message(TTR("System"), TTR("Tool execution is disabled until confirmation, undo and filesystem safety tests are complete."));
-	return false;
+	pending_calls = go::parse_tool_calls_json(go_suite::to_std_string(p_tool_calls_json));
+	next_call = 0;
+	if (!native_tools_requested || pending_calls.empty() || pending_calls.size() > size_t(MAX_AGENT_LOOP_STEPS - agent_loop_steps)) {
+		pending_calls.clear();
+		_append_message(TTR("System"), TTR("Tool batch rejected: no native tool permission or the 20-action budget was exceeded."));
+		return false;
+	}
+	// Validate the complete native transcript before any action can execute.
+	auto validation = conversation;
+	validation.back().tool_calls = pending_calls;
+	for (const auto &call : pending_calls) {
+		validation.push_back({ "tool", "validation only", {}, call.id });
+	}
+	std::string error;
+	go::build_conversation_request_json(go_suite::to_std_string(selected_model_id), validation, false, "", error);
+	if (!error.empty()) {
+		pending_calls.clear();
+		_append_message(TTR("System"), go_suite::to_godot_string(error));
+		return false;
+	}
+	conversation.back().tool_calls = pending_calls;
+	request_active = true;
+	_update_busy_state();
+	set_process(true);
+	return true;
+}
+
+void GoAgenticsDock::_record_tool_result(const String &p_result) {
+	if (next_call >= pending_calls.size()) {
+		return;
+	}
+	const auto &call = pending_calls[next_call];
+	conversation.push_back({ "tool", go_suite::to_std_string(p_result), {}, call.id });
+	_append_message(TTR("Tool") + " " + go_suite::to_godot_string(call.name), p_result);
+	++next_call;
+	++agent_loop_steps;
+}
+
+void GoAgenticsDock::_advance_tools() {
+	if (!agent_loop_active || waiting_approval) {
+		return;
+	}
+	if (next_call >= pending_calls.size()) {
+		pending_calls.clear();
+		set_process(false);
+		request_active = false;
+		// After the last permitted action, ask for a final answer without tools.
+		if (agent_loop_steps >= MAX_AGENT_LOOP_STEPS) {
+			agent_loop_active = false;
+			request_active = true;
+			kilo_client->request_conversation(selected_model_id, conversation, false, String());
+		} else {
+			_send_agent_request();
+		}
+		return;
+	}
+	const auto &call = pending_calls[next_call];
+	const std::string error = go::GoAgenticsTools::validate_arguments(call.name, call.arguments);
+	if (!go::GoAgenticsTools::is_scene_tool(call.name) || !error.empty()) {
+		_record_tool_result(go_suite::to_godot_string("{\"ok\":false,\"error\":" + go::escape_json_string(error.empty() ? "Tool not enabled in scene-only mode" : error) + "}"));
+		return;
+	}
+	if (go::GoAgenticsTools::is_write_tool(call.name) && !auto_approve->is_pressed()) {
+		Node *root = EditorInterface::get_singleton()->get_edited_scene_root();
+		approval_scene = root != nullptr ? root->get_instance_id() : ObjectID();
+		std::string parse_error;
+		const auto args = go::parse_json(call.arguments, parse_error);
+		const auto *node_path = args.get("node_path");
+		Node *target = root != nullptr ? root->get_node_or_null(NodePath(go_suite::to_godot_string(node_path != nullptr ? node_path->as_string() : "."))) : nullptr;
+		approval_target = target != nullptr ? target->get_instance_id() : ObjectID();
+		waiting_approval = true;
+		approval->set_text(TTR("Allow this scene change? It will be added to the editor undo history.") + "\n\n" + go_suite::to_godot_string(call.name + "\n" + call.arguments));
+		approval->popup_centered(Size2i(620, 300));
+		return;
+	}
+	_record_tool_result(tool_bridge.execute(call));
+}
+
+void GoAgenticsDock::_on_tool_confirmed() {
+	if (!waiting_approval || !agent_loop_active || next_call >= pending_calls.size()) {
+		return;
+	}
+	waiting_approval = false;
+	Node *root = EditorInterface::get_singleton()->get_edited_scene_root();
+	if (root == nullptr || root->get_instance_id() != approval_scene) {
+		_record_tool_result("{\"ok\":false,\"error\":\"The edited scene changed while awaiting approval\"}");
+		return;
+	}
+	std::string parse_error;
+	const auto args = go::parse_json(pending_calls[next_call].arguments, parse_error);
+	const auto *node_path = args.get("node_path");
+	Node *target = root->get_node_or_null(NodePath(go_suite::to_godot_string(node_path != nullptr ? node_path->as_string() : ".")));
+	if (target == nullptr || target->get_instance_id() != approval_target) {
+		_record_tool_result("{\"ok\":false,\"error\":\"The target node changed while awaiting approval\"}");
+		return;
+	}
+	_record_tool_result(tool_bridge.execute(pending_calls[next_call]));
+}
+
+void GoAgenticsDock::_on_tool_rejected() {
+	if (!waiting_approval || !agent_loop_active) {
+		return;
+	}
+	waiting_approval = false;
+	_record_tool_result("{\"ok\":false,\"error\":\"User denied this action\"}");
+}
+
+void GoAgenticsDock::_on_approval_action(const String &p_action) {
+	if (p_action == "stop_agent") {
+		_on_stop_pressed();
+	}
+}
+
+void GoAgenticsDock::_discard_pending() {
+	waiting_approval = false;
+	if (approval != nullptr) {
+		approval->hide();
+	}
+	while (next_call < pending_calls.size()) {
+		_record_tool_result("{\"ok\":false,\"error\":\"Cancelled before execution\"}");
+	}
+	pending_calls.clear();
+	set_process(false);
+}
+
+void GoAgenticsDock::_notification(int p_what) {
+	if (p_what == NOTIFICATION_PROCESS) {
+		_advance_tools();
+	} else if (p_what == NOTIFICATION_EXIT_TREE) {
+		agent_loop_active = false;
+		_discard_pending();
+		if (kilo_client != nullptr) {
+			kilo_client->cancel_request();
+		}
+	}
 }
 
 void GoAgenticsDock::_on_send_pressed() {
@@ -117,13 +264,22 @@ void GoAgenticsDock::_on_send_pressed() {
 	_append_message(TTR("You"), user_text);
 	conversation_roles.push_back("user");
 	conversation_contents.push_back(user_text);
+	if (!conversation.empty()) {
+		conversation.push_back({ "user", go_suite::to_std_string(user_text), {}, "" });
+	}
 	agent_loop_active = true;
 	agent_loop_steps = 0;
+	if (scene_tools->is_pressed() && !kilo_client->supports_native_tools(selected_model_id)) {
+		_append_message(TTR("System"), TTR("Scene tools require a live model catalog and a model with native tool support. This request is chat-only."));
+	}
 	_send_agent_request();
 }
 
 void GoAgenticsDock::_on_stop_pressed() {
 	agent_loop_active = false;
+	_discard_pending();
+	request_active = false;
+	_update_busy_state();
 	if (kilo_client != nullptr) {
 		kilo_client->cancel_request();
 	} else {
@@ -132,6 +288,10 @@ void GoAgenticsDock::_on_stop_pressed() {
 }
 
 void GoAgenticsDock::_on_new_conversation_pressed() {
+	agent_loop_active = false;
+	_discard_pending();
+	conversation.clear();
+	auto_approve->set_pressed(false);
 	if (kilo_client != nullptr && request_active) {
 		kilo_client->cancel_request();
 	}
@@ -161,7 +321,7 @@ void GoAgenticsDock::_on_history_pressed() {
 }
 
 void GoAgenticsDock::_on_about_tools_pressed() {
-	_append_message(TTR("System"), String::utf8(go::GoAgenticsTools::tool_definitions_json().c_str()));
+	_append_message(TTR("System"), String::utf8(go::GoAgenticsTools::tool_definitions_json(true).c_str()));
 }
 
 void GoAgenticsDock::_on_refresh_models_pressed() {
@@ -227,35 +387,17 @@ void GoAgenticsDock::_on_chat_completed(const String &p_content, const String &p
 	_append_message(TTR("Assistant"), content);
 	conversation_roles.push_back("assistant");
 	conversation_contents.push_back(content);
+	conversation.push_back({ "assistant", go_suite::to_std_string(p_content), {}, "" });
 	if (p_used_json_fallback) {
 		_append_message(TTR("System"), TTR("The model used the JSON tool-call fallback."));
 	}
 
 	const bool has_tool_calls = !p_tool_calls_json.is_empty() && p_tool_calls_json != "[]";
-	bool continue_loop = false;
-	if (agent_loop_active && has_tool_calls) {
-		if (auto_approve == nullptr || !auto_approve->is_pressed()) {
-			_append_message(TTR("System"), TTR("Tool calls were returned, but execution remains disabled pending safety and Undo/Redo validation."));
-			agent_loop_active = false;
-		} else if (agent_loop_steps >= MAX_AGENT_LOOP_STEPS) {
-			_append_message(TTR("System"), TTR("Agent loop stopped after 20 steps."));
-			agent_loop_active = false;
-		} else {
-			continue_loop = _process_tool_calls(p_tool_calls_json);
-			if (!continue_loop) {
-				agent_loop_active = false;
-			}
-		}
-	} else {
-		agent_loop_active = false;
-	}
-
-	if (continue_loop && agent_loop_steps < MAX_AGENT_LOOP_STEPS) {
-		_send_agent_request();
+	if (agent_loop_active && has_tool_calls && !p_used_json_fallback && _process_tool_calls(p_tool_calls_json)) {
 		return;
 	}
-	if (agent_loop_steps >= MAX_AGENT_LOOP_STEPS) {
-		_append_message(TTR("System"), TTR("Agent loop stopped after 20 steps."));
+	if (has_tool_calls && p_used_json_fallback) {
+		_append_message(TTR("System"), TTR("JSON fallback actions are not executed. Select a model with verified native tool support."));
 	}
 	agent_loop_active = false;
 	_update_busy_state();
@@ -319,8 +461,20 @@ GoAgenticsDock::GoAgenticsDock() {
 	auto_approve = memnew(CheckButton);
 	auto_approve->set_text(TTR("Auto-Approve"));
 	auto_approve->set_disabled(true);
-	auto_approve->set_tooltip_text(TTR("Unavailable while tool execution is disabled."));
+	auto_approve->set_tooltip_text(TTR("Explicitly approve all enabled scene edits for this conversation."));
 	top_row->add_child(auto_approve);
+	scene_tools = memnew(CheckButton);
+	scene_tools->set_text(TTR("Scene tools (experimental)"));
+	scene_tools->set_tooltip_text(TTR("Only scene inspection, basic node creation and renaming. Requires a refreshed model catalog with native tool support."));
+	add_child(scene_tools);
+	approval = memnew(ConfirmationDialog);
+	approval->set_title(TTR("Code Agentics: Confirm Scene Change"));
+	approval->get_cancel_button()->set_text(TTR("Deny"));
+	approval->add_button(TTR("Stop agent"), false, "stop_agent");
+	approval->connect("custom_action", callable_mp(this, &GoAgenticsDock::_on_approval_action));
+	approval->connect("confirmed", callable_mp(this, &GoAgenticsDock::_on_tool_confirmed));
+	approval->connect("canceled", callable_mp(this, &GoAgenticsDock::_on_tool_rejected));
+	add_child(approval);
 
 	model_status = memnew(Label);
 	model_status->set_text(TTR("Model catalog: offline fallback"));

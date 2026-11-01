@@ -170,14 +170,24 @@ bool GoAgenticsTools::is_write_tool(const std::string &p_name) {
 	return is_write_tool_name(p_name);
 }
 
-std::string GoAgenticsTools::tool_definitions_json() {
+bool GoAgenticsTools::is_scene_tool(const std::string &p_name) {
+	return p_name == "get_current_scene_tree" || p_name == "get_editor_selection" || p_name == "add_node" || p_name == "rename_node";
+}
+
+std::string GoAgenticsTools::tool_definitions_json(bool p_scene_only) {
 	std::ostringstream stream;
 	stream << "[";
-	for (size_t i = 0; i < TOOL_NAMES.size(); ++i) {
+	std::vector<std::string> names;
+	for (const std::string &name : TOOL_NAMES) {
+		if (!p_scene_only || is_scene_tool(name)) {
+			names.push_back(name);
+		}
+	}
+	for (size_t i = 0; i < names.size(); ++i) {
 		if (i > 0) {
 			stream << ",";
 		}
-		const std::string &name = TOOL_NAMES[i];
+		const std::string &name = names[i];
 		stream << "{\"type\":\"function\",\"function\":{\"name\":" << escape_json_string(name)
 			   << ",\"description\":" << escape_json_string("GO. project editor tool: " + name)
 			   << ",\"parameters\":{\"type\":\"object\",\"additionalProperties\":false,\"properties\":{";

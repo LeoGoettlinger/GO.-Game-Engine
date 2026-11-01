@@ -80,3 +80,38 @@ not as automatically safe reads. Auto-Approve is visibly disabled while executio
 is disabled; the UI no longer tells users to enable it to bypass that restriction.
 Per-action confirmations, Undo/Redo, race-resistant file access and the runnable
 session loop remain incomplete. Schema validation alone does not enable tools.
+
+## Experimental scene-only agent (current implementation)
+
+The preceding blanket execution-disabled notes describe earlier checkpoints.
+An explicitly opt-in **Scene tools (experimental)** switch now enables only:
+
+- `get_current_scene_tree` (bounded inspection), `get_editor_selection`;
+- `add_node` and `rename_node`, recorded in EditorUndoRedoManager history.
+
+Refresh the free-model catalog first and select a model whose catalog entry
+advertises native tools. Otherwise the request stays chat-only with an explanation.
+Only these four definitions are sent. Returned calls are also checked against this
+runtime subset; no file, script, property, playback or Git tool is enabled by it.
+The JSON fallback is not executed. History retains native IDs and result envelopes.
+
+Each write shows its tool name and exact arguments. **Deny** records a denied
+result; **Stop agent** cancels the remaining batch. The edited scene and target
+instance IDs must still match at confirmation time. **Auto-Approve** is opt-in,
+defaults off, and resets on a new conversation. A maximum of 20 individual calls
+(including failed or denied calls) is allowed per user request; batches exceeding
+the remaining budget are rejected before execution. One call is handled per frame.
+Cancellation records errors for unfinished calls, preserving valid history. Already
+completed edits are not rolled back automatically; use editor Undo.
+
+Node creation permits only Node, Node2D, Node3D, Control, Sprite2D and Label. Writes
+reject scripted ancestors, nodes not owned by the edited scene, invalid names and
+sibling-name collisions. Addition retains a do-reference; redo restores ownership.
+Both add and rename pin the action to the edited scene's history. Scene edits stay
+unsaved until the user saves normally. No source files are loaded or overwritten.
+
+Native CI tests now exercise the same operation-recording functions with a fixed
+isolated EditorUndoRedoManager history, including add/rename Undo/Redo and owner
+restoration. These do not simulate the whole dock or its modal interaction. UI
+acceptance and runtime results of the new tests are pending at this checkpoint.
+This is a restricted experimental agent, not the full PROMPT tool suite.

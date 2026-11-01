@@ -40,7 +40,8 @@ namespace go {
 
 class GoAgenticsTools {
 public:
-	static std::string tool_definitions_json();
+	static std::string tool_definitions_json(bool p_scene_only = false);
+	static bool is_scene_tool(const std::string &p_name);
 	static std::string validate_arguments(const std::string &p_name, const std::string &p_arguments_json);
 	static bool is_tool_allowed(const std::string &p_name);
 	static bool is_write_tool(const std::string &p_name);
