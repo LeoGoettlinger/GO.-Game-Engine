@@ -146,6 +146,25 @@ void test_path_guardrails() {
 	CHECK_EQ(result.normalized, std::string("res:// scenes/hero.tscn"));
 }
 
+void test_git_reminder_policy() {
+	go::GitStatus status;
+	CHECK(!go::git_reminder_needed(status, 0, false, false));
+	CHECK(!go::git_reminder_needed(status, 0, true, false));
+	CHECK(!go::git_reminder_needed(status, 0, false, true));
+	CHECK(go::git_reminder_needed(status, 0, true, true));
+	status.behind = 3;
+	CHECK(go::git_reminder_needed(status, 0, false, false));
+	CHECK(!go::git_reminder_needed(status, 0, true, false));
+	status.behind = 0;
+	status.ahead = 2;
+	CHECK(go::git_reminder_needed(status, 0, true, false));
+	status.ahead = 0;
+	status.has_changes = true;
+	CHECK(go::git_reminder_needed(status, 0, true, false));
+	status.has_changes = false;
+	CHECK(go::git_reminder_needed(status, 1, true, false));
+}
+
 void test_agentics_tools() {
 	using namespace go;
 	std::string parse_error;
@@ -570,6 +589,7 @@ int main() {
 	test_remote_parser();
 	test_path_guardrails();
 	test_agentics_tools();
+	test_git_reminder_policy();
 	test_lfs_rules();
 	test_lfs_policy();
 	test_native_conversation();

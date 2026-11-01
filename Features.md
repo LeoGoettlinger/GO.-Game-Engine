@@ -289,3 +289,22 @@ diese vier ausdrücklich freigegebenen Szenen-Tools. Dateiänderungen, Scripts,
 beliebige Properties und Automatic Commit bleiben gesperrt. Die neuen nativen
 Undo/Redo-Tests sind in CI eingebunden; Ergebnisse und visuelle Abnahme stehen
 noch aus. Die vollständige Umsetzung von PROMPT.md ist damit weiterhin offen.
+
+### Projekt-Erinnerungen und korrigierter Undo-Test
+
+Die Git Suite prüft beim Öffnen aktivierter Projekte jetzt nach dem Editorstart
+asynchron den Remote-/Git-Stand. Bei sauberem Stand erscheint kein Dialog; bei
+Änderungen oder einem Rückstand gibt es eine Erinnerung mit Zugriff auf die Git
+Suite und gegebenenfalls Pull. Ein vorhandenes Repository ohne aktivierte Suite
+bekommt ein einmaliges lokales Aktivierungsangebot.
+
+Beim Schließen folgt nach Godots Speicherabfragen ein abbrechbarer Git-/LFS-Check.
+Danach kann man die Git Suite öffnen, abbrechen oder bewusst trotzdem schließen.
+Die Erinnerungen lassen sich pro Projekt abschalten. **Automatic Commit ist hier
+noch nicht verfügbar.** Die visuelle Abnahme dieser neuen Abläufe steht aus.
+
+Der vorherige Vollbuild scheiterte im neuen nativen Undo-Test, nicht beim Kompilieren:
+Der Test setzte irrtümlich einen vollständig laufenden Editor voraus. Die gemeinsamen
+Operationen werden nun auf einer echten Core-Undo-History getestet; zur Laufzeit
+bleiben sie an Godots Editor-History angebunden. Die Korrektur benötigt noch einen
+erneuten CI-Nachweis.

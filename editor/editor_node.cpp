@@ -3385,7 +3385,7 @@ static String _get_unsaved_scene_dialog_text(String p_scene_filename, uint64_t p
 void EditorNode::_menu_option_confirm(int p_option, bool p_confirmed) {
 #ifdef MODULE_GO_SUITE_ENABLED
 	// GO.: the Automatic Commit overlay must finish before any quit/restart path.
-	if (GoSuiteRegistry::is_editor_input_locked() &&
+	if ((GoSuiteRegistry::is_editor_input_locked() || GoSuiteRegistry::is_quit_pending()) &&
 			(p_option == SCENE_QUIT || p_option == PROJECT_QUIT_TO_PROJECT_MANAGER || p_option == PROJECT_RELOAD_CURRENT_PROJECT)) {
 		return;
 	}
@@ -4233,6 +4233,14 @@ void EditorNode::unload_editor_addons() {
 }
 
 void EditorNode::_discard_changes(const String &p_str) {
+#ifdef MODULE_GO_SUITE_ENABLED
+	// GO.: check Git after upstream save/discard decisions. The module uses a
+	// modal progress dialog and a one-shot continuation of this exact quit path.
+	if ((current_menu_option == SCENE_QUIT || current_menu_option == PROJECT_QUIT_TO_PROJECT_MANAGER || current_menu_option == PROJECT_RELOAD_CURRENT_PROJECT) &&
+			GoSuiteRegistry::request_quit(callable_mp(this, &EditorNode::_discard_changes).bind(p_str))) {
+		return;
+	}
+#endif
 	switch (current_menu_option) {
 		case SCENE_CLOSE:
 		case SCENE_TAB_CLOSE: {

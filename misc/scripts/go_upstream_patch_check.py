@@ -28,6 +28,8 @@ def main() -> int:
         '#include "modules/go_suite/go_suite_registry.h"',
         "GoSuiteRegistry::is_editor_input_locked()",
         "NOTIFICATION_WM_CLOSE_REQUEST",
+        "GoSuiteRegistry::request_quit",
+        "callable_mp(this, &EditorNode::_discard_changes).bind(p_str)",
         "PROJECT_QUIT_TO_PROJECT_MANAGER",
     ]
     for snippet in required_editor_snippets:
@@ -37,7 +39,13 @@ def main() -> int:
         errors.append("editor/editor_node.cpp must guard both close and quit paths")
 
     registry = (ROOT / "modules/go_suite/go_suite_registry.h").read_text(encoding="utf-8")
-    for snippet in ["set_editor_input_locked", "is_editor_input_locked", "request_auto_commit"]:
+    for snippet in [
+        "set_editor_input_locked",
+        "is_editor_input_locked",
+        "request_auto_commit",
+        "is_quit_pending",
+        "set_quit_handler",
+    ]:
         if snippet not in registry:
             errors.append(f"go_suite_registry.h is missing {snippet!r}")
 

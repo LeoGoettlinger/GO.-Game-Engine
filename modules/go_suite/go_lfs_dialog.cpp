@@ -36,6 +36,7 @@
 #include "go_git_lfs.h"
 #include "go_git_remote.h"
 #include "go_suite_core.h"
+#include "go_suite_registry.h"
 #include "go_system_git_runner.h"
 
 #include "core/object/callable_mp.h"
@@ -78,11 +79,19 @@ void GoLfsDialog::_refresh_state() {
 }
 
 void GoLfsDialog::_on_check_pressed() {
+	if ((GoSuiteRegistry::is_git_job_busy() || GoSuiteRegistry::is_quit_pending())) {
+		_append(TTR("Another Git operation is running. Try again after it finishes."));
+		return;
+	}
 	_refresh_state();
 	_append(TTR("Checked Git LFS state."));
 }
 
 void GoLfsDialog::_on_install_pressed() {
+	if ((GoSuiteRegistry::is_git_job_busy() || GoSuiteRegistry::is_quit_pending())) {
+		_append(TTR("Another Git operation is running. Try again after it finishes."));
+		return;
+	}
 	if (controller == nullptr) {
 		return;
 	}
@@ -103,6 +112,10 @@ void GoLfsDialog::_on_install_pressed() {
 }
 
 void GoLfsDialog::_on_init_pressed() {
+	if ((GoSuiteRegistry::is_git_job_busy() || GoSuiteRegistry::is_quit_pending())) {
+		_append(TTR("Another Git operation is running. Try again after it finishes."));
+		return;
+	}
 	if (controller == nullptr) {
 		return;
 	}
@@ -117,6 +130,10 @@ void GoLfsDialog::_on_init_pressed() {
 }
 
 void GoLfsDialog::_on_rules_pressed() {
+	if ((GoSuiteRegistry::is_git_job_busy() || GoSuiteRegistry::is_quit_pending())) {
+		_append(TTR("Another Git operation is running. Try again after it finishes."));
+		return;
+	}
 	if (controller == nullptr) {
 		return;
 	}
@@ -130,6 +147,10 @@ void GoLfsDialog::_on_rules_pressed() {
 }
 
 void GoLfsDialog::_on_track_pressed() {
+	if ((GoSuiteRegistry::is_git_job_busy() || GoSuiteRegistry::is_quit_pending())) {
+		_append(TTR("Another Git operation is running. Try again after it finishes."));
+		return;
+	}
 	if (controller != nullptr && controller->lfs_policy().mode != go::LfsMode::FILE_TYPES) {
 		_on_rules_pressed();
 		return;
@@ -154,6 +175,10 @@ void GoLfsDialog::_on_track_pressed() {
 }
 
 void GoLfsDialog::_on_pull_pressed() {
+	if ((GoSuiteRegistry::is_git_job_busy() || GoSuiteRegistry::is_quit_pending())) {
+		_append(TTR("Another Git operation is running. Try again after it finishes."));
+		return;
+	}
 	if (controller == nullptr) {
 		return;
 	}
@@ -168,6 +193,10 @@ void GoLfsDialog::_on_pull_pressed() {
 }
 
 void GoLfsDialog::_on_push_pressed() {
+	if ((GoSuiteRegistry::is_git_job_busy() || GoSuiteRegistry::is_quit_pending())) {
+		_append(TTR("Another Git operation is running. Try again after it finishes."));
+		return;
+	}
 	if (controller == nullptr) {
 		return;
 	}
@@ -182,6 +211,10 @@ void GoLfsDialog::_on_push_pressed() {
 }
 
 void GoLfsDialog::_on_quota_pressed() {
+	if ((GoSuiteRegistry::is_git_job_busy() || GoSuiteRegistry::is_quit_pending())) {
+		_append(TTR("Another Git operation is running. Try again after it finishes."));
+		return;
+	}
 	if (controller == nullptr) {
 		return;
 	}

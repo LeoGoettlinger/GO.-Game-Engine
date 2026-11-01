@@ -35,42 +35,39 @@
 
 #include "../go_agentics_tool_bridge.h"
 
-#include "editor/editor_undo_redo_manager.h"
+#include "core/object/undo_redo.h"
 #include "scene/main/node.h"
 #include "tests/test_macros.h"
 
 namespace TestGoSceneUndo {
 
-// Run this subset in its own process: no live EditorNode is needed. The test
-// uses a fixed isolated history instead of looking up an open editor scene.
+// Test the shared operations on the real core history. EditorUndoRedoManager
+// requires a live EditorNode/log/debugger even for a fixed history.
 TEST_CASE("[GO.][SceneUndo] Add and rename restore scene ownership across undo and redo") {
-	EditorUndoRedoManager *undo = memnew(EditorUndoRedoManager);
+	UndoRedo *undo = memnew(UndoRedo);
 	Node *root = memnew(Node);
 	Node *child = memnew(Node);
 	root->set_name("Root");
 	child->set_name("Child");
-	constexpr int HISTORY = 7001;
-	undo->create_action_for_history("Add", HISTORY);
-	undo->force_fixed_history();
+	undo->create_action("Add");
 	GoAgenticsToolBridge::record_add_node(undo, root, child, root);
 	undo->commit_action();
 	CHECK(child->get_parent() == root);
 	CHECK(child->get_owner() == root);
-	CHECK(undo->undo_history(HISTORY));
+	CHECK(undo->undo());
 	CHECK(child->get_parent() == nullptr);
-	CHECK(undo->redo_history(HISTORY));
+	CHECK(undo->redo());
 	CHECK(child->get_parent() == root);
 	CHECK(child->get_owner() == root);
-	undo->create_action_for_history("Rename", HISTORY);
-	undo->force_fixed_history();
+	undo->create_action("Rename");
 	GoAgenticsToolBridge::record_rename_node(undo, child, "Renamed");
 	undo->commit_action();
 	CHECK(child->get_name() == StringName("Renamed"));
-	CHECK(undo->undo_history(HISTORY));
+	CHECK(undo->undo());
 	CHECK(child->get_name() == StringName("Child"));
-	CHECK(undo->redo_history(HISTORY));
+	CHECK(undo->redo());
 	CHECK(child->get_name() == StringName("Renamed"));
-	undo->clear_history(HISTORY);
+	undo->clear_history();
 	memdelete(root);
 	memdelete(undo);
 }

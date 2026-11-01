@@ -39,9 +39,18 @@ class GoSuiteRegistry {
 	static EditorDock *git_dock;
 	static EditorDock *agentics_dock;
 	static bool editor_input_locked;
+	static bool git_job_busy;
+	static bool quit_pending;
+	static Callable quit_handler;
 	static bool (*auto_commit_callback)();
 
 public:
+	static void set_quit_pending(bool p_pending) { quit_pending = p_pending; }
+	static bool is_quit_pending() { return quit_pending; }
+	static void set_git_job_busy(bool p_busy) { git_job_busy = p_busy; }
+	static bool is_git_job_busy() { return git_job_busy; }
+	static void set_quit_handler(const Callable &p_handler) { quit_handler = p_handler; }
+	static bool request_quit(const Callable &p_resume) { return quit_handler.is_valid() && bool(quit_handler.call(p_resume)); }
 	static void set_git_dock(EditorDock *p_dock) { git_dock = p_dock; }
 	static EditorDock *get_git_dock() { return git_dock; }
 	static void set_agentics_dock(EditorDock *p_dock) { agentics_dock = p_dock; }

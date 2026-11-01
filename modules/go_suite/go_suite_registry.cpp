@@ -37,3 +37,8 @@ EditorDock *GoSuiteRegistry::git_dock = nullptr;
 EditorDock *GoSuiteRegistry::agentics_dock = nullptr;
 bool GoSuiteRegistry::editor_input_locked = false;
 bool (*GoSuiteRegistry::auto_commit_callback)() = nullptr;
+
+bool GoSuiteRegistry::git_job_busy = false;
+Callable GoSuiteRegistry::quit_handler;
+
+bool GoSuiteRegistry::quit_pending = false;

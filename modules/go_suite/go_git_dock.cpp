@@ -35,6 +35,7 @@
 
 #include "go_auto_commit_controller.h"
 #include "go_commit_message.h"
+#include "go_git_lifecycle.h"
 #include "go_git_remote.h"
 #include "go_lfs_dialog.h"
 #include "go_remote_assistant.h"
@@ -62,6 +63,7 @@ void GoGitDock::_on_refresh_pressed() {
 }
 
 void GoGitDock::_set_git_busy(bool p_busy) {
+	GoSuiteRegistry::set_git_job_busy(p_busy);
 	for (Button *button : { refresh_button, commit_button, pull_button, push_button, fetch_button, remote_button, lfs_button, log_button }) {
 		if (button != nullptr) {
 			button->set_disabled(p_busy);
@@ -84,7 +86,7 @@ bool GoGitDock::_launch_git(const go::GitCommand &p_command) {
 }
 
 void GoGitDock::_start_git(GitAction p_action) {
-	if (git_action != GitAction::NONE || git_process.is_running()) {
+	if (git_action != GitAction::NONE || git_process.is_running() || (GoSuiteRegistry::is_git_job_busy() || GoSuiteRegistry::is_quit_pending())) {
 		return;
 	}
 	git_action = p_action;
@@ -162,6 +164,9 @@ void GoGitDock::_notification(int p_what) {
 	if (p_what == NOTIFICATION_PROCESS) {
 		_poll_git();
 	} else if (p_what == NOTIFICATION_EXIT_TREE) {
+		if (git_action != GitAction::NONE) {
+			GoSuiteRegistry::set_git_job_busy(false);
+		}
 		git_process.cancel();
 		git_action = GitAction::NONE;
 		set_process(false);
@@ -207,18 +212,27 @@ void GoGitDock::_on_auto_commit_finished(bool p_success, const String &p_message
 }
 
 void GoGitDock::_on_remote_pressed() {
+	if ((GoSuiteRegistry::is_git_job_busy() || GoSuiteRegistry::is_quit_pending())) {
+		return;
+	}
 	if (remote_dialog != nullptr) {
 		remote_dialog->popup_centered();
 	}
 }
 
 void GoGitDock::_on_lfs_pressed() {
+	if ((GoSuiteRegistry::is_git_job_busy() || GoSuiteRegistry::is_quit_pending())) {
+		return;
+	}
 	if (lfs_dialog != nullptr) {
 		lfs_dialog->popup_centered();
 	}
 }
 
 void GoGitDock::_on_log_pressed() {
+	if ((GoSuiteRegistry::is_git_job_busy() || GoSuiteRegistry::is_quit_pending())) {
+		return;
+	}
 	std::string error;
 	const go_suite::GoGitSnapshot snapshot = controller.snapshot(error);
 	if (!snapshot.is_repo) {
@@ -241,7 +255,7 @@ void GoGitDock::set_host_text(const String &p_text) {
 }
 
 void GoGitDock::refresh_status() {
-	if (git_action != GitAction::NONE) {
+	if (git_action != GitAction::NONE || (GoSuiteRegistry::is_git_job_busy() || GoSuiteRegistry::is_quit_pending())) {
 		return;
 	}
 	std::string error;
@@ -314,6 +328,7 @@ void GoGitDock::_bind_methods() {
 }
 
 GoGitDock::GoGitDock() {
+	add_child(memnew(GoGitLifecycle(callable_mp(this, &GoGitDock::_on_pull_pressed))));
 	if (ProjectSettings::get_singleton() != nullptr) {
 		controller.set_project(ProjectSettings::get_singleton()->get_resource_path());
 	}

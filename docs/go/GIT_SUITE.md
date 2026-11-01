@@ -160,3 +160,43 @@ builds now enable `tests=yes` and run `[GO.][GitProcess]*` on Windows and Linux.
 These tests use system Git only, with no remote, shell command or project writes.
 Runtime results for this change remain pending; local syntax tests include both
 native test headers as well as all module translation units.
+
+## Project lifecycle reminders (implementation checkpoint)
+
+For enabled projects, a new lifecycle node waits until the editor is ready before
+an asynchronous origin lookup, fetch (when present), and local status read. A clean,
+up-to-date repository produces no popup. Startup Git errors remain quiet; fetch
+failure is logged and local status is still checked. Behind/ahead and dirty states
+produce one reminder with **Open Git Suite**, **Later**, and **Pull** when behind.
+Pull delegates to the existing nonblocking, fast-forward-only dock action.
+
+Existing Git projects without the suite receive one activation offer per local
+project metadata cache. Accepting enables the suite; no init/commit occurs.
+Clearing `.godot` can make this local offer reappear. The project-level
+`go/git_suite/remind_on_open` and `remind_on_close` settings can be disabled with
+the reminder checkbox. Failed settings saves are reported and rolled back in memory.
+
+The `EditorNode::_discard_changes` hook runs after Godot's own save/discard decisions
+for Quit, Project Manager and Reload. A modal, cancellable progress dialog checks
+local status and, best-effort, LFS pending objects without fetching. Clean results
+continue the exact upstream quit path once. Otherwise the user may open the Git
+Suite, cancel closing, or explicitly **Close Anyway**. Missing/failed status or an
+already running Git operation also permits this explicit choice; it never waits
+indefinitely. Each lifecycle subprocess has a 30-second timeout.
+
+Known limitations: counts use the last known upstream; missing upstream/LFS state
+is not evidence that data is backed up. The Automatic Commit action is not yet
+provided here because its controller remains disabled. The dialog can open the
+Git Suite instead. Closing terminates the owned Git process but does not guarantee
+termination of external helpers or undo any remote changes. Local refresh/LFS
+operations remain synchronous outside these reminder paths.
+
+The suite's registry excludes concurrent owned Git jobs. While a close reminder is
+pending, new dock Git operations and agent sends are rejected; pending scene tools
+stop, late model responses do not execute actions. The modal blocks manual editing
+while the prior save/discard decision is pending. Arbitrary third-party editor
+plugins are not paused by this mechanism. Headless imports and tests skip reminders.
+
+Local pure tests cover clean/dirty/ahead/behind/LFS/failed-status reminder decisions.
+Source checks protect the upstream continuation hook. Visual reminder, save/discard,
+reload, Cancel and concurrent-operation acceptance still needs a real editor run.

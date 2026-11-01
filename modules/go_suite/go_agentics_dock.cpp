@@ -36,6 +36,7 @@
 #include "go_agentics_tools.h"
 #include "go_kilo_client.h"
 #include "go_kilo_models.h"
+#include "go_suite_registry.h"
 #include "go_system_git_runner.h"
 
 #include "core/config/project_settings.h"
@@ -194,7 +195,7 @@ void GoAgenticsDock::_advance_tools() {
 }
 
 void GoAgenticsDock::_on_tool_confirmed() {
-	if (!waiting_approval || !agent_loop_active || next_call >= pending_calls.size()) {
+	if (!waiting_approval || !agent_loop_active || next_call >= pending_calls.size() || GoSuiteRegistry::is_quit_pending()) {
 		return;
 	}
 	waiting_approval = false;
@@ -242,6 +243,10 @@ void GoAgenticsDock::_discard_pending() {
 
 void GoAgenticsDock::_notification(int p_what) {
 	if (p_what == NOTIFICATION_PROCESS) {
+		if (GoSuiteRegistry::is_quit_pending()) {
+			_on_stop_pressed();
+			return;
+		}
 		_advance_tools();
 	} else if (p_what == NOTIFICATION_EXIT_TREE) {
 		agent_loop_active = false;
@@ -253,7 +258,7 @@ void GoAgenticsDock::_notification(int p_what) {
 }
 
 void GoAgenticsDock::_on_send_pressed() {
-	if (request_active || chat_input == nullptr || kilo_client == nullptr) {
+	if (request_active || chat_input == nullptr || kilo_client == nullptr || GoSuiteRegistry::is_quit_pending()) {
 		return;
 	}
 	const String user_text = chat_input->get_text().strip_edges();
@@ -382,6 +387,10 @@ void GoAgenticsDock::_on_models_loaded(const PackedStringArray &p_model_ids) {
 }
 
 void GoAgenticsDock::_on_chat_completed(const String &p_content, const String &p_tool_calls_json, bool p_used_json_fallback) {
+	if (GoSuiteRegistry::is_quit_pending()) {
+		_on_stop_pressed();
+		return;
+	}
 	request_active = false;
 	const String content = p_content.is_empty() ? TTR("(empty response)") : p_content;
 	_append_message(TTR("Assistant"), content);

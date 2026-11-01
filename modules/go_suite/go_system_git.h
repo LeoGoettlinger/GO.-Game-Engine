@@ -70,6 +70,9 @@ struct GitStatus {
 	bool merge_conflict = false;
 };
 
+// Startup errors stay quiet; closing errors require an explicit decision.
+bool git_reminder_needed(const GitStatus &p_status, int p_pending_lfs, bool p_closing, bool p_status_failed);
+
 struct GitLogEntry {
 	std::string hash;
 	std::string author;

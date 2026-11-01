@@ -36,3 +36,13 @@ intact. GO.'s own MIT-notice files are additive.
   module archives before libeditor, so an otherwise unreferenced adapter was not
   extracted. The module SCsub excludes this one source to avoid duplicate symbols.
   Preserve this placement when merging upstream build changes. Full CI must verify it.
+
+## Git lifecycle quit continuation
+
+- `editor/editor_node.cpp`, start of `_discard_changes`: an additional
+  `MODULE_GO_SUITE_ENABLED` / `// GO.` block delegates final Quit/Project Manager/
+  Reload to the module's `request_quit` handler. It supplies a callable continuing
+  the same `_discard_changes(p_str)` after the user's Git decision. The module uses
+  a modal status check and a scoped bypass, preserving upstream save/discard choices
+  rather than reopening an endless unsaved-scene prompt. No editor header changes.
+  Preserve placement after upstream save/discard handling when merging upstream.

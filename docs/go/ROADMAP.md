@@ -180,3 +180,22 @@ compiled editor/CI, `[ ]` open. A user-facing feature comparison lives in
 - Still NOT complete: unrestricted Godot tool suite, JSON fallback execution,
   file/resource edits and their safety, persisted chat history, lifecycle reminders,
   remaining async Git paths, deterministic Automatic Commit and full export/player E2E.
+
+## Lifecycle wiring and native-test crash correction
+
+- `693cf422`: quick run `41324302239` and static run `41324302273` passed. Full run
+  `41324302361` failed on BOTH platforms in the new SceneUndo test after building
+  the editors. It crashed before assertions: EditorUndoRedoManager creates histories
+  through live EditorNode log/debugger singletons absent in this test harness.
+- Shared operation recording now takes core UndoRedo. Production obtains that core
+  history from the live scene manager; the native test instantiates core UndoRedo
+  directly. No assertion was removed. New runtime evidence is still required.
+- Added asynchronous startup fetch/status and final-close status/LFS reminders,
+  local one-time activation offer, persistent per-project opt-out, optional Pull,
+  modal close progress, Cancel/Close Anyway and exact upstream quit continuation.
+- Added owned-job exclusion and a close-pending guard for scene tools/late responses.
+  Pure reminder decisions and the new upstream hook are checked locally.
+- Open: visual lifecycle/approval/Undo acceptance; Automatic Commit (including its
+  lifecycle button), remaining file/resource tools and async paths, persisted chat,
+  whole-editor lock validation and full player/export E2E. This is not completion
+  of the entire PROMPT.md.

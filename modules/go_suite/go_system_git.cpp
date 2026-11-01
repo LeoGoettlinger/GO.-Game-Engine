@@ -584,4 +584,11 @@ std::string summarize_large_files(
 	return join(lines, "\n");
 }
 
+bool git_reminder_needed(const GitStatus &p_status, int p_pending_lfs, bool p_closing, bool p_status_failed) {
+	if (p_status_failed) {
+		return p_closing;
+	}
+	return p_status.has_changes || p_status.ahead > 0 || p_pending_lfs > 0 || (!p_closing && p_status.behind > 0);
+}
+
 } // namespace go

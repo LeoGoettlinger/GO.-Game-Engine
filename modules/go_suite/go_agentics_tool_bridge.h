@@ -40,13 +40,14 @@
 #include <string>
 
 class Node;
-class EditorUndoRedoManager;
+class UndoRedo;
 
 class GoAgenticsToolBridge {
 public:
-	// Record operations into an already-open, fixed editor history action.
-	static void record_add_node(EditorUndoRedoManager *p_undo, Node *p_parent, Node *p_child, Node *p_owner);
-	static void record_rename_node(EditorUndoRedoManager *p_undo, Node *p_node, const String &p_name);
+	// Record operations into an already-open core history action. The editor
+	// supplies its scene-specific UndoRedo; tests use an isolated core history.
+	static void record_add_node(UndoRedo *p_undo, Node *p_parent, Node *p_child, Node *p_owner);
+	static void record_rename_node(UndoRedo *p_undo, Node *p_node, const String &p_name);
 	// Executes one whitelisted tool call against the open project. All paths are
 	// validated by go_agentics_path before any Godot file/editor API is touched.
 	String execute(const go::GoKiloToolCall &p_call) const;

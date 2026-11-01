@@ -22,6 +22,8 @@ ROOT = Path(__file__).resolve().parents[2]
 MODULE = ROOT / "modules/go_suite"
 
 REQUIRED_FILES = [
+    "go_git_lifecycle.cpp",
+    "go_git_lifecycle.h",
     "go_git_dock.cpp",
     "go_git_dock.h",
     "go_agentics_dock.cpp",
@@ -46,6 +48,8 @@ REQUIRED_FILES = [
 ]
 
 SCANNED_FILES = [
+    "go_git_lifecycle.cpp",
+    "go_git_lifecycle.h",
     "go_git_dock.cpp",
     "go_git_dock.h",
     "go_agentics_dock.cpp",

@@ -165,16 +165,16 @@ Variant json_to_variant(const go::JsonValue *p_value) {
 
 } // namespace
 
-void GoAgenticsToolBridge::record_add_node(EditorUndoRedoManager *p_undo, Node *p_parent, Node *p_child, Node *p_owner) {
-	p_undo->add_do_method(p_parent, "add_child", p_child, true);
-	p_undo->add_do_method(p_child, "set_owner", p_owner);
-	p_undo->add_undo_method(p_parent, "remove_child", p_child);
+void GoAgenticsToolBridge::record_add_node(UndoRedo *p_undo, Node *p_parent, Node *p_child, Node *p_owner) {
+	p_undo->add_do_method(Callable(p_parent, "add_child").bind(p_child, true));
+	p_undo->add_do_method(Callable(p_child, "set_owner").bind(p_owner));
+	p_undo->add_undo_method(Callable(p_parent, "remove_child").bind(p_child));
 	p_undo->add_do_reference(p_child);
 }
 
-void GoAgenticsToolBridge::record_rename_node(EditorUndoRedoManager *p_undo, Node *p_node, const String &p_name) {
-	p_undo->add_do_method(p_node, "set_name", p_name);
-	p_undo->add_undo_method(p_node, "set_name", p_node->get_name());
+void GoAgenticsToolBridge::record_rename_node(UndoRedo *p_undo, Node *p_node, const String &p_name) {
+	p_undo->add_do_method(Callable(p_node, "set_name").bind(p_name));
+	p_undo->add_undo_method(Callable(p_node, "set_name").bind(p_node->get_name()));
 }
 
 String GoAgenticsToolBridge::execute(const go::GoKiloToolCall &p_call) const {
@@ -502,7 +502,7 @@ String GoAgenticsToolBridge::execute(const go::GoKiloToolCall &p_call) const {
 			EditorUndoRedoManager *undo = EditorUndoRedoManager::get_singleton();
 			undo->create_action(TTR("Code Agentics: Add Node"), UndoRedo::MERGE_DISABLE, root);
 			undo->force_fixed_history();
-			record_add_node(undo, node, child, root);
+			record_add_node(undo->get_history_undo_redo(undo->get_history_id_for_object(root)), node, child, root);
 			undo->commit_action();
 			return to_godot(ok_json("added " + type + " at " + to_std(String(child->get_path()))));
 		}
@@ -523,7 +523,7 @@ String GoAgenticsToolBridge::execute(const go::GoKiloToolCall &p_call) const {
 			EditorUndoRedoManager *undo = EditorUndoRedoManager::get_singleton();
 			undo->create_action(TTR("Code Agentics: Rename Node"), UndoRedo::MERGE_DISABLE, root);
 			undo->force_fixed_history();
-			record_rename_node(undo, node, to_godot(name));
+			record_rename_node(undo->get_history_undo_redo(undo->get_history_id_for_object(root)), node, to_godot(name));
 			undo->commit_action();
 			return to_godot(ok_json("renamed node to " + name));
 		}

@@ -110,8 +110,8 @@ sibling-name collisions. Addition retains a do-reference; redo restores ownershi
 Both add and rename pin the action to the edited scene's history. Scene edits stay
 unsaved until the user saves normally. No source files are loaded or overwritten.
 
-Native CI tests now exercise the same operation-recording functions with a fixed
-isolated EditorUndoRedoManager history, including add/rename Undo/Redo and owner
-restoration. These do not simulate the whole dock or its modal interaction. UI
+Native CI tests exercise the shared operation-recording functions with a real
+core UndoRedo history, including add/rename Undo/Redo and owner restoration.
+The editor supplies its scene-specific core history through EditorUndoRedoManager. These do not simulate the whole dock or its modal interaction. UI
 acceptance and runtime results of the new tests are pending at this checkpoint.
 This is a restricted experimental agent, not the full PROMPT tool suite.

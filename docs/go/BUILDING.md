@@ -86,6 +86,7 @@ manual interaction, approval, Undo/Redo or cancellation-of-descendants acceptanc
 
 The scene-only agent adds a separate native test invocation:
 `--headless --test --test-case="[GO.][SceneUndo]*"`. It tests the shared operation
-recording methods against an isolated fixed editor history, without a live editor
-scene or a gateway request. Run this subset in its own process. Modal approval,
+recording methods against an isolated core UndoRedo history, without a live editor
+scene or a gateway request. EditorUndoRedoManager itself requires a live editor,
+log and debugger and is not instantiated in that standalone test. Run this subset in its own process. Modal approval,
 target changes during approval and visible editor Undo remain UI acceptance cases.
