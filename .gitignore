@@ -411,3 +411,6 @@ $RECYCLE.BIN/
 /modules/go_suite/go_suite_icons.gen.h.tmp
 # GO. dock icon header is checked in so editor-only builds need no code generator.
 !/modules/go_suite/go_suite_icons.gen.h
+
+# GO. generated native/export acceptance logs
+/go-validation/

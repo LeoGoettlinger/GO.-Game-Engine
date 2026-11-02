@@ -105,3 +105,33 @@ The fixtures create temporary local repositories/remotes, run real asynchronous
 controller phases and force the offline message fallback only in test builds.
 No gateway credentials or network repository are required. This suite does not
 replace visible editor/native-window input-lock or export/player acceptance.
+
+### Offline export and player validation
+
+After both custom export templates have been built, full CI now imports an isolated
+2D player fixture, runs it with the compiled editor, exports it with **both** custom
+debug/release templates, and runs each exported executable from a separate directory
+without the source project. The PCK is embedded. A success marker is required;
+exit code zero alone is insufficient, and engine error output fails the step.
+The template run also checks that editor-only `EditorPlugin` is unavailable.
+
+Example (Linux, from the checkout):
+
+```sh
+python misc/scripts/go_export_smoke.py --platform linux \
+  --editor bin/godot.linuxbsd.editor.x86_64 \
+  --debug-template bin/godot.linuxbsd.template_debug.x86_64 \
+  --release-template bin/godot.linuxbsd.template_release.x86_64 \
+  --output-dir go-validation/export
+```
+
+For Windows use `--platform windows` and the corresponding `godot.windows.*.exe`
+files. Each subprocess has a 180-second timeout and isolated user/config/cache
+folders. No AI call or network repository is involved. Native test logs, export
+logs and `result.json` are uploaded even on failure in the platform validation
+artifact. Packaging is blocked if export/player validation fails.
+
+The fixture is authored by the test, **not** by Code Agentics. This validates the
+engine/template layer only; it does not substitute for the required live-agent
+player workflow, screenshots, project-manager creation or packaged-release testing.
+The orchestration tests use mocks and must not be reported as real exports.

@@ -66,6 +66,9 @@ jobs:
           python misc/scripts/go_run_guardrails.py
           python misc/scripts/go_check_ui_guardrails.py
 
+      - name: Export smoke orchestration (no engine execution)
+        run: python misc/scripts/go_export_smoke_test.py
+
       - name: Upstream patch register check
         run: python misc/scripts/go_upstream_patch_check.py
 

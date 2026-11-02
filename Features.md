@@ -377,3 +377,12 @@ Anwendung geänderte Szenenhistorie oder ein ausgetauschtes Ziel wird abgelehnt.
 Der Modus bleibt experimentell; neue native Undo-Tests und die sichtbare Abnahme
 sind noch nicht als bestanden ausgewiesen. Datei-/Ressourcenwerkzeuge bleiben
 weiterhin eine getrennte offene Aufgabe.
+
+### Export- und Player-Prüfung in der vollständigen CI
+
+Die Windows-/Linux-Pipeline prüft jetzt zusätzlich beide selbst gebauten Export-
+Templates: Eine isolierte 2D-Testszene wird importiert, gestartet, als Debug und
+Release exportiert und anschließend ohne Zugriff auf das Quellprojekt ausgeführt.
+Fehler verhindern das Packaging; Prüfprotokolle bleiben als Artefakt erhalten.
+Die neue Laufzeitprüfung ist noch ausstehend. Die Testszene wird vom Test angelegt,
+nicht vom Agenten – die geforderte sichtbare Agent-/Player-Abnahme ist separat offen.

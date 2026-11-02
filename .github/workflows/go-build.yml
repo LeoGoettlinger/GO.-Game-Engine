@@ -244,6 +244,35 @@ jobs:
             module_mono_enabled=no production=yes tests=no ${{ matrix.extra_flags }} \
             cache_path="$SCONS_CACHE_PATH" cache_limit=2 -j${{ matrix.jobs }}
 
+      - name: Offline debug and release export/player test
+        shell: bash
+        run: |
+          if [ "${{ matrix.platform }}" = "linux" ]; then
+            PLATFORM=linuxbsd
+            SUFFIX=""
+          else
+            PLATFORM=windows
+            SUFFIX=.exe
+          fi
+          python misc/scripts/go_export_smoke.py \
+            --platform "${{ matrix.platform }}" \
+            --editor "bin/godot.$PLATFORM.editor.x86_64$SUFFIX" \
+            --debug-template "bin/godot.$PLATFORM.template_debug.x86_64$SUFFIX" \
+            --release-template "bin/godot.$PLATFORM.template_release.x86_64$SUFFIX" \
+            --output-dir go-validation/export
+
+      - name: Upload native and export validation logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: GO-validation-${{ matrix.platform }}-${{ github.run_id }}
+          path: |
+            go-*-tests.log
+            go-build-editor.log
+            go-version.txt
+            go-validation/
+          if-no-files-found: warn
+
       - name: Validate plugin manifest
         shell: bash
         run: python misc/scripts/go_validate_plugins.py

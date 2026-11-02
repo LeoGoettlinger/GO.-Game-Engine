@@ -288,3 +288,14 @@ scene-version/destination identity validation after approval. Native shared-oper
 regressions added; local standalone/schema and production/test syntax checks pass.
 Runtime/visual acceptance is pending. This does not complete the file/resource/run
 and full agent-tool acceptance requirements.
+
+### Export/player CI acceptance gate added
+
+Added a no-network player fixture with CharacterBody2D, Sprite2D and CollisionShape2D;
+full CI imports/runs it, exports using the actual custom debug and release templates,
+and runs the resulting embedded-PCK executables in source-free directories. Exit
+codes, engine errors, completion markers and editor-class exclusion are checked.
+Logs/results upload even on failure, and failed exports prevent release packaging.
+Local orchestration tests (three cases) and Python lint/type checks pass. Actual
+exports are pending the full builds. This is not evidence of AI scene creation,
+visual screenshots or packaged-release/project-manager E2E.
