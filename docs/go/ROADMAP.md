@@ -245,3 +245,13 @@ was missing in `tests/test_main.cpp`. GO. now sets its own consistent
 Local syntax CI now checks both production and test configurations rather than
 inventing an upstream macro only for test headers. Both configurations pass
 locally; the corrected full-build/runtime result remains pending.
+
+### Multi-window input ownership
+
+Automatic Commit now snapshots input state for every live Viewport (including
+native Window nodes and embedded SubViewports), subscribes to new nodes for the
+lock duration, and restores surviving objects by ObjectID. New native regression
+coverage includes pre-disabled, added and deleted viewports, plus disconnect on
+unlock. The editor quit guard remains in place. This is stronger than disabling
+only the root viewport, but visible native-window/shortcut acceptance is still
+pending; Automatic Commit is not enabled solely on this change.

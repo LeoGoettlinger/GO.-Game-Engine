@@ -240,20 +240,43 @@ bool GoAutoCommitController::_show_overlay() {
 	owns_job = true;
 	GoSuiteRegistry::set_git_job_busy(true);
 	GoSuiteRegistry::set_editor_input_locked(true);
-	if (SceneTree::get_singleton() != nullptr && SceneTree::get_singleton()->get_root() != nullptr) {
-		Window *root = SceneTree::get_singleton()->get_root();
-		previous_input_disabled = root->is_input_disabled();
-		root->set_disable_input(true);
-	}
+	SceneTree *tree = SceneTree::get_singleton();
+	tree->connect("node_added", callable_mp(this, &GoAutoCommitController::_lock_added_viewport));
+	_lock_viewport_tree(tree->get_root());
 	return true;
+}
+
+void GoAutoCommitController::_lock_added_viewport(Node *p_node) {
+	Viewport *viewport = Object::cast_to<Viewport>(p_node);
+	if (!owns_lock || viewport == nullptr || locked_viewports.has(viewport->get_instance_id())) {
+		return;
+	}
+	locked_viewports.insert(viewport->get_instance_id(), viewport->is_input_disabled());
+	viewport->set_disable_input(true);
+}
+
+void GoAutoCommitController::_lock_viewport_tree(Node *p_node) {
+	_lock_added_viewport(p_node);
+	for (int i = 0; i < p_node->get_child_count(true); ++i) {
+		_lock_viewport_tree(p_node->get_child(i, true));
+	}
 }
 
 void GoAutoCommitController::_hide_overlay() {
 	if (owns_lock) {
-		GoSuiteRegistry::set_editor_input_locked(false);
-		if (SceneTree::get_singleton() != nullptr && SceneTree::get_singleton()->get_root() != nullptr) {
-			SceneTree::get_singleton()->get_root()->set_disable_input(previous_input_disabled);
+		SceneTree *tree = SceneTree::get_singleton();
+		const Callable added = callable_mp(this, &GoAutoCommitController::_lock_added_viewport);
+		if (tree != nullptr && tree->is_connected("node_added", added)) {
+			tree->disconnect("node_added", added);
 		}
+		for (const KeyValue<ObjectID, bool> &entry : locked_viewports) {
+			Viewport *viewport = Object::cast_to<Viewport>(ObjectDB::get_instance(entry.key));
+			if (viewport != nullptr) {
+				viewport->set_disable_input(entry.value);
+			}
+		}
+		locked_viewports.clear();
+		GoSuiteRegistry::set_editor_input_locked(false);
 		owns_lock = false;
 	}
 	if (owns_job) {

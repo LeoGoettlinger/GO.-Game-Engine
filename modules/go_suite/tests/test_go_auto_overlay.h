@@ -41,6 +41,46 @@
 #include "tests/test_macros.h"
 
 struct GoAutoCommitControllerTest {
+	static void check_windows() {
+		Window *root = SceneTree::get_singleton()->get_root();
+		const bool original_input = root->is_input_disabled();
+		root->set_disable_input(false);
+		Window *existing = memnew(Window);
+		existing->hide();
+		root->add_child(existing);
+		SubViewport *disabled = memnew(SubViewport);
+		disabled->set_disable_input(true);
+		existing->add_child(disabled);
+		GoAutoCommitController *controller = memnew(GoAutoCommitController);
+		root->add_child(controller);
+		controller->running = true;
+		REQUIRE(controller->_show_overlay());
+		CHECK(existing->is_input_disabled());
+		CHECK(disabled->is_input_disabled());
+		Window *added = memnew(Window);
+		added->hide();
+		root->add_child(added);
+		CHECK(added->is_input_disabled());
+		SubViewport *deleted = memnew(SubViewport);
+		root->add_child(deleted);
+		CHECK(deleted->is_input_disabled());
+		memdelete(deleted); // Unlock must not dereference deleted viewports.
+		controller->_finish(false, "simulated failure across windows");
+		CHECK_FALSE(existing->is_input_disabled());
+		CHECK_FALSE(added->is_input_disabled());
+		CHECK(disabled->is_input_disabled());
+		CHECK_FALSE(root->is_input_disabled());
+		// The subscription is gone after unlock; future windows stay interactive.
+		SubViewport *later = memnew(SubViewport);
+		root->add_child(later);
+		CHECK_FALSE(later->is_input_disabled());
+		memdelete(later);
+		memdelete(added);
+		memdelete(existing);
+		memdelete(controller);
+		root->set_disable_input(original_input);
+	}
+
 	static void check_lifetime() {
 		Window *root = SceneTree::get_singleton()->get_root();
 		const bool original_input = root->is_input_disabled();
@@ -80,4 +120,8 @@ struct GoAutoCommitControllerTest {
 
 TEST_CASE("[GO.][AutoOverlay][Editor] Overlay relocation, failure and teardown restore input") {
 	GoAutoCommitControllerTest::check_lifetime();
+}
+
+TEST_CASE("[GO.][AutoOverlay][Editor] Existing, new and deleted window viewports preserve input state") {
+	GoAutoCommitControllerTest::check_windows();
 }

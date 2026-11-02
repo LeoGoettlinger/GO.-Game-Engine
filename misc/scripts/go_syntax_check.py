@@ -127,7 +127,9 @@ def main() -> int:
                 print(f"\n--- {source.relative_to(ROOT)} ---\n{output[-4000:]}", file=sys.stderr)
             return 1
 
-    print(f"OK: {len(sources)} GO. suite C++ files and {len(test_headers)} native test headers pass production/test syntax checks")
+    print(
+        f"OK: {len(sources)} GO. suite C++ files and {len(test_headers)} native test headers pass production/test syntax checks"
+    )
     return 0
 
 

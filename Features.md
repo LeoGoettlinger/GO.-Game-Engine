@@ -327,3 +327,12 @@ höchstens 16 Dateien pro Frame. Neue native Offline-Vollablauftests prüfen lok
 Commits, erfolgreiche/abgelehnte Pushes, LFS und die Lock-Freigabe. Deren
 Windows-/Linux-Laufzeitergebnisse und die sichtbare Editor-Lock-Abnahme stehen aus.
 Der vorherige Stand `6b09bc5d` hat inzwischen alle CI-Prüfungen bestanden.
+
+### Eingabesperre über mehrere Editor-Fenster
+
+Der Automatic-Commit-Controller sperrt jetzt sämtliche vorhandenen Viewports,
+auch abgetrennte Fenster und SubViewports. Während des Vorgangs neu hinzukommende
+Viewports werden ebenfalls gesperrt. Beim Entsperren wird je Objekt der vorherige
+Zustand wiederhergestellt; zwischenzeitlich gelöschte Fenster werden sicher
+übersprungen. Native Regressionstests dafür sind ergänzt; die sichtbare Abnahme
+im echten Mehrfenster-Editor steht weiterhin aus.

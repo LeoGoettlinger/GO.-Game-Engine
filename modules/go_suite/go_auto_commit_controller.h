@@ -37,6 +37,7 @@
 #include "go_git_controller.h"
 #include "go_git_process.h"
 
+#include "core/templates/hash_map.h"
 #include "scene/gui/control.h"
 
 #include <string>
@@ -73,7 +74,9 @@ class GoAutoCommitController : public Control {
 	bool running = false;
 	bool kilo_used = false;
 	bool kilo_fallback = false;
-	bool previous_input_disabled = false;
+	HashMap<ObjectID, bool> locked_viewports;
+	void _lock_added_viewport(Node *p_node);
+	void _lock_viewport_tree(Node *p_node);
 	bool owns_lock = false;
 	bool owns_job = false;
 	bool lfs_enabled = false;
