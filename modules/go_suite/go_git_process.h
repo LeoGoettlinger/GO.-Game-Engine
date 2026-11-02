@@ -58,6 +58,9 @@ public:
 	GoGitProcess() = default;
 	GoGitProcess(const GoGitProcess &) = delete;
 	GoGitProcess &operator=(const GoGitProcess &) = delete;
+	const std::string &get_stdout_bytes() const { return stdout_text; }
+	bool is_output_truncated() const { return truncated; }
+	int get_exit_code() const { return exit_code; }
 	bool has_process_error() const { return !failure.empty(); }
 	bool start(const go::GitCommand &p_command, uint64_t p_timeout_msec = 120000);
 	bool poll(); // true once finished (also true when idle).

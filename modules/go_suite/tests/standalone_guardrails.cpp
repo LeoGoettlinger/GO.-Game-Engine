@@ -563,6 +563,22 @@ void test_system_git() {
 	CHECK(parsed.merge_conflict);
 	CHECK_EQ(parsed.entries.size(), size_t(4));
 
+	std::string status_error;
+	const std::string nul(1, '\0');
+	const GitStatus nul_status = parse_status_porcelain_z("R  new \"name\".gd" + nul + "old\nname.gd" + nul + "?? other\nfile.gd" + nul, status_error);
+	CHECK(status_error.empty());
+	CHECK_EQ(nul_status.entries.size(), size_t(2));
+	CHECK_EQ(nul_status.entries.front().path, std::string("new \"name\".gd"));
+	CHECK_EQ(nul_status.entries.back().path, std::string("other\nfile.gd"));
+	CHECK(!parse_status_porcelain_z("M  incomplete", status_error).has_changes);
+	CHECK(!status_error.empty());
+	CHECK(!parse_status_porcelain_z("R  new" + nul, status_error).has_changes);
+	CHECK(!status_error.empty());
+	CHECK(!parse_status_porcelain_z("", status_error).has_changes);
+	CHECK(status_error.empty());
+	CHECK(!is_lfs_pointer_content("version https://git-lfs.github.com/spec/v1\noid sha256:abc\nsize 123\n"));
+	CHECK(!is_lfs_pointer_content("version https://git-lfs.github.com/spec/v1\n"));
+
 	int ahead = 0;
 	int behind = 0;
 	CHECK(parse_ahead_behind("3\t4", ahead, behind));
@@ -587,7 +603,7 @@ void test_system_git() {
 	CHECK(snapshot.total_bytes >= 2ULL * 1024 * 1024);
 	CHECK_EQ(snapshot.largest.size(), size_t(2));
 
-	CHECK(is_lfs_pointer_content("version https://git-lfs.github.com/spec/v1\noid sha256:abc\nsize 123\n"));
+	CHECK(is_lfs_pointer_content("version https://git-lfs.github.com/spec/v1\noid sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nsize 123\n"));
 	CHECK(!is_lfs_pointer_content("not a pointer"));
 
 	const std::vector<std::pair<std::string, uint64_t>> files = {

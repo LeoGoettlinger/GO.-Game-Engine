@@ -63,7 +63,7 @@ jobs:
         shell: bash
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential pkg-config libx11-dev libxcursor-dev \
+          sudo apt-get install -y git-lfs build-essential pkg-config libx11-dev libxcursor-dev \
             libxinerama-dev libgl1-mesa-dev libglu1-mesa-dev libasound2-dev libpulse-dev \
             libudev-dev libxi-dev libxrandr-dev libwayland-dev libxkbcommon-dev
 
@@ -175,6 +175,24 @@ jobs:
             exit "$status"
           fi
           grep -E "[1-9][0-9]* passed" go-auto-overlay-tests.log
+
+      - name: Automatic Commit offline transaction tests
+        shell: bash
+        run: |
+          if [ "${{ matrix.platform }}" = "linux" ]; then
+            EDITOR=bin/godot.linuxbsd.editor.x86_64
+          else
+            EDITOR=bin/godot.windows.editor.x86_64.exe
+          fi
+          set +e
+          "$EDITOR" --headless --test --test-case="[GO.][AutoFlow]*" 2>&1 | tee go-auto-flow-tests.log
+          status=${PIPESTATUS[0]}
+          set -e
+          if [ "$status" -ne 0 ]; then
+            python misc/scripts/go_annotate_build_log.py go-auto-flow-tests.log
+            exit "$status"
+          fi
+          grep -E "[1-9][0-9]* passed" go-auto-flow-tests.log
 
       - name: Build release template
         shell: bash

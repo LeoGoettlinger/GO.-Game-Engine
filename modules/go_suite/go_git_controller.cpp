@@ -383,6 +383,30 @@ bool GoGitController::save_lfs_policy(const go::LfsPolicy &p_policy, std::string
 	return true;
 }
 
+bool GoGitController::write_lfs_attributes(const std::vector<std::string> &p_patterns, const std::vector<std::string> &p_exclusions, std::string &r_error) const {
+	const String path = to_godot_string(full_path(project_path, ".gitattributes"));
+	Ref<DirAccess> directory = DirAccess::create(DirAccess::ACCESS_RESOURCES);
+	if (directory->is_link(path) || FileAccess::get_size(path) > 1024 * 1024) {
+		r_error = "Refusing symlinked or oversized .gitattributes";
+		return false;
+	}
+	std::string existing;
+	if (FileAccess::exists(path)) {
+		Ref<FileAccess> file = FileAccess::open(path, FileAccess::READ);
+		if (file.is_null()) {
+			r_error = "Could not read existing .gitattributes; refusing to overwrite";
+			return false;
+		}
+		existing = to_std_string(file->get_as_utf8_string());
+	}
+	const std::string merged = go::merge_gitattributes(existing, p_patterns, p_exclusions);
+	if (merged.size() > 1024 * 1024 || (merged != existing && !write_text_file(to_std_string(path), merged))) {
+		r_error = "Could not write managed LFS attributes";
+		return false;
+	}
+	return true;
+}
+
 bool GoGitController::ensure_lfs_attributes(std::string &r_error) const {
 	const std::string path = full_path(project_path, ".gitattributes");
 	const std::string existing = read_text_file(path);

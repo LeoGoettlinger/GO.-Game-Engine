@@ -321,6 +321,9 @@ Schlüssel und Binär-/Lockdateien konservativer. Status, Statistik und Diff hab
 harte Größenlimits. Das ersetzt keine Prüfung eines Projekts auf vertrauliche Daten.
 
 **Weiterhin gesperrt:** Der gesamte Automatic-Commit-Ablauf ist noch nicht
-abgenommen. Vorprüfung und Teile der LFS-Vorbereitung laufen noch synchron;
-Vollablauf, Push-Fehler und sichtbarer Editor-Lock müssen getestet werden.
+abgenommen. Auch Vorprüfung, LFS-Installation und Index-Pointerprüfung laufen
+jetzt über asynchrone Git-Prozesse; die Größenprüfung verteilt Dateimetadaten auf
+höchstens 16 Dateien pro Frame. Neue native Offline-Vollablauftests prüfen lokale
+Commits, erfolgreiche/abgelehnte Pushes, LFS und die Lock-Freigabe. Deren
+Windows-/Linux-Laufzeitergebnisse und die sichtbare Editor-Lock-Abnahme stehen aus.
 Der vorherige Stand `6b09bc5d` hat inzwischen alle CI-Prüfungen bestanden.

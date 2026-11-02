@@ -90,6 +90,7 @@ public:
 	go::LfsPolicy lfs_policy() const;
 	bool save_lfs_policy(const go::LfsPolicy &p_policy, std::string &r_error) const;
 	bool ensure_lfs_attributes(std::string &r_error) const;
+	bool write_lfs_attributes(const std::vector<std::string> &p_patterns, const std::vector<std::string> &p_exclusions, std::string &r_error) const;
 	bool verify_staged_lfs(std::string &r_error) const { return verify_staged_pointers(r_error); }
 	bool lfs_install_local(std::string &r_output, std::string &r_error) const;
 	bool lfs_install_global(std::string &r_output, std::string &r_error) const;

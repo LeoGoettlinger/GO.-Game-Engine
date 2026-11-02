@@ -141,6 +141,7 @@ GitCommand lfs_install_windows();
 
 // Output parsers.
 GitStatus parse_status_porcelain(const std::string &p_output);
+GitStatus parse_status_porcelain_z(const std::string &p_output, std::string &r_error);
 std::string parse_branch_name(const std::string &p_output);
 bool parse_ahead_behind(const std::string &p_output, int &r_ahead, int &r_behind);
 std::vector<GitLogEntry> parse_log(const std::string &p_output);

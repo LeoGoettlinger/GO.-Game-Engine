@@ -386,6 +386,40 @@ GitStatus parse_status_porcelain(const std::string &p_output) {
 	return result;
 }
 
+GitStatus parse_status_porcelain_z(const std::string &p_output, std::string &r_error) {
+	GitStatus result;
+	r_error.clear();
+	size_t offset = 0;
+	while (offset < p_output.size()) {
+		const size_t end = p_output.find('\0', offset);
+		if (end == std::string::npos || end - offset < 4 || p_output[offset + 2] != ' ') {
+			r_error = "Invalid or incomplete NUL-delimited Git status";
+			return GitStatus();
+		}
+		GitStatusEntry entry;
+		entry.index_status = p_output[offset];
+		entry.worktree_status = p_output[offset + 1];
+		entry.path = p_output.substr(offset + 3, end - offset - 3);
+		entry.staged = entry.index_status != ' ' && entry.index_status != '?';
+		entry.unstaged = entry.worktree_status != ' ' && entry.worktree_status != '?';
+		entry.untracked = entry.index_status == '?' && entry.worktree_status == '?';
+		entry.conflict = is_conflict_code(entry.index_status, entry.worktree_status);
+		result.merge_conflict = result.merge_conflict || entry.conflict;
+		result.entries.push_back(entry);
+		offset = end + 1;
+		if (entry.index_status == 'R' || entry.index_status == 'C' || entry.worktree_status == 'R' || entry.worktree_status == 'C') {
+			const size_t source_end = p_output.find('\0', offset);
+			if (source_end == std::string::npos || source_end == offset) {
+				r_error = "Incomplete Git rename source";
+				return GitStatus();
+			}
+			offset = source_end + 1;
+		}
+	}
+	result.has_changes = !result.entries.empty();
+	return result;
+}
+
 std::string parse_branch_name(const std::string &p_output) {
 	const std::vector<std::string> lines = split(p_output, '\n');
 	if (lines.empty()) {
@@ -541,7 +575,20 @@ bool parse_config_value(const std::string &p_output, std::string &r_value) {
 }
 
 bool is_lfs_pointer_content(const std::string &p_content) {
-	return is_lfs_pointer_prefix(p_content.substr(0, std::min<size_t>(p_content.size(), 128)));
+	// Commit verification requires a complete canonical pointer, not just its magic line.
+	const std::string prefix = "version https://git-lfs.github.com/spec/v1\noid sha256:";
+	if (p_content.compare(0, prefix.size(), prefix) != 0 || p_content.size() > 1024) {
+		return false;
+	}
+	const size_t hash_end = prefix.size() + 64;
+	if (p_content.size() <= hash_end || p_content.substr(prefix.size(), 64).find_first_not_of("0123456789abcdef") != std::string::npos || p_content.compare(hash_end, 6, "\nsize ") != 0) {
+		return false;
+	}
+	std::string size = p_content.substr(hash_end + 6);
+	if (!size.empty() && size.back() == '\n') {
+		size.pop_back();
+	}
+	return !size.empty() && size.size() <= 20 && (size.size() == 1 || size.front() != '0') && size.find_first_not_of("0123456789") == std::string::npos && (size.size() < 20 || size <= "18446744073709551615");
 }
 
 std::vector<std::string> lfs_patterns_for_files(

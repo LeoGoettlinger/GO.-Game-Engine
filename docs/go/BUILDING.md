@@ -96,3 +96,12 @@ The Automatic Commit overlay adds
 a mock scene tree/settings environment, not a full EditorNode. The test checks
 controller lifetime, owned root input state and teardown without Git/network calls.
 It does not prove native-subwindow input blocking or transaction correctness.
+
+### Automatic Commit offline native transaction tests
+
+With an editor built using `tests=yes`, run
+`--headless --test --test-case="[GO.][AutoFlow]*"`. Git and git-lfs must be on PATH.
+The fixtures create temporary local repositories/remotes, run real asynchronous
+controller phases and force the offline message fallback only in test builds.
+No gateway credentials or network repository are required. This suite does not
+replace visible editor/native-window input-lock or export/player acceptance.

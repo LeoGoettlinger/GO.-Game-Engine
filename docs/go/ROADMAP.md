@@ -216,3 +216,22 @@ compiled editor/CI, `[ ]` open. A user-facing feature comparison lives in
 - Remaining: end-to-end transaction and rejected-push/UI-unlock evidence, complete
   nonblocking preparation, safe activation and lifecycle integration of Automatic
   Commit, remaining agent file/resource tools and full export/player acceptance.
+
+## Automatic Commit asynchronous preparation checkpoint
+
+- Converted remaining Automatic Commit Git subprocesses: preflight, LFS install,
+  file discovery, cached attribute checks and staged blob verification. No synchronous
+  Git runner remains in that controller. Size-policy stat work is bounded to 16
+  files per frame; local file I/O is not claimed to be nonblocking.
+- Added raw NUL-delimited parsing, output/list/attribute bounds, strict complete
+  pointer validation, status recheck under the input lock and separate ownership
+  of the preflight job reservation. Fixed loss of the result message on dock refresh.
+- Added native offline transaction fixtures for no changes, local commit,
+  successful/rejected push, invalid pointers, real LFS and preflight teardown;
+  both platform workflows run them. Runtime results are pending.
+- Activation remains blocked on native transaction results and whole-editor/native
+  window input-lock acceptance. On-close integration, remaining safe agent tools,
+  chat persistence and release/export/player/screenshots remain unfinished.
+- Previous `182a9e6d`: quick/static green; full Windows/Linux build still running
+  at this checkpoint. Local guardrails, real-Git flow and 28 sources/5 native
+  headers pass syntax checks; these are not substitutes for the runtime fixtures.

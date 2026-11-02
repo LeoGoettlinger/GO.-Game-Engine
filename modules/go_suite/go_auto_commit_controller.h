@@ -51,6 +51,7 @@ class TextEdit;
 class GoAutoCommitController : public Control {
 	GDCLASS(GoAutoCommitController, Control);
 	friend struct GoAutoCommitControllerTest;
+	friend struct GoAutoCommitFlowTest;
 
 	static GoAutoCommitController *singleton;
 
@@ -74,9 +75,40 @@ class GoAutoCommitController : public Control {
 	bool kilo_fallback = false;
 	bool previous_input_disabled = false;
 	bool owns_lock = false;
+	bool owns_job = false;
+	bool lfs_enabled = false;
+	bool has_remote = false;
+	bool preparing_files = false;
+	go::AutoCommitPreflight preflight;
+	go::LfsPolicy lfs_policy;
+	std::vector<std::string> file_paths;
+	std::vector<std::string> lfs_patterns;
+	std::vector<std::string> lfs_exclusions;
+	size_t file_index = 0;
+	bool last_success = false;
+	String last_result;
+#ifdef TESTS_ENABLED
+	bool test_message_fallback = false;
+#endif
+	void _preflight_ready();
+	void _prepare_lfs_files();
+	void _write_rules_and_stage();
+	void _verify_next_pointer();
 	ObjectID overlay_id;
 	GoGitProcess git_process;
 	enum class GitPhase { NONE,
+		CHECK_STATUS,
+		CHECK_STATUS_LOCKED,
+		CHECK_NAME,
+		CHECK_EMAIL,
+		CHECK_REMOTE,
+		CHECK_LFS,
+		LFS_INSTALL,
+		LFS_FILES,
+		VERIFY_FILES,
+		VERIFY_ATTR,
+		VERIFY_SIZE,
+		VERIFY_POINTER,
 		STAT_WORKTREE,
 		STAT_INDEX,
 		TEXT_WORKTREE,

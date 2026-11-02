@@ -207,8 +207,8 @@ void GoGitDock::_on_auto_commit_pressed() {
 }
 
 void GoGitDock::_on_auto_commit_finished(bool p_success, const String &p_message) {
-	_append_output((p_success ? TTR("Success: ") : TTR("Error: ")) + p_message);
 	refresh_status();
+	_append_output((p_success ? TTR("Success: ") : TTR("Error: ")) + p_message);
 }
 
 void GoGitDock::_on_remote_pressed() {

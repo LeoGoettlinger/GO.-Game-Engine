@@ -255,7 +255,7 @@ TEST_CASE("[GO.][SystemGit] Safe argv commands and Git/LFS output parsers") {
 	CHECK_FALSE(snapshot.files[1].materialized);
 	CHECK(snapshot.total_bytes >= 2ULL * 1024 * 1024);
 
-	CHECK(go::is_lfs_pointer_content("version https://git-lfs.github.com/spec/v1\noid sha256:abc\nsize 123\n"));
+	CHECK(go::is_lfs_pointer_content("version https://git-lfs.github.com/spec/v1\noid sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nsize 123\n"));
 	CHECK_FALSE(go::is_lfs_pointer_content("not a pointer"));
 
 	const std::vector<std::pair<std::string, uint64_t>> files = {

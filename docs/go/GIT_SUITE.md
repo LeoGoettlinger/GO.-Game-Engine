@@ -208,8 +208,12 @@ branch lookup and push now use the nonblocking process runner. Both staged and
 unstaged changes contribute to the prompt. Timeout/nonzero exit/start failure
 terminate the transaction; a failed push explicitly reports that the commit remains
 local. No force-push, history rewrite, automatic pull or retry is introduced.
-Preflight snapshot, LFS rule preparation and pointer verification still have
-synchronous local paths. The button and agent callback therefore remain disabled.
+Preflight status/identity/origin/LFS queries, repository-local LFS installation,
+file discovery, cached attribute queries and staged pointer reads now also use
+asynchronous Git processes. Size-policy filesystem metadata is processed in batches
+of 16 files per frame; local configuration/attribute file I/O remains synchronous.
+The button and agent callback remain disabled pending native runtime and visual
+whole-editor-lock acceptance.
 
 The overlay is now a separate Control: only that Control moves to the editor root.
 Previously moving the running controller itself emitted EXIT_TREE, interrupting
@@ -238,3 +242,28 @@ sending any content to a model. Local Git staging is not a secret-file exclusion
 Pure regressions and local real-Git fixtures cover sensitive/renamed/quoted paths,
 context-header spoofing, multiline key material, lock/binary payloads and hard caps.
 No live gateway request was used to test this change.
+
+### Asynchronous preparation and offline transaction coverage
+
+Status and file lists use NUL-delimited raw process bytes, preserving spaces,
+newlines and renamed paths without C-string truncation. Truncated subprocess
+output is a hard error rather than evidence that only part of an index was checked.
+A job reservation covers preflight before the input lock is acquired; status is
+rechecked after acquiring the lock. External processes can still change a repository;
+this is not a filesystem transaction or rollback mechanism.
+
+LFS rules are prepared before add/renormalize. Verification reads **cached**
+attributes and each staged blob, not its working-tree counterpart. LFS blobs must
+be at most 1024 bytes and contain a complete canonical SHA-256 pointer with a
+valid decimal size. Unsupported pointer extensions fail closed. File lists above
+10,000 entries, oversized attributes (1 MiB), malformed output and unsupported
+size-policy filenames abort without committing. Failure may leave files staged
+or managed attributes changed; no automatic reset discards user work.
+
+`[GO.][AutoFlow][Editor]` tests use real local Git processes and a test-build-only
+message fallback: no AI gateway requests. They cover no-change preflight, local
+success, bare-remote success, rejected push with local commit retained, invalid
+staged LFS content, real git-lfs conversion and cancellation during preflight.
+They are wired into Windows/Linux full CI; adding these tests is not a claim that
+the new runtime suite has passed. Visible native-subwindow/shortcut locking and
+Automatic Commit on close remain outstanding.
