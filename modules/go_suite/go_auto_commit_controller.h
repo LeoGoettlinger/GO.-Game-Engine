@@ -35,6 +35,7 @@
 
 #include "go_auto_commit.h"
 #include "go_git_controller.h"
+#include "go_git_process.h"
 
 #include "scene/gui/control.h"
 
@@ -49,6 +50,7 @@ class TextEdit;
 
 class GoAutoCommitController : public Control {
 	GDCLASS(GoAutoCommitController, Control);
+	friend struct GoAutoCommitControllerTest;
 
 	static GoAutoCommitController *singleton;
 
@@ -71,9 +73,27 @@ class GoAutoCommitController : public Control {
 	bool kilo_used = false;
 	bool kilo_fallback = false;
 	bool previous_input_disabled = false;
+	bool owns_lock = false;
+	ObjectID overlay_id;
+	GoGitProcess git_process;
+	enum class GitPhase { NONE,
+		STAT_WORKTREE,
+		STAT_INDEX,
+		TEXT_WORKTREE,
+		TEXT_INDEX,
+		STAGE_ADD,
+		STAGE_RENORMALIZE,
+		COMMIT,
+		BRANCH,
+		PUSH };
+	GitPhase git_phase = GitPhase::NONE;
+	void _launch_git(GitPhase p_phase, const go::GitCommand &p_command);
+	void _git_finished();
+	Control *_overlay() const;
+	void _dispose_overlay();
 
 	void _build_ui();
-	void _show_overlay();
+	bool _show_overlay();
 	void _hide_overlay();
 	void _update_overlay();
 	void _append_details(const String &p_text);

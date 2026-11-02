@@ -26,6 +26,7 @@ MODULE = ROOT / "modules/go_suite"
 PROBE = ROOT / "misc/scripts/go_git_probe.cpp"
 SOURCES = [
     MODULE / "go_suite_core.cpp",
+    MODULE / "go_commit_message.cpp",
     MODULE / "go_git_remote.cpp",
     MODULE / "go_git_lfs.cpp",
     MODULE / "go_system_git.cpp",
@@ -116,6 +117,33 @@ def main() -> int:
         root = Path(tmp)
         executable = root / "go_git_probe"
         compile_probe(args.compiler, executable)
+
+        # Real Git path quoting and rename headers must not expose secret content.
+        privacy_repo = root / "privacy"
+        privacy_repo.mkdir()
+        git("init", cwd=privacy_repo)
+        git("config", "user.name", "GO Privacy Test", cwd=privacy_repo)
+        git("config", "user.email", "privacy@example.invalid", cwd=privacy_repo)
+        for name in (".env", "config with space.env", "yarn.lock", "player.gd"):
+            (privacy_repo / name).write_text("baseline\n", encoding="utf-8")
+        git("add", ".", cwd=privacy_repo)
+        git("commit", "-m", "test: privacy baseline", cwd=privacy_repo)
+        for name in (".env", "config with space.env", "yarn.lock"):
+            (privacy_repo / name).write_text("PRIVATE_PAYLOAD\n", encoding="utf-8")
+        (privacy_repo / "player.gd").write_text("extends Node\n", encoding="utf-8")
+        raw_diff = git("diff", "--no-ext-diff", "--no-textconv", "--src-prefix=a/", "--dst-prefix=b/", cwd=privacy_repo)
+        redacted = probe(executable, "redact-diff", stdin=raw_diff)
+        assert "PRIVATE_PAYLOAD" not in redacted
+        assert "extends Node" in redacted
+        git("add", ".", cwd=privacy_repo)
+        git("commit", "-m", "test: changed files", cwd=privacy_repo)
+        git("mv", ".env", "ordinary.txt", cwd=privacy_repo)
+        rename_diff = git("diff", "--cached", "--find-renames", cwd=privacy_repo)
+        assert "rename from .env" in rename_diff
+        assert "redacted sensitive file" in probe(executable, "redact-diff", stdin=rename_diff)
+        command = probe(executable, "cmd", str(privacy_repo), "diff-text")
+        assert "--no-ext-diff" in command and "--no-textconv" in command
+        assert "--src-prefix=a/" in command and "--dst-prefix=b/" in command
 
         # Exercise generated folder rules with Git's real attributes matcher.
         policy_repo = Path(tmp) / "policy"

@@ -195,7 +195,7 @@ void GoAgenticsDock::_advance_tools() {
 }
 
 void GoAgenticsDock::_on_tool_confirmed() {
-	if (!waiting_approval || !agent_loop_active || next_call >= pending_calls.size() || GoSuiteRegistry::is_quit_pending()) {
+	if (!waiting_approval || !agent_loop_active || next_call >= pending_calls.size() || (GoSuiteRegistry::is_quit_pending() || GoSuiteRegistry::is_editor_input_locked())) {
 		return;
 	}
 	waiting_approval = false;
@@ -243,7 +243,7 @@ void GoAgenticsDock::_discard_pending() {
 
 void GoAgenticsDock::_notification(int p_what) {
 	if (p_what == NOTIFICATION_PROCESS) {
-		if (GoSuiteRegistry::is_quit_pending()) {
+		if ((GoSuiteRegistry::is_quit_pending() || GoSuiteRegistry::is_editor_input_locked())) {
 			_on_stop_pressed();
 			return;
 		}
@@ -258,7 +258,7 @@ void GoAgenticsDock::_notification(int p_what) {
 }
 
 void GoAgenticsDock::_on_send_pressed() {
-	if (request_active || chat_input == nullptr || kilo_client == nullptr || GoSuiteRegistry::is_quit_pending()) {
+	if (request_active || chat_input == nullptr || kilo_client == nullptr || (GoSuiteRegistry::is_quit_pending() || GoSuiteRegistry::is_editor_input_locked())) {
 		return;
 	}
 	const String user_text = chat_input->get_text().strip_edges();
@@ -387,7 +387,7 @@ void GoAgenticsDock::_on_models_loaded(const PackedStringArray &p_model_ids) {
 }
 
 void GoAgenticsDock::_on_chat_completed(const String &p_content, const String &p_tool_calls_json, bool p_used_json_fallback) {
-	if (GoSuiteRegistry::is_quit_pending()) {
+	if ((GoSuiteRegistry::is_quit_pending() || GoSuiteRegistry::is_editor_input_locked())) {
 		_on_stop_pressed();
 		return;
 	}

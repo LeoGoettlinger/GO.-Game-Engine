@@ -200,3 +200,41 @@ plugins are not paused by this mechanism. Headless imports and tests skip remind
 Local pure tests cover clean/dirty/ahead/behind/LFS/failed-status reminder decisions.
 Source checks protect the upstream continuation hook. Visual reminder, save/discard,
 reload, Cancel and concurrent-operation acceptance still needs a real editor run.
+
+## Automatic Commit controller hardening (not enabled yet)
+
+The controller's working-tree/index diff reads, `git add`, renormalization, commit,
+branch lookup and push now use the nonblocking process runner. Both staged and
+unstaged changes contribute to the prompt. Timeout/nonzero exit/start failure
+terminate the transaction; a failed push explicitly reports that the commit remains
+local. No force-push, history rewrite, automatic pull or retry is introduced.
+Preflight snapshot, LFS rule preparation and pointer verification still have
+synchronous local paths. The button and agent callback therefore remain disabled.
+
+The overlay is now a separate Control: only that Control moves to the editor root.
+Previously moving the running controller itself emitted EXIT_TREE, interrupting
+its own operation. Input/job locks are released only by their owner, preserve the
+previous root input state, and are released on success, failure and teardown.
+The detached overlay is cleaned up by object ID. Scene tools are stopped while
+this lock is held. Native `[GO.][AutoOverlay][Editor]` tests have been added for
+relocation, simulated failure/success and destruction. They check the synthetic
+root-window input state, not all native subwindows, shortcuts or full transactions.
+Runtime CI evidence and visible whole-editor-lock acceptance remain pending.
+
+### Commit-message privacy
+
+Diff commands disable external diff programs and textconv, use explicit `a/` and
+`b/` prefixes and suppress submodule content. Prompt filtering evaluates both old
+and new paths, including renames. Sensitive names (including `key`, `token`, `.env`)
+are represented without contents. Quoted/escaped/ambiguous path syntax is omitted
+rather than guessed. Binary and lockfile payloads are omitted. A detected sensitive
+value marker drops the whole file block, including multiline continuations.
+Context lines cannot masquerade as a new diff header. The 12,000-byte diff cap
+includes redaction markers; status and stat sections have separate 2,000/3,000-byte
+caps. This is conservative heuristic filtering, not a guarantee of detecting an
+arbitrary secret hidden in an innocuous file. Review sensitive projects before
+sending any content to a model. Local Git staging is not a secret-file exclusion.
+
+Pure regressions and local real-Git fixtures cover sensitive/renamed/quoted paths,
+context-header spoofing, multiline key material, lock/binary payloads and hard caps.
+No live gateway request was used to test this change.

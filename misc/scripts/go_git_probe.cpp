@@ -34,6 +34,7 @@
 // Local-only probe for the pure Git/LFS command builder and parsers. It is
 // compiled by go_git_flow_test.py and never contacts a network service.
 
+#include "go_commit_message.h"
 #include "go_git_lfs.h"
 #include "go_git_remote.h"
 #include "go_suite_core.h"
@@ -108,6 +109,8 @@ int main(int argc, char **argv) {
 		go::GitCommand result;
 		if (operation == "status") {
 			result = go::status(project);
+		} else if (operation == "diff-text") {
+			result = go::diff_text(project, 12000);
 		} else if (operation == "diff-stat") {
 			result = go::diff_stat(project);
 		} else if (operation == "log") {
@@ -199,6 +202,11 @@ int main(int argc, char **argv) {
 			folders.push_back(argv[i]);
 		}
 		std::cout << go::merge_gitattributes(read_stdin(), go::lfs_folder_patterns(folders), go::lfs_folder_patterns(folders, true));
+		return 0;
+	}
+
+	if (mode == "redact-diff") {
+		std::cout << go::truncate_diff(read_stdin(), 12000);
 		return 0;
 	}
 

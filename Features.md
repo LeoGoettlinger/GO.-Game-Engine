@@ -308,3 +308,19 @@ Der Test setzte irrtümlich einen vollständig laufenden Editor voraus. Die geme
 Operationen werden nun auf einer echten Core-Undo-History getestet; zur Laufzeit
 bleiben sie an Godots Editor-History angebunden. Die Korrektur benötigt noch einen
 erneuten CI-Nachweis.
+
+### Automatic Commit: Controller weiter umgesetzt, noch nicht freigeschaltet
+
+Die wichtigsten Git-Schritte des Controllers laufen jetzt asynchron: Diffs lesen,
+Dateien stagen, neu normalisieren, committen und pushen. Ein Overlay-Lebenszyklusfehler
+wurde korrigiert; neue native Tests prüfen die Freigabe der Eingabe bei simuliertem
+Erfolg, Fehler und Abbau des Controllers.
+
+Der Commit-Prompt behandelt sensible Dateinamen, Umbenennungen, mehrzeilige
+Schlüssel und Binär-/Lockdateien konservativer. Status, Statistik und Diff haben
+harte Größenlimits. Das ersetzt keine Prüfung eines Projekts auf vertrauliche Daten.
+
+**Weiterhin gesperrt:** Der gesamte Automatic-Commit-Ablauf ist noch nicht
+abgenommen. Vorprüfung und Teile der LFS-Vorbereitung laufen noch synchron;
+Vollablauf, Push-Fehler und sichtbarer Editor-Lock müssen getestet werden.
+Der vorherige Stand `6b09bc5d` hat inzwischen alle CI-Prüfungen bestanden.

@@ -199,3 +199,20 @@ compiled editor/CI, `[ ]` open. A user-facing feature comparison lives in
   lifecycle button), remaining file/resource tools and async paths, persisted chat,
   whole-editor lock validation and full player/export E2E. This is not completion
   of the entire PROMPT.md.
+
+## Automatic Commit asynchronous phases and privacy checkpoint
+
+- `6b09bc5d`: full build `41330022968`, static checks `41330022891`, and quick
+  checks `41330022882` passed. This includes the corrected native core Undo test.
+- Converted the draft controller's diff reads (staged + unstaged), add/renormalize,
+  commit and push to nonblocking phases. Local preflight, LFS rule preparation
+  and pointer verification still need conversion; activation remains blocked.
+- Fixed self-interruption caused by reparenting the running controller. The overlay
+  now moves independently; owned input/job state is restored on exit paths.
+- Added native synthetic-root overlay ownership/failure/teardown tests to CI. The
+  new runtime results and real-editor/native-subwindow interaction remain pending.
+- Hardened prompt redaction and metadata/diff bounds; real Git fixtures and pure
+  tests pass locally, as do 28 source + 4 native test-header syntax checks.
+- Remaining: end-to-end transaction and rejected-push/UI-unlock evidence, complete
+  nonblocking preparation, safe activation and lifecycle integration of Automatic
+  Commit, remaining agent file/resource tools and full export/player acceptance.

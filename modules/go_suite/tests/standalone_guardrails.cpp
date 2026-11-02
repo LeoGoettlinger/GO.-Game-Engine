@@ -433,12 +433,34 @@ void test_commit_messages() {
 	CHECK(looks_like_secret_file("res://.env"));
 	CHECK(looks_like_secret_file("res://config/api_token.json"));
 	CHECK(!looks_like_secret_file("res://scripts/player.gd"));
-	const std::string diff = "diff --git a/.env b/.env\n+++ b/.env\n+API_KEY=secret\n diff --git a/player.gd b/player.gd\n+print('hello')\n";
+	const std::string diff = "diff --git a/.env b/.env\n+++ b/.env\n+API_KEY=secret\ndiff --git a/player.gd b/player.gd\n+print('hello')\n";
 	const std::string truncated = truncate_diff(diff, 10000, { ".env", "player.gd" });
 	CHECK(contains(truncated, "[GO. redacted sensitive file: .env]"));
 	CHECK(!contains(truncated, "API_KEY=secret"));
 	CHECK(contains(truncated, "print('hello')"));
 	CHECK(contains(build_commit_prompt("M player.gd", "1 file changed", diff), "Conventional Commits"));
+	CHECK(looks_like_secret_file("config/apiKey.json"));
+	for (const std::string &header : std::vector<std::string>{
+				 "diff --git a/.env b/normal.txt", "diff --git a/normal.txt b/.env",
+				 "diff --git \"a/hidden\\056env\" \"b/hidden\\056env\"",
+				 "diff --git a/space name b/space name", "diff --git malformed" }) {
+		CHECK(!contains(truncate_diff(header + "\n+PRIVATE_PAYLOAD\n", 12000), "PRIVATE_PAYLOAD"));
+	}
+	CHECK(!contains(truncate_diff("diff --git a/.env b/.env\n diff --git a/public.gd b/public.gd\n+PRIVATE_PAYLOAD\n", 12000), "PRIVATE_PAYLOAD"));
+	CHECK(!contains(truncate_diff("diff --git a/public.gd b/public.gd\n+api_key: \"PRIVATE_PAYLOAD\"\n+CONTINUATION_SECRET\n", 12000), "CONTINUATION_SECRET"));
+	CHECK(!contains(truncate_diff("diff --git a/public.gd b/public.gd\n+-----BEGIN PRIVATE KEY-----\n+PRIVATE_PAYLOAD\n", 12000), "PRIVATE_PAYLOAD"));
+	CHECK(!contains(truncate_diff("diff --git a/yarn.lock b/yarn.lock\n+LOCK_PAYLOAD\n", 12000), "LOCK_PAYLOAD"));
+	CHECK(!contains(truncate_diff("diff --git a/image.png b/image.png\nGIT binary patch\nBINARY_PAYLOAD\n", 12000), "BINARY_PAYLOAD"));
+	std::string many_secrets;
+	for (int i = 0; i < 1000; ++i) {
+		many_secrets += "diff --git a/.env b/.env\n+PRIVATE_PAYLOAD\n";
+	}
+	for (size_t limit : { size_t(0), size_t(1), size_t(20), size_t(512), size_t(12000) }) {
+		CHECK(truncate_diff(many_secrets, limit).size() <= limit);
+	}
+	const auto bounded_prompt = build_commit_prompt(std::string(100000, 'x'), std::string(100000, 'y'), many_secrets);
+	CHECK(bounded_prompt.size() < 18000);
+	CHECK(!contains(bounded_prompt, "PRIVATE_PAYLOAD"));
 }
 
 void test_auto_commit_state() {

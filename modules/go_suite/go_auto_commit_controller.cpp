@@ -121,32 +121,53 @@ void GoAutoCommitController::_bind_methods() {
 }
 
 void GoAutoCommitController::_notification(int p_what) {
+	if (p_what == NOTIFICATION_PROCESS && running && git_phase != GitPhase::NONE && git_process.poll()) {
+		_git_finished();
+	}
 	if (p_what == NOTIFICATION_EXIT_TREE || p_what == NOTIFICATION_PREDELETE) {
-		if (running) {
-			running = false;
-			state.fail("Automatic Commit was interrupted while the editor was closing.");
-			_hide_overlay();
+		running = false;
+		git_process.cancel();
+		if (kilo_client != nullptr) {
+			kilo_client->cancel_request();
 		}
+		state.fail("Automatic Commit was interrupted while the editor was closing.");
+		_hide_overlay();
+		_dispose_overlay();
 		if (singleton == this) {
 			singleton = nullptr;
 		}
 	}
 }
 
+Control *GoAutoCommitController::_overlay() const {
+	return Object::cast_to<Control>(ObjectDB::get_instance(overlay_id));
+}
+
+void GoAutoCommitController::_dispose_overlay() {
+	Control *overlay = _overlay();
+	if (overlay != nullptr && !overlay->is_queued_for_deletion()) {
+		overlay->queue_free();
+	}
+	overlay_id = ObjectID();
+}
+
 void GoAutoCommitController::_build_ui() {
-	set_anchors_and_offsets_preset(Control::PRESET_FULL_RECT);
-	set_mouse_filter(Control::MOUSE_FILTER_STOP);
-	set_focus_mode(Control::FOCUS_ALL);
+	Control *overlay = memnew(Control);
+	overlay_id = overlay->get_instance_id();
+	overlay->set_anchors_and_offsets_preset(Control::PRESET_FULL_RECT);
+	overlay->set_mouse_filter(Control::MOUSE_FILTER_STOP);
+	overlay->set_focus_mode(Control::FOCUS_ALL);
+	add_child(overlay);
 
 	shade = memnew(ColorRect);
 	shade->set_color(Color(0.015, 0.02, 0.035, 0.74));
 	shade->set_anchors_and_offsets_preset(Control::PRESET_FULL_RECT);
 	shade->set_mouse_filter(Control::MOUSE_FILTER_STOP);
-	add_child(shade);
+	overlay->add_child(shade);
 
 	CenterContainer *center = memnew(CenterContainer);
 	center->set_anchors_and_offsets_preset(Control::PRESET_FULL_RECT);
-	add_child(center);
+	overlay->add_child(center);
 
 	panel = memnew(PanelContainer);
 	panel->set_custom_minimum_size(Size2(620, 300) * EDSCALE);
@@ -184,41 +205,52 @@ void GoAutoCommitController::_build_ui() {
 	hide();
 }
 
-void GoAutoCommitController::_show_overlay() {
+bool GoAutoCommitController::_show_overlay() {
+	Control *overlay = _overlay();
+	if (overlay == nullptr || GoSuiteRegistry::is_editor_input_locked()) {
+		return false;
+	}
 	Node *parent = nullptr;
 	if (EditorNode::get_singleton() != nullptr && EditorNode::get_singleton()->get_gui_base() != nullptr) {
 		parent = EditorNode::get_singleton()->get_gui_base();
 	} else if (SceneTree::get_singleton() != nullptr) {
 		parent = SceneTree::get_singleton()->get_root();
 	}
-	if (parent == nullptr) {
-		return;
+	if (parent == nullptr || SceneTree::get_singleton() == nullptr || SceneTree::get_singleton()->get_root() == nullptr) {
+		return false;
 	}
-	if (get_parent() != parent) {
-		if (get_parent() != nullptr) {
-			get_parent()->remove_child(this);
-		}
-		parent->add_child(this);
+	// Reparent only the presentation, never the running controller. Moving the
+	// controller itself triggers EXIT_TREE and used to cancel its own operation.
+	if (overlay->get_parent() != parent) {
+		overlay->reparent(parent);
 	}
-	set_anchors_and_offsets_preset(Control::PRESET_FULL_RECT);
-	set_z_index(1000);
-	show();
-	grab_focus();
-
+	overlay->set_anchors_and_offsets_preset(Control::PRESET_FULL_RECT);
+	overlay->set_z_index(1000);
+	overlay->show();
+	overlay->grab_focus();
+	owns_lock = true;
+	GoSuiteRegistry::set_git_job_busy(true);
 	GoSuiteRegistry::set_editor_input_locked(true);
 	if (SceneTree::get_singleton() != nullptr && SceneTree::get_singleton()->get_root() != nullptr) {
 		Window *root = SceneTree::get_singleton()->get_root();
 		previous_input_disabled = root->is_input_disabled();
 		root->set_disable_input(true);
 	}
+	return true;
 }
 
 void GoAutoCommitController::_hide_overlay() {
-	GoSuiteRegistry::set_editor_input_locked(false);
-	if (SceneTree::get_singleton() != nullptr && SceneTree::get_singleton()->get_root() != nullptr) {
-		SceneTree::get_singleton()->get_root()->set_disable_input(previous_input_disabled);
+	if (owns_lock) {
+		GoSuiteRegistry::set_editor_input_locked(false);
+		GoSuiteRegistry::set_git_job_busy(false);
+		if (SceneTree::get_singleton() != nullptr && SceneTree::get_singleton()->get_root() != nullptr) {
+			SceneTree::get_singleton()->get_root()->set_disable_input(previous_input_disabled);
+		}
+		owns_lock = false;
 	}
-	hide();
+	if (Control *overlay = _overlay()) {
+		overlay->hide();
+	}
 }
 
 void GoAutoCommitController::_update_overlay() {
@@ -252,6 +284,10 @@ void GoAutoCommitController::_finish(bool p_success, const String &p_message) {
 		return;
 	}
 	running = false;
+	git_phase = GitPhase::NONE;
+	git_process.cancel();
+	kilo_client->cancel_request();
+	set_process(false);
 	if (state.is_active()) {
 		if (p_success) {
 			state.finish();
@@ -275,11 +311,11 @@ void GoAutoCommitController::_advance() {
 				state.advance();
 			} break;
 			case go::AutoCommitStage::READ_CHANGES: {
-				diff_stat = git_controller->diff_stat();
-				diff_text = git_controller->diff_text(12000);
-				_append_details(TTR("Diff stat read."));
-				state.advance();
-			} break;
+				diff_stat.clear();
+				diff_text.clear();
+				_launch_git(GitPhase::STAT_WORKTREE, go::diff_stat(git_controller->get_project_path()));
+				return;
+			}
 			case go::AutoCommitStage::GENERATE_MESSAGE: {
 				const std::string prompt = go::build_commit_prompt(status_text, diff_stat, diff_text);
 				const String system_prompt = TTR("You write git commit messages. Output only a Conventional Commit subject and optional short bullet body. Summarize what changed and why.");
@@ -288,40 +324,22 @@ void GoAutoCommitController::_advance() {
 				return;
 			}
 			case go::AutoCommitStage::STAGE_FILES: {
-				std::string output;
 				std::string error;
-				if (!git_controller->stage_all(error)) {
-					_append_details(TTR("Staging failed: ") + go_suite::to_godot_string(error));
-					_finish(false, TTR("Staging failed: ") + go_suite::to_godot_string(error));
+				if (!git_controller->ensure_lfs_attributes(error)) {
+					_finish(false, TTR("Preparing LFS rules failed: ") + go_suite::to_godot_string(error));
 					return;
 				}
-				_append_details(TTR("Files staged and LFS pointers verified."));
-				state.advance();
-			} break;
+				_launch_git(GitPhase::STAGE_ADD, go::add_all(git_controller->get_project_path()));
+				return;
+			}
 			case go::AutoCommitStage::CREATE_COMMIT: {
-				std::string output;
-				std::string error;
-				if (!git_controller->commit(commit_message, output, error)) {
-					_append_details(TTR("Commit failed: ") + go_suite::to_godot_string(error));
-					_finish(false, TTR("Commit failed: ") + go_suite::to_godot_string(error));
-					return;
-				}
-				command_output += output;
-				_append_details(go_suite::to_godot_string(output));
-				state.advance();
-			} break;
+				_launch_git(GitPhase::COMMIT, go::commit(git_controller->get_project_path(), commit_message));
+				return;
+			}
 			case go::AutoCommitStage::PUSH: {
-				std::string output;
-				std::string error;
-				if (!git_controller->push(true, output, error)) {
-					_append_details(TTR("Push failed: ") + go_suite::to_godot_string(error));
-					_finish(false, TTR("Commit created, push failed — please pull: ") + go_suite::to_godot_string(error));
-					return;
-				}
-				command_output += output;
-				_append_details(go_suite::to_godot_string(output));
-				state.advance();
-			} break;
+				_launch_git(GitPhase::BRANCH, go::branch_show_current(git_controller->get_project_path()));
+				return;
+			}
 			case go::AutoCommitStage::DONE:
 			case go::AutoCommitStage::FAILED: {
 				_finish(state.current_stage() == go::AutoCommitStage::DONE, state.current_stage() == go::AutoCommitStage::DONE ? TTR("Automatic Commit finished.") : TTR("Automatic Commit failed."));
@@ -348,6 +366,82 @@ void GoAutoCommitController::_advance() {
 		}
 		_finish(true, summary);
 	}
+}
+
+void GoAutoCommitController::_launch_git(GitPhase p_phase, const go::GitCommand &p_command) {
+	git_phase = p_phase;
+	_update_overlay();
+	if (!git_process.start(p_command)) {
+		_finish(false, TTR("Could not start Git: ") + git_process.get_output());
+		return;
+	}
+	set_process(true);
+}
+
+void GoAutoCommitController::_git_finished() {
+	if (!running || git_controller == nullptr) {
+		return;
+	}
+	const GitPhase completed = git_phase;
+	git_phase = GitPhase::NONE;
+	if (!git_process.succeeded()) {
+		const String prefix = state.current_stage() == go::AutoCommitStage::PUSH ? TTR("Commit exists locally, but push failed. Inspect the repository before retrying: ") : TTR("Git operation failed: ");
+		_finish(false, prefix + git_process.get_output());
+		return;
+	}
+	const std::string output = go_suite::to_std_string(git_process.get_stdout());
+	const std::string &project = git_controller->get_project_path();
+	if (completed == GitPhase::STAGE_ADD) {
+		_launch_git(GitPhase::STAGE_RENORMALIZE, go::git(project, { "add", "--renormalize", "--", "." }));
+		return;
+	}
+	if (completed == GitPhase::STAGE_RENORMALIZE) {
+		std::string error;
+		if (!git_controller->verify_staged_lfs(error)) {
+			_finish(false, TTR("LFS pointer verification failed: ") + go_suite::to_godot_string(error));
+			return;
+		}
+		_append_details(TTR("Files staged and LFS pointers verified."));
+		state.advance();
+		_update_overlay();
+		_advance();
+		return;
+	}
+	if (completed == GitPhase::STAT_WORKTREE || completed == GitPhase::STAT_INDEX) {
+		diff_stat += output.substr(0, 3000);
+		if (completed == GitPhase::STAT_WORKTREE) {
+			go::GitCommand command = go::diff_stat(project);
+			command.arguments.push_back("--cached");
+			_launch_git(GitPhase::STAT_INDEX, command);
+		} else {
+			_launch_git(GitPhase::TEXT_WORKTREE, go::diff_text(project, 12000));
+		}
+		return;
+	}
+	if (completed == GitPhase::TEXT_WORKTREE || completed == GitPhase::TEXT_INDEX) {
+		diff_text += go::truncate_diff(output, 12000 - diff_text.size());
+		if (completed == GitPhase::TEXT_WORKTREE) {
+			go::GitCommand command = go::diff_text(project, 12000);
+			command.arguments.push_back("--cached");
+			_launch_git(GitPhase::TEXT_INDEX, command);
+			return;
+		}
+		_append_details(TTR("Working-tree and staged diffs read with privacy filtering."));
+	} else if (completed == GitPhase::BRANCH) {
+		const std::string branch = go::parse_branch_name(output);
+		if (branch.empty()) {
+			_finish(false, TTR("Commit exists locally. Detached HEAD cannot be pushed automatically."));
+			return;
+		}
+		_launch_git(GitPhase::PUSH, go::push(project, "origin", branch, true));
+		return;
+	} else {
+		command_output += output;
+		_append_details(git_process.get_output());
+	}
+	state.advance();
+	_update_overlay();
+	_advance();
 }
 
 void GoAutoCommitController::_on_chat_completed(const String &p_content, const String &p_tool_calls_json, bool p_used_json_fallback) {
@@ -383,7 +477,7 @@ void GoAutoCommitController::_on_request_cancelled() {
 }
 
 bool GoAutoCommitController::start() {
-	if (running || git_controller == nullptr) {
+	if (!is_inside_tree() || running || git_controller == nullptr || GoSuiteRegistry::is_git_job_busy() || GoSuiteRegistry::is_quit_pending() || GoSuiteRegistry::is_editor_input_locked()) {
 		return false;
 	}
 	std::string error;
@@ -404,6 +498,10 @@ bool GoAutoCommitController::start() {
 				  << " ahead=" << snapshot.status.ahead
 				  << " behind=" << snapshot.status.behind
 				  << " files=" << snapshot.status.entries.size();
+	for (size_t i = 0; i < snapshot.status.entries.size() && i < 64; ++i) {
+		status_stream << "\n"
+					  << snapshot.status.entries[i].path.substr(0, 256);
+	}
 	status_text = status_stream.str();
 
 	state = go::AutoCommitStateMachine(go::make_auto_commit_plan(snapshot.remote.valid, false, !snapshot.suggested_lfs_patterns.empty()));
@@ -421,7 +519,10 @@ bool GoAutoCommitController::start() {
 		details->set_text("");
 	}
 	_append_details(TTR("Preflight passed. The editor is locked until this operation finishes."));
-	_show_overlay();
+	if (!_show_overlay()) {
+		_finish(false, TTR("Could not acquire the editor input lock."));
+		return false;
+	}
 	_update_overlay();
 	_advance();
 	return true;
@@ -442,6 +543,8 @@ GoAutoCommitController::GoAutoCommitController() {
 }
 
 GoAutoCommitController::~GoAutoCommitController() {
+	git_process.cancel();
+	_dispose_overlay();
 	if (running) {
 		running = false;
 		state.fail("Automatic Commit was interrupted.");

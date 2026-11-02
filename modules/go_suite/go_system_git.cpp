@@ -183,12 +183,12 @@ GitCommand status(const std::string &p_project) {
 }
 
 GitCommand diff_stat(const std::string &p_project) {
-	return git(p_project, { "diff", "--stat", "--no-ext-diff", "--no-color" });
+	return git(p_project, { "diff", "--stat", "--no-ext-diff", "--no-textconv", "--no-color", "--ignore-submodules=all" });
 }
 
 GitCommand diff_text(const std::string &p_project, size_t p_max_chars) {
 	(void)p_max_chars; // Truncation is applied to the captured output, not to the argv.
-	return git(p_project, { "diff", "--no-ext-diff", "--no-color", "--no-renames", "--unified=3" });
+	return git(p_project, { "diff", "--no-ext-diff", "--no-textconv", "--no-color", "--find-renames", "-l1000", "--src-prefix=a/", "--dst-prefix=b/", "--ignore-submodules=all", "--unified=3" });
 }
 
 GitCommand log(const std::string &p_project, int p_limit) {

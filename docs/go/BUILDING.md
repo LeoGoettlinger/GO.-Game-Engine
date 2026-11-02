@@ -90,3 +90,9 @@ recording methods against an isolated core UndoRedo history, without a live edit
 scene or a gateway request. EditorUndoRedoManager itself requires a live editor,
 log and debugger and is not instantiated in that standalone test. Run this subset in its own process. Modal approval,
 target changes during approval and visible editor Undo remain UI acceptance cases.
+
+The Automatic Commit overlay adds
+`--headless --test --test-case="[GO.][AutoOverlay]*"`. Its `[Editor]` fixture creates
+a mock scene tree/settings environment, not a full EditorNode. The test checks
+controller lifetime, owned root input state and teardown without Git/network calls.
+It does not prove native-subwindow input blocking or transaction correctness.
