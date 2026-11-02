@@ -144,3 +144,33 @@ non-destructive load failure and clear. Native `[GO.][ChatHistory][Editor]` fixt
 cover disk persistence across dock destruction/recreation, interrupted replacement
 recovery, malformed-file preservation and confirmed deletion without requests or
 tool replay. Native Windows/Linux runtime results and visual acceptance are pending.
+
+## Expanded scene operations
+
+The opt-in scene-only native loop now offers eight tools: `get_current_scene_tree`,
+`get_editor_selection`, `add_node`, `rename_node`, `remove_node`, `move_node`,
+`get_node_property`, and `set_node_property`. Other draft bridge tools remain
+unexposed. Writes still require confirmation unless Auto-Approve was explicitly
+selected; the shared 20-action budget also counts failures and denials.
+
+`move_node` accepts scene-relative `node_path`, required `parent_path`, and an
+optional nonnegative integer `index`. Reparenting preserves the **local** transform,
+rejects root moves/cycles/name collisions, and supports undo to the old parent and
+sibling index. `remove_node` retains the detached subtree through an undo reference;
+undo restores ownership recursively. Neither action calls `memdelete` on a live
+user node at execution time.
+
+New mutation paths reject scripted ancestors, inherited scene roots, foreign-owned
+or instanced subtrees and subtrees over 1,000 nodes. Destination nodes are checked
+again at execution. Property support is deliberately restricted to plain `Label`
+`text`, `tooltip_text`, `visible`, scalar `rotation_degrees` and integer `z_index`.
+No arbitrary property setter, script assignment, resource property, BBCode label
+text or implicit type coercion is enabled. Text is bounded to 8,000 characters,
+rotation to finite ±360,000 degrees and Z-index to integer ±4,096.
+
+Approval captures scene/target/destination identities and the scene undo version.
+Changing the scene or replacing the destination while approval is pending rejects
+the old action rather than applying it to a newly resolved target. Native tests
+exercise shared production undo operations for remove/reparent/property changes,
+subtree ownership, sibling position, reference lifetime and invalid values. Their
+new runtime and visual results remain pending; syntax checks are not that evidence.

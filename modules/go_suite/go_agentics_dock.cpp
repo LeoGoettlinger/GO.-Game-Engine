@@ -46,6 +46,7 @@
 #include "core/os/keyboard.h"
 #include "core/string/ustring.h"
 #include "editor/editor_interface.h"
+#include "editor/editor_undo_redo_manager.h"
 #include "editor/themes/editor_scale.h"
 #include "scene/gui/button.h"
 #include "scene/gui/check_button.h"
@@ -190,6 +191,15 @@ void GoAgenticsDock::_advance_tools() {
 		const auto *node_path = args.get("node_path");
 		Node *target = root != nullptr ? root->get_node_or_null(NodePath(go_suite::to_godot_string(node_path != nullptr ? node_path->as_string() : "."))) : nullptr;
 		approval_target = target != nullptr ? target->get_instance_id() : ObjectID();
+		EditorUndoRedoManager *undo = EditorUndoRedoManager::get_singleton();
+		if (root == nullptr || undo == nullptr) {
+			_record_tool_result("{\"ok\":false,\"error\":\"A scene with editor undo history is required\"}");
+			return;
+		}
+		approval_version = undo->get_history_undo_redo(undo->get_history_id_for_object(root))->get_version();
+		const auto *parent_path = args.get("parent_path");
+		Node *destination = parent_path != nullptr ? root->get_node_or_null(NodePath(go_suite::to_godot_string(parent_path->as_string()))) : nullptr;
+		approval_destination = destination != nullptr ? destination->get_instance_id() : ObjectID();
 		waiting_approval = true;
 		approval->set_text(TTR("Allow this scene change? It will be added to the editor undo history.") + "\n\n" + go_suite::to_godot_string(call.name + "\n" + call.arguments));
 		approval->popup_centered(Size2i(620, 300));
@@ -215,6 +225,19 @@ void GoAgenticsDock::_on_tool_confirmed() {
 	if (target == nullptr || target->get_instance_id() != approval_target) {
 		_record_tool_result("{\"ok\":false,\"error\":\"The target node changed while awaiting approval\"}");
 		return;
+	}
+	EditorUndoRedoManager *undo = EditorUndoRedoManager::get_singleton();
+	if (undo == nullptr || undo->get_history_undo_redo(undo->get_history_id_for_object(root))->get_version() != approval_version) {
+		_record_tool_result("{\"ok\":false,\"error\":\"The scene changed while awaiting approval; request a fresh action\"}");
+		return;
+	}
+	if (pending_calls[next_call].name == "move_node") {
+		const auto *parent_path = args.get("parent_path");
+		Node *destination = parent_path != nullptr ? root->get_node_or_null(NodePath(go_suite::to_godot_string(parent_path->as_string()))) : nullptr;
+		if (destination == nullptr || destination->get_instance_id() != approval_destination) {
+			_record_tool_result("{\"ok\":false,\"error\":\"The reparent destination changed while awaiting approval\"}");
+			return;
+		}
 	}
 	_record_tool_result(tool_bridge.execute(pending_calls[next_call]));
 }
@@ -598,7 +621,7 @@ GoAgenticsDock::GoAgenticsDock() {
 	top_row->add_child(auto_approve);
 	scene_tools = memnew(CheckButton);
 	scene_tools->set_text(TTR("Scene tools (experimental)"));
-	scene_tools->set_tooltip_text(TTR("Only scene inspection, basic node creation and renaming. Requires a refreshed model catalog with native tool support."));
+	scene_tools->set_tooltip_text(TTR("Scene inspection, basic node creation, removal, moving, renaming and restricted scalar properties. Changes use Undo/Redo. Requires verified native tool support."));
 	add_child(scene_tools);
 	approval = memnew(ConfirmationDialog);
 	approval->set_title(TTR("Code Agentics: Confirm Scene Change"));

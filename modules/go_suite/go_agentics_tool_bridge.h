@@ -36,6 +36,7 @@
 #include "go_kilo_models.h"
 
 #include "core/string/ustring.h"
+#include "core/variant/variant.h"
 
 #include <string>
 
@@ -47,6 +48,10 @@ public:
 	// Record operations into an already-open core history action. The editor
 	// supplies its scene-specific UndoRedo; tests use an isolated core history.
 	static void record_add_node(UndoRedo *p_undo, Node *p_parent, Node *p_child, Node *p_owner);
+	static void record_remove_node(UndoRedo *p_undo, Node *p_node);
+	static void record_move_node(UndoRedo *p_undo, Node *p_node, Node *p_parent, int p_index);
+	static void record_set_property(UndoRedo *p_undo, Node *p_node, const StringName &p_property, const Variant &p_value);
+	static std::string validate_scalar_property(Node *p_node, const StringName &p_property, const Variant &p_value, Variant &r_value);
 	static void record_rename_node(UndoRedo *p_undo, Node *p_node, const String &p_name);
 	// Executes one whitelisted tool call against the open project. All paths are
 	// validated by go_agentics_path before any Godot file/editor API is touched.

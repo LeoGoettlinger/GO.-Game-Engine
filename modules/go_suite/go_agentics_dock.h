@@ -88,6 +88,8 @@ class GoAgenticsDock : public VBoxContainer {
 	bool native_tools_requested = false;
 	ObjectID approval_scene;
 	ObjectID approval_target;
+	ObjectID approval_destination;
+	uint64_t approval_version = 0;
 	void _advance_tools();
 	void _record_tool_result(const String &p_result);
 	void _on_tool_confirmed();

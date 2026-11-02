@@ -361,3 +361,19 @@ der Editor offen; Abbrechen, Git Suite öffnen und ausdrücklich trotzdem schlie
 bleiben möglich. Ein bereits laufender Git-Vorgang wird nicht zum Schließen beendet.
 Die neue Aktion bleibt mit Automatic Commit zusammen gesperrt, bis die nativen
 Vollablauf- und sichtbaren Editor-Tests bestanden sind.
+
+### Code Agentics: weitere Szenenaktionen mit Undo/Redo
+
+Der ausdrücklich aktivierbare Szenenmodus bietet jetzt acht Werkzeuge statt vier:
+Baum/Selektion lesen, Nodes hinzufügen, umbenennen, entfernen und verschieben sowie
+freigegebene Eigenschaften lesen/ändern. Entfernen erhält die Node-Objekte für Undo;
+Ownership und ursprüngliche Reihenfolge werden wiederhergestellt. Verschieben
+bewahrt den lokalen Transform und verhindert Zyklen und Namenskollisionen.
+
+Eigenschaftsänderungen sind zunächst auf Klartext-Labeltext, Tooltiptext,
+Sichtbarkeit, skalare Rotation und Z-Index begrenzt. Typen, Wertebereiche und
+Skript-/Instanzgrenzen werden geprüft. Eine zwischen Bestätigungsdialog und
+Anwendung geänderte Szenenhistorie oder ein ausgetauschtes Ziel wird abgelehnt.
+Der Modus bleibt experimentell; neue native Undo-Tests und die sichtbare Abnahme
+sind noch nicht als bestanden ausgewiesen. Datei-/Ressourcenwerkzeuge bleiben
+weiterhin eine getrennte offene Aufgabe.

@@ -277,3 +277,14 @@ are added for success/failure/cancel/explicit close and duplicate callbacks.
 The shared availability gate remains off until runtime and visual acceptance;
 this checkpoint removes the missing integration implementation, not its acceptance
 blocker. Local production/test syntax covers 29 sources and seven native headers.
+
+### Scene undo/approval expansion
+
+Expanded the opt-in native scene loop from four to eight tools with undoable
+remove, move and restricted scalar property operations. Removed the destructive
+live-node deletion path for remove. Added recursive owner restoration, destination
+and cycle checks, strict integer index schemas, property type/range guards, and
+scene-version/destination identity validation after approval. Native shared-operation
+regressions added; local standalone/schema and production/test syntax checks pass.
+Runtime/visual acceptance is pending. This does not complete the file/resource/run
+and full agent-tool acceptance requirements.

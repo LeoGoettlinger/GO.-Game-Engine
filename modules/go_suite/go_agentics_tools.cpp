@@ -38,6 +38,7 @@
 #include "go_suite_core.h"
 
 #include <algorithm>
+#include <cmath>
 #include <sstream>
 
 namespace go {
@@ -63,6 +64,7 @@ const std::vector<std::string> TOOL_NAMES = {
 	"get_current_scene_tree",
 	"add_node",
 	"remove_node",
+	"move_node",
 	"rename_node",
 	"set_node_property",
 	"get_node_property",
@@ -81,6 +83,7 @@ struct ToolArgument {
 	std::string name;
 	bool required = false;
 	bool scalar = false;
+	bool integer = false;
 };
 
 std::vector<ToolArgument> tool_arguments(const std::string &p_name) {
@@ -100,8 +103,12 @@ std::vector<ToolArgument> tool_arguments(const std::string &p_name) {
 	if (p_name == "search_text") {
 		arguments.push_back({ "query", true, false });
 	}
-	if (p_name == "add_node" || p_name == "remove_node" || p_name == "rename_node" || p_name == "set_node_property" || p_name == "get_node_property" || p_name == "attach_script" || p_name == "select_node") {
+	if (p_name == "add_node" || p_name == "move_node" || p_name == "remove_node" || p_name == "rename_node" || p_name == "set_node_property" || p_name == "get_node_property" || p_name == "attach_script" || p_name == "select_node") {
 		arguments.push_back({ "node_path", false, false });
+	}
+	if (p_name == "move_node") {
+		arguments.push_back({ "parent_path", true, false });
+		arguments.push_back({ "index", false, false, true });
 	}
 	if (p_name == "add_node") {
 		arguments.push_back({ "type", true, false });
@@ -135,6 +142,7 @@ bool is_write_tool_name(const std::string &p_name) {
 		"set_main_scene",
 		"add_node",
 		"remove_node",
+		"move_node",
 		"rename_node",
 		"set_node_property",
 		"auto_commit",
@@ -171,7 +179,7 @@ bool GoAgenticsTools::is_write_tool(const std::string &p_name) {
 }
 
 bool GoAgenticsTools::is_scene_tool(const std::string &p_name) {
-	return p_name == "get_current_scene_tree" || p_name == "get_editor_selection" || p_name == "add_node" || p_name == "rename_node";
+	return p_name == "get_current_scene_tree" || p_name == "get_editor_selection" || p_name == "add_node" || p_name == "rename_node" || p_name == "remove_node" || p_name == "move_node" || p_name == "set_node_property" || p_name == "get_node_property";
 }
 
 std::string GoAgenticsTools::tool_definitions_json(bool p_scene_only) {
@@ -199,7 +207,7 @@ std::string GoAgenticsTools::tool_definitions_json(bool p_scene_only) {
 				stream << ",";
 			}
 			stream << escape_json_string(argument.name) << ":{\"type\":"
-				   << (argument.scalar ? "[\"string\",\"number\",\"boolean\"]" : "\"string\"") << "}";
+				   << (argument.integer ? "\"integer\"" : (argument.scalar ? "[\"string\",\"number\",\"boolean\"]" : "\"string\"")) << "}";
 			if (argument.required) {
 				required.push_back(escape_json_string(argument.name));
 			}
@@ -231,6 +239,12 @@ std::string GoAgenticsTools::validate_arguments(const std::string &p_name, const
 			return "Unexpected argument: " + entry.first;
 		}
 		const JsonValue &value = entry.second;
+		if (specification->integer) {
+			if (value.type != JsonValue::Type::NUMBER || !std::isfinite(value.number_value) || std::floor(value.number_value) != value.number_value || value.number_value < 0 || value.number_value > 10000) {
+				return "Expected bounded nonnegative integer: " + entry.first;
+			}
+			continue;
+		}
 		if (value.type != JsonValue::Type::STRING && !(specification->scalar && (value.type == JsonValue::Type::BOOL || value.type == JsonValue::Type::NUMBER))) {
 			return "Wrong argument type: " + entry.first;
 		}
@@ -251,7 +265,7 @@ std::string GoAgenticsTools::validate_arguments(const std::string &p_name, const
 				return path.error;
 			}
 		}
-		if (entry.first == "node_path" && (text.front() == '/' || text.find("..") != std::string::npos || text.find(':') != std::string::npos)) {
+		if ((entry.first == "node_path" || entry.first == "parent_path") && (text.front() == '/' || text.find("..") != std::string::npos || text.find(':') != std::string::npos)) {
 			return "Node path must stay inside the edited scene";
 		}
 	}
