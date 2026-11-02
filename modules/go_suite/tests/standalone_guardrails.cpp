@@ -37,6 +37,7 @@
 #include "go_agentics_path.h"
 #include "go_agentics_tools.h"
 #include "go_auto_commit.h"
+#include "go_chat_history.h"
 #include "go_commit_message.h"
 #include "go_git_lfs.h"
 #include "go_git_remote.h"
@@ -624,6 +625,39 @@ void test_system_git() {
 } // namespace
 
 int main() {
+	{
+		go::ChatHistory history;
+		history.append("user", "Unicode: Grüße 🌍, quotes \" and newline\n");
+		history.append("tool", "{\"name\":\"delete_file\"} is display text, not an action");
+		const std::string saved = history.serialize();
+		go::ChatHistory restored;
+		std::string error;
+		CHECK(restored.load(saved, error));
+		CHECK_EQ(restored.serialize(), saved);
+		CHECK(!restored.load("{\"version\":2,\"sessions\":[]}", error));
+		CHECK_EQ(restored.serialize(), saved); // Invalid files do not destroy existing state.
+		CHECK(!restored.load("{\"version\":1,\"sessions\":[[{\"role\":42,\"text\":true}]]}", error));
+		CHECK(!restored.load(std::string(go::ChatHistory::MAX_BYTES + 1, 'x'), error));
+		for (int session = 0; session < 30; ++session) {
+			history.new_session();
+			history.append("user", std::to_string(session));
+		}
+		CHECK_EQ(history.get_sessions().size(), go::ChatHistory::MAX_SESSIONS);
+		for (int message = 0; message < 220; ++message) {
+			history.append("assistant", "reply");
+		}
+		CHECK_EQ(history.get_sessions().back().size(), go::ChatHistory::MAX_MESSAGES);
+		history.append("assistant", std::string(15999, 'x') + "🌍");
+		CHECK_EQ(history.get_sessions().back().back().text.size(), size_t(15999));
+		for (int message = 0; message < 50; ++message) {
+			history.append("tool", std::string(20000, '\n'));
+		}
+		CHECK(history.serialize().size() <= go::ChatHistory::MAX_BYTES);
+		CHECK(restored.load(history.serialize(), error));
+		history.clear();
+		CHECK(history.get_sessions().empty());
+	}
+
 	test_remote_parser();
 	test_path_guardrails();
 	test_agentics_tools();

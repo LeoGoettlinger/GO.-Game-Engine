@@ -336,3 +336,18 @@ Viewports werden ebenfalls gesperrt. Beim Entsperren wird je Objekt der vorherig
 Zustand wiederhergestellt; zwischenzeitlich gelöschte Fenster werden sicher
 übersprungen. Native Regressionstests dafür sind ergänzt; die sichtbare Abnahme
 im echten Mehrfenster-Editor steht weiterhin aus.
+
+### Code Agentics: projektlokaler Chat-Verlauf
+
+Konversationen werden jetzt in `.godot/editor/go_chat_history.json` gespeichert.
+**History** öffnet ein schreibgeschütztes Archiv; **Clear History** löscht es nach
+Bestätigung einschließlich temporärer Dateien und Sicherung. Beim Neustart werden
+keine alten Tool-Aktionen ausgeführt und keine Nachrichten automatisch versendet.
+
+Der Verlauf ist nicht verschlüsselt. Grenzen: 20 Konversationen, 200 Einträge je
+Konversation, 16.000 Bytes je Eintrag und insgesamt 512 KiB. Älteste Einträge werden
+bei Erreichen der Grenzen entfernt. Beschädigte Dateien werden nicht still
+überschrieben, Symlink-Pfade werden abgelehnt. Eine unterbrochene Ersetzung kann
+beim nächsten Öffnen aus der vorherigen Sicherung wiederhergestellt werden.
+Pure Tests für Format, Grenzen und Unicode bestehen lokal; native Speicher- und
+Neustarttests sind für beide Plattformen in CI ergänzt (Laufzeitergebnis ausstehend).

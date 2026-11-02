@@ -255,3 +255,14 @@ coverage includes pre-disabled, added and deleted viewports, plus disconnect on
 unlock. The editor quit guard remains in place. This is stronger than disabling
 only the root viewport, but visible native-window/shortcut acceptance is still
 pending; Automatic Commit is not enabled solely on this change.
+
+### Project-local chat history implemented
+
+Added a bounded, versioned, display-only archive in `.godot/editor`, read-only
+History dialog and confirmed Clear History. Old actions/requests are never replayed
+or sent on load. Storage refuses symlink components, preserves malformed files,
+and uses a recoverable previous backup for interrupted replacement. Pure format,
+Unicode/retention/error tests pass locally; native restart/recovery/clear fixtures
+are wired into both full-build jobs, with runtime results pending. This closes the
+missing persistence implementation, not the remaining agent tool/visual acceptance
+work. Production and test syntax now cover 29 module sources and six native headers.

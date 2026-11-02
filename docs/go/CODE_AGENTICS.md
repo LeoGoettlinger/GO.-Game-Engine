@@ -115,3 +115,32 @@ core UndoRedo history, including add/rename Undo/Redo and owner restoration.
 The editor supplies its scene-specific core history through EditorUndoRedoManager. These do not simulate the whole dock or its modal interaction. UI
 acceptance and runtime results of the new tests are pending at this checkpoint.
 This is a restricted experimental agent, not the full PROMPT tool suite.
+
+## Local display-only chat archive
+
+Messages displayed by the dock are now saved under
+`.godot/editor/go_chat_history.json`. This is project-local editor cache, not a
+provider setting or an export resource. It is plaintext: prompts, replies and tool
+results may contain private project information. The History tooltip discloses the
+storage location, lack of encryption and retention bounds.
+
+History opens a separate read-only view; it never supplies archived messages to
+Kilo, restores an approval, replays a tool or resumes a previous agent job. A new
+editor session starts a fresh conversation. Clear History asks for confirmation
+and removes the archive, temporary file and recovery backup. The live conversation
+remains in RAM until New Conversation; later messages are saved again.
+
+Retention limits: 20 conversations, 200 messages per conversation, 16,000 UTF-8
+bytes per message, 80 bytes per display role and 512 KiB for the encoded archive.
+Truncation preserves UTF-8 character boundaries; oldest messages/sessions are
+removed as required. Invalid/oversized/version-incompatible archives are preserved
+and writing disabled until explicitly cleared. Symbolic links in storage components,
+temporary and backup files are refused (not a guarantee against concurrent external
+filesystem replacement). Saves use a temporary file plus a recoverable previous
+backup; no cross-platform atomic-rename guarantee is claimed.
+
+Local standalone tests cover round-trip, Unicode, bounds, invalid schema/version,
+non-destructive load failure and clear. Native `[GO.][ChatHistory][Editor]` fixtures
+cover disk persistence across dock destruction/recreation, interrupted replacement
+recovery, malformed-file preservation and confirmed deletion without requests or
+tool replay. Native Windows/Linux runtime results and visual acceptance are pending.

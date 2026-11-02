@@ -40,6 +40,8 @@
 #include "go_system_git_runner.h"
 
 #include "core/config/project_settings.h"
+#include "core/io/dir_access.h"
+#include "core/io/file_access.h"
 #include "core/object/callable_mp.h"
 #include "core/os/keyboard.h"
 #include "core/string/ustring.h"
@@ -63,6 +65,8 @@ void GoAgenticsDock::_append_message(const String &p_role, const String &p_text)
 	if (chat_display == nullptr) {
 		return;
 	}
+	history.append(go_suite::to_std_string(p_role), go_suite::to_std_string(p_text));
+	_save_history();
 	chat_display->add_text("[" + p_role + "] " + p_text);
 	chat_display->add_newline();
 }
@@ -309,20 +313,138 @@ void GoAgenticsDock::_on_new_conversation_pressed() {
 	agent_loop_active = false;
 	agent_loop_steps = 0;
 	_update_busy_state();
+	history.new_session();
 	_append_message(TTR("System"), TTR("New conversation."));
 }
 
+bool GoAgenticsDock::_history_path(String &r_path) const {
+	Ref<DirAccess> access = DirAccess::create(DirAccess::ACCESS_RESOURCES);
+	String path = "res://";
+	for (const String &part : String(".godot/editor/go_chat_history.json").split("/")) {
+		path = path.path_join(part);
+		if (access->is_link(path)) {
+			return false;
+		}
+	}
+	r_path = path;
+	return !access->is_link(path + ".tmp") && !access->is_link(path + ".bak");
+}
+
+void GoAgenticsDock::_load_history() {
+	String path;
+	if (!_history_path(path)) {
+		history_writable = false;
+		history_error = TTR("History is not saved: a symbolic link was found in its storage path.");
+		return;
+	}
+	if (!FileAccess::exists(path) && FileAccess::exists(path + ".bak")) {
+		if (DirAccess::rename_absolute(path + ".bak", path) != OK) {
+			history_writable = false;
+			history_error = TTR("Could not recover the previous history file.");
+			return;
+		}
+	}
+	if (!FileAccess::exists(path)) {
+		return;
+	}
+	Ref<FileAccess> file = FileAccess::open(path, FileAccess::READ);
+	std::string error;
+	if (file.is_null() || file->get_length() > go::ChatHistory::MAX_BYTES || !history.load(go_suite::to_std_string(file->get_as_utf8_string()), error)) {
+		history_writable = false;
+		history_error = TTR("Saved history could not be read. It has not been overwritten; use Clear History to reset it.");
+	}
+}
+
+bool GoAgenticsDock::_save_history() {
+	String path;
+	if (!history_writable) {
+		return false;
+	}
+	if (!_history_path(path)) {
+		history_error = TTR("History is not saved: its storage path contains a symbolic link.");
+		return false;
+	}
+	if (DirAccess::make_dir_recursive_absolute(path.get_base_dir()) != OK) {
+		history_error = TTR("Could not create the local history directory.");
+		return false;
+	}
+	Ref<FileAccess> file = FileAccess::open(path + ".tmp", FileAccess::WRITE);
+	if (file.is_null()) {
+		history_error = TTR("Could not write local history.");
+		return false;
+	}
+	file->store_string(go_suite::to_godot_string(history.serialize()));
+	file->flush();
+	const Error error = file->get_error();
+	file.unref();
+	if (error != OK) {
+		history_error = TTR("Could not finish writing local history.");
+		return false;
+	}
+	// Windows DirAccess removes an existing destination before rename. Keep a
+	// recoverable previous file rather than claiming cross-platform atomicity.
+	const bool previous = FileAccess::exists(path);
+	if (previous && DirAccess::rename_absolute(path, path + ".bak") != OK) {
+		history_error = TTR("Could not preserve the previous history file.");
+		return false;
+	}
+	if (DirAccess::rename_absolute(path + ".tmp", path) != OK) {
+		if (previous) {
+			DirAccess::rename_absolute(path + ".bak", path);
+		}
+		history_writable = false;
+		history_error = TTR("History replacement failed. The previous history or its .bak file was retained; reopen the editor to recover it.");
+		return false;
+	}
+	if (FileAccess::exists(path + ".bak")) {
+		DirAccess::remove_absolute(path + ".bak");
+	}
+	history_error = String();
+	return true;
+}
+
 void GoAgenticsDock::_on_history_pressed() {
-	if (chat_display == nullptr) {
+	String text = TTR("Local display-only archive. Viewing it never sends a request or replays an action.") + "\n";
+	if (!history_error.is_empty()) {
+		text += history_error + "\n";
+	}
+	int session_number = 0;
+	for (const auto &session : history.get_sessions()) {
+		text += "\n" + vformat(TTR("Conversation %d"), ++session_number) + "\n";
+		for (const auto &entry : session) {
+			text += "[" + go_suite::to_godot_string(entry.role) + "] " + go_suite::to_godot_string(entry.text) + "\n";
+		}
+	}
+	history_display->set_text(text);
+	history_dialog->popup_centered(Size2i(760, 520));
+}
+
+void GoAgenticsDock::_on_clear_history_pressed() {
+	clear_history_dialog->popup_centered();
+}
+
+void GoAgenticsDock::_clear_history() {
+	String path;
+	if (!_history_path(path)) {
+		history_error = TTR("Refusing to delete history through a symbolic link.");
+		_on_history_pressed();
 		return;
 	}
-	if (conversation_roles.is_empty()) {
-		_append_message(TTR("System"), TTR("This conversation has no stored messages yet."));
-		return;
+	for (const String &target : { path, path + ".tmp", path + ".bak" }) {
+		if (FileAccess::exists(target) && DirAccess::remove_absolute(target) != OK) {
+			history_error = TTR("Could not delete local history.");
+			_on_history_pressed();
+			return;
+		}
 	}
-	for (int i = 0; i < conversation_roles.size(); ++i) {
-		_append_message(TTR("History") + " " + conversation_roles[i], conversation_contents[i].substr(0, 500));
-	}
+	history.clear();
+	history_writable = true;
+	history_error = String();
+	history_display->clear();
+	history_dialog->hide();
+	// Do not call _append_message here: clearing must leave no saved transcript.
+	chat_display->add_text(TTR("Saved history cleared. The active conversation remains in memory until New Conversation."));
+	chat_display->add_newline();
 }
 
 void GoAgenticsDock::_on_about_tools_pressed() {
@@ -433,6 +555,8 @@ void GoAgenticsDock::_bind_methods() {
 }
 
 GoAgenticsDock::GoAgenticsDock() {
+	_load_history();
+	history.new_session();
 	set_custom_minimum_size(Size2(320, 0) * EDSCALE);
 	set_v_size_flags(Control::SIZE_EXPAND_FILL);
 
@@ -524,6 +648,23 @@ GoAgenticsDock::GoAgenticsDock() {
 	history_button->set_text(TTR("History"));
 	history_button->connect("pressed", callable_mp(this, &GoAgenticsDock::_on_history_pressed));
 	button_row->add_child(history_button);
+	history_button->set_tooltip_text(TTR("Stored locally in .godot/editor; up to 20 conversations and 512 KiB. Not encrypted. Never replayed automatically."));
+	history_dialog = memnew(AcceptDialog);
+	history_dialog->set_title(TTR("Code Agentics: Local History"));
+	history_display = memnew(TextEdit);
+	history_display->set_editable(false);
+	history_display->set_custom_minimum_size(Size2(700, 440) * EDSCALE);
+	history_dialog->add_child(history_display);
+	add_child(history_dialog);
+	Button *clear_history_button = memnew(Button);
+	clear_history_button->set_text(TTR("Clear History"));
+	clear_history_button->connect("pressed", callable_mp(this, &GoAgenticsDock::_on_clear_history_pressed));
+	button_row->add_child(clear_history_button);
+	clear_history_dialog = memnew(ConfirmationDialog);
+	clear_history_dialog->set_title(TTR("Delete Local Chat History"));
+	clear_history_dialog->set_text(TTR("Delete this project's saved chat history? This cannot be undone. The active conversation stays in memory until New Conversation; future messages will be saved again."));
+	clear_history_dialog->connect("confirmed", callable_mp(this, &GoAgenticsDock::_clear_history));
+	add_child(clear_history_dialog);
 
 	about_tools_button = memnew(Button);
 	about_tools_button->set_text(TTR("About Tools"));

@@ -23,6 +23,7 @@ ROOT = Path(__file__).resolve().parents[2]
 MODULE = ROOT / "modules/go_suite"
 SOURCES = [
     "go_suite_core.cpp",
+    "go_chat_history.cpp",
     "go_git_remote.cpp",
     "go_agentics_path.cpp",
     "go_git_lfs.cpp",

@@ -34,6 +34,7 @@
 // SPDX-License-Identifier: MIT
 
 #include "go_agentics_tool_bridge.h"
+#include "go_chat_history.h"
 
 #include "core/input/input_event.h"
 #include "core/string/ustring.h"
@@ -41,6 +42,7 @@
 #include "scene/gui/box_container.h"
 
 class ConfirmationDialog;
+class AcceptDialog;
 class Button;
 class CheckButton;
 class GoKiloClient;
@@ -51,6 +53,7 @@ class TextEdit;
 
 class GoAgenticsDock : public VBoxContainer {
 	GDCLASS(GoAgenticsDock, VBoxContainer);
+	friend struct GoChatHistoryDockTest;
 
 	OptionButton *model_picker = nullptr;
 	RichTextLabel *chat_display = nullptr;
@@ -65,6 +68,17 @@ class GoAgenticsDock : public VBoxContainer {
 	Label *model_status = nullptr;
 	GoKiloClient *kilo_client = nullptr;
 	GoAgenticsToolBridge tool_bridge;
+	go::ChatHistory history;
+	bool history_writable = true;
+	String history_error;
+	ConfirmationDialog *clear_history_dialog = nullptr;
+	AcceptDialog *history_dialog = nullptr;
+	TextEdit *history_display = nullptr;
+	bool _history_path(String &r_path) const;
+	void _load_history();
+	bool _save_history();
+	void _on_clear_history_pressed();
+	void _clear_history();
 	CheckButton *scene_tools = nullptr;
 	ConfirmationDialog *approval = nullptr;
 	std::vector<go::GoKiloMessage> conversation;
