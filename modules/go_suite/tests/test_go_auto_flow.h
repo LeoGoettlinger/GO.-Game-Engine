@@ -90,8 +90,10 @@ struct GoAutoCommitFlowTest {
 		REQUIRE(file.is_valid());
 		file->store_string(p_text);
 	}
-	void run(bool p_success) {
-		REQUIRE(controller->start());
+	void run(bool p_success, bool p_already_started = false) {
+		if (!p_already_started) {
+			REQUIRE(controller->start());
+		}
 		CHECK(GoSuiteRegistry::is_git_job_busy());
 		const uint64_t start = OS::get_singleton()->get_ticks_msec();
 		while (controller->running && OS::get_singleton()->get_ticks_msec() - start < 30000) {

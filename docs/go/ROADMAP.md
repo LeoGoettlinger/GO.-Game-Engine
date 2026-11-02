@@ -266,3 +266,14 @@ Unicode/retention/error tests pass locally; native restart/recovery/clear fixtur
 are wired into both full-build jobs, with runtime results pending. This closes the
 missing persistence implementation, not the remaining agent tool/visual acceptance
 work. Production and test syntax now cover 29 module sources and six native headers.
+
+### Automatic Commit close integration implemented, activation still gated
+
+Wired the close reminder to an explicit commit-before-close path that retains the
+quit reservation, defers continuation until unlock, and keeps the editor open on
+failure. Existing Git jobs finish before close status is rechecked; cancelling
+close does not terminate another job. Native real-Git close-continuation fixtures
+are added for success/failure/cancel/explicit close and duplicate callbacks.
+The shared availability gate remains off until runtime and visual acceptance;
+this checkpoint removes the missing integration implementation, not its acceptance
+blocker. Local production/test syntax covers 29 sources and seven native headers.

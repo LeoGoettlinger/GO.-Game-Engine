@@ -351,3 +351,13 @@ bei Erreichen der Grenzen entfernt. Beschädigte Dateien werden nicht still
 beim nächsten Öffnen aus der vorherigen Sicherung wiederhergestellt werden.
 Pure Tests für Format, Grenzen und Unicode bestehen lokal; native Speicher- und
 Neustarttests sind für beide Plattformen in CI ergänzt (Laufzeitergebnis ausstehend).
+
+### Automatic Commit im Schließen-Ablauf
+
+Die Schließen-Integration ist jetzt implementiert: Der vorgemerkte Save-/Discard-
+Entschluss bleibt erhalten, während der Commit läuft. Nur bei Erfolg wird dieser
+Schließen-Ablauf fortgesetzt, nach Freigabe aller Eingabesperren. Bei Fehlern bleibt
+der Editor offen; Abbrechen, Git Suite öffnen und ausdrücklich trotzdem schließen
+bleiben möglich. Ein bereits laufender Git-Vorgang wird nicht zum Schließen beendet.
+Die neue Aktion bleibt mit Automatic Commit zusammen gesperrt, bis die nativen
+Vollablauf- und sichtbaren Editor-Tests bestanden sind.

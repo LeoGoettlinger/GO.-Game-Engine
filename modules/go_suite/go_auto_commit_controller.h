@@ -71,6 +71,8 @@ class GoAutoCommitController : public Control {
 	std::string diff_text;
 	std::string status_text;
 	std::string command_output;
+	Callable close_completion;
+	bool _start(bool p_from_close);
 	bool running = false;
 	bool kilo_used = false;
 	bool kilo_fallback = false;
@@ -144,6 +146,7 @@ protected:
 
 public:
 	static bool request();
+	static bool request_for_close(const Callable &p_completion);
 
 	void set_git_controller(go_suite::GoGitController *p_controller) { git_controller = p_controller; }
 	bool start();

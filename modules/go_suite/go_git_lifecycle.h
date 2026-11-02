@@ -43,6 +43,7 @@ class Button;
 
 class GoGitLifecycle : public Node {
 	GDCLASS(GoGitLifecycle, Node);
+	friend struct GoGitCloseTest;
 	enum class Phase { IDLE,
 		REMOTE,
 		FETCH,
@@ -54,6 +55,10 @@ class GoGitLifecycle : public Node {
 	CheckBox *dont_remind = nullptr;
 	Callable resume_quit;
 	Callable pull_action;
+	Button *automatic_button = nullptr;
+	bool automatic_running = false;
+	bool waiting_git_job = false;
+	void _automatic_finished(bool p_success, const String &p_message);
 	Button *pull_button = nullptr;
 	Button *git_suite_button = nullptr;
 	go::GitStatus status;

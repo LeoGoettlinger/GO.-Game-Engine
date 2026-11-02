@@ -33,6 +33,7 @@
 
 #include "go_git_lifecycle.h"
 
+#include "go_auto_commit_controller.h"
 #include "go_suite_registry.h"
 #include "go_system_git_runner.h"
 
@@ -127,14 +128,16 @@ void GoGitLifecycle::_show_result() {
 		return;
 	}
 	dont_remind->set_pressed(false);
+	automatic_button->set_visible(closing);
+	automatic_button->set_disabled(status_failed || !GoSuiteRegistry::is_auto_commit_available() || GoSuiteRegistry::is_git_job_busy());
 	git_suite_button->set_visible(closing);
 	pull_button->set_visible(!closing && !status_failed && status.behind > 0);
-	dialog->get_ok_button()->set_disabled(false);
+	dialog->get_ok_button()->set_disabled(waiting_git_job);
 	dialog->get_ok_button()->set_text(closing ? TTR("Close Anyway") : TTR("Open Git Suite"));
 	dialog->get_cancel_button()->set_text(closing ? TTR("Cancel") : TTR("Later"));
 	String message = status_failed ? TTR("Git status could not be checked. Inspect the repository before closing.") : vformat(TTR("Uncommitted changes: %d\nKnown unpushed commits: %d\nCommits behind the known remote: %d\nKnown pending LFS objects: %d"), status.entries.size(), status.ahead, status.behind, pending_lfs);
 	if (closing && GoSuiteRegistry::is_git_job_busy()) {
-		message += "\n" + TTR("A Git operation is still running. Closing may interrupt it; completed remote changes will not be rolled back.");
+		message += "\n" + TTR("A Git operation is still running. Wait for it to finish, or cancel closing to return to the editor.");
 	}
 	message += "\n\n" + TTR("Remote counts reflect the last successful fetch. Unknown LFS state is not proof of upload. No commit, pull or push happens automatically.");
 	dialog->set_text(message);
@@ -156,6 +159,9 @@ void GoGitLifecycle::_continue_quit() {
 }
 
 void GoGitLifecycle::_confirmed() {
+	if (automatic_running || (closing && GoSuiteRegistry::is_git_job_busy())) {
+		return;
+	}
 	if (activation_offer) {
 		if (!_save_setting("enabled", true)) {
 			return;
@@ -173,6 +179,10 @@ void GoGitLifecycle::_confirmed() {
 }
 
 void GoGitLifecycle::_cancelled() {
+	if (automatic_running) {
+		return;
+	}
+	waiting_git_job = false;
 	if (owns_job) {
 		process.cancel();
 		_release();
@@ -187,6 +197,20 @@ void GoGitLifecycle::_cancelled() {
 }
 
 void GoGitLifecycle::_custom_action(const String &p_action) {
+	if (automatic_running) {
+		return;
+	}
+	if (p_action == "auto_commit") {
+		if (!closing || !GoSuiteRegistry::is_auto_commit_available() || GoSuiteRegistry::is_git_job_busy()) {
+			return;
+		}
+		automatic_running = true;
+		dialog->hide();
+		if (!GoAutoCommitController::request_for_close(callable_mp(this, &GoGitLifecycle::_automatic_finished))) {
+			_automatic_finished(false, TTR("Automatic Commit could not start. The editor has not been closed."));
+		}
+		return;
+	}
 	if (p_action != "git_suite" && p_action != "pull") {
 		return;
 	}
@@ -198,6 +222,29 @@ void GoGitLifecycle::_custom_action(const String &p_action) {
 	if (GoSuiteRegistry::get_git_dock() != nullptr) {
 		EditorDockManager::get_singleton()->focus_dock(GoSuiteRegistry::get_git_dock());
 	}
+}
+
+void GoGitLifecycle::_automatic_finished(bool p_success, const String &p_message) {
+	if (!automatic_running || !closing) {
+		return;
+	}
+	automatic_running = false;
+	if (p_success) {
+		if (dont_remind->is_pressed() && !_save_setting("remind_on_close", false)) {
+			dialog->show();
+			return;
+		}
+		_continue_quit();
+		return;
+	}
+	// Keep the exact upstream save/discard continuation until the user chooses.
+	// In particular, a rejected push must not silently close the editor.
+	automatic_button->set_disabled(true);
+	dialog->get_ok_button()->set_disabled(false);
+	dialog->get_ok_button()->set_text(TTR("Close Anyway"));
+	dialog->get_cancel_button()->set_text(TTR("Cancel"));
+	dialog->set_text(TTR("Automatic Commit did not complete. The editor remains open. A commit may already exist locally; inspect Git Suite before retrying.") + "\n\n" + p_message);
+	dialog->popup_centered(Size2i(620, 300));
 }
 
 bool GoGitLifecycle::request_close(const Callable &p_resume) {
@@ -222,12 +269,14 @@ bool GoGitLifecycle::request_close(const Callable &p_resume) {
 	pending_lfs = 0;
 	status_failed = false;
 	if (GoSuiteRegistry::is_git_job_busy()) {
+		waiting_git_job = true;
 		status_failed = true;
-		_show_result(); // Never start a second operation or wait indefinitely.
+		_show_result(); // Do not interrupt an existing add/commit/push.
 		return true;
 	}
 	dont_remind->set_pressed(false);
 	git_suite_button->show();
+	automatic_button->hide();
 	pull_button->hide();
 	dialog->get_ok_button()->set_disabled(true);
 	dialog->get_cancel_button()->set_text(TTR("Cancel"));
@@ -245,6 +294,13 @@ void GoGitLifecycle::_notification(int p_what) {
 		set_process(true);
 	} else if (p_what == NOTIFICATION_PROCESS) {
 		_poll();
+		if (waiting_git_job && closing && !GoSuiteRegistry::is_git_job_busy()) {
+			waiting_git_job = false;
+			status_failed = false;
+			owns_job = true;
+			GoSuiteRegistry::set_git_job_busy(true);
+			_launch(Phase::STATUS, go::status(project));
+		}
 		if (startup_done || GoSuiteRegistry::is_git_job_busy() || !EditorNode::get_singleton()->is_editor_ready()) {
 			return;
 		}
@@ -285,6 +341,9 @@ GoGitLifecycle::GoGitLifecycle(const Callable &p_pull_action) {
 	project = go_suite::to_std_string(ProjectSettings::get_singleton()->get_resource_path());
 	dialog = memnew(ConfirmationDialog);
 	dialog->set_title(TTR("GO. Git Reminder"));
+	automatic_button = dialog->add_button(TTR("Automatic Commit"), false, "auto_commit");
+	automatic_button->set_disabled(!GoSuiteRegistry::is_auto_commit_available());
+	automatic_button->hide();
 	git_suite_button = dialog->add_button(TTR("Open Git Suite"), true, "git_suite");
 	git_suite_button->hide();
 	pull_button = dialog->add_button(TTR("Pull"), false, "pull");

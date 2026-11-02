@@ -133,6 +133,11 @@ void GoAutoCommitController::_notification(int p_what) {
 		}
 	}
 	if (p_what == NOTIFICATION_EXIT_TREE || p_what == NOTIFICATION_PREDELETE) {
+		const Callable completion = close_completion;
+		close_completion = Callable();
+		if (completion.is_valid()) {
+			completion.call_deferred(false, TTR("Automatic Commit was interrupted; the editor has not been closed by this operation."));
+		}
 		running = false;
 		git_process.cancel();
 		if (kilo_client != nullptr) {
@@ -333,7 +338,13 @@ void GoAutoCommitController::_finish(bool p_success, const String &p_message) {
 		state.fail(go_suite::to_std_string(p_message));
 	}
 	_hide_overlay();
+	const Callable completion = close_completion;
+	close_completion = Callable();
 	emit_signal("finished", p_success, p_message);
+	if (completion.is_valid()) {
+		// Closing can delete this controller. Resume outside this callback stack.
+		completion.call_deferred(p_success, p_message);
+	}
 }
 
 void GoAutoCommitController::_advance() {
@@ -639,7 +650,23 @@ void GoAutoCommitController::_on_request_cancelled() {
 }
 
 bool GoAutoCommitController::start() {
-	if (!is_inside_tree() || running || git_controller == nullptr || GoSuiteRegistry::is_git_job_busy() || GoSuiteRegistry::is_quit_pending() || GoSuiteRegistry::is_editor_input_locked()) {
+	return _start(false);
+}
+
+bool GoAutoCommitController::request_for_close(const Callable &p_completion) {
+	if (singleton == nullptr || singleton->running || !GoSuiteRegistry::is_quit_pending() || !p_completion.is_valid()) {
+		return false;
+	}
+	singleton->close_completion = p_completion;
+	if (!singleton->_start(true)) {
+		singleton->close_completion = Callable();
+		return false;
+	}
+	return true;
+}
+
+bool GoAutoCommitController::_start(bool p_from_close) {
+	if (!is_inside_tree() || running || git_controller == nullptr || GoSuiteRegistry::is_git_job_busy() || (GoSuiteRegistry::is_quit_pending() && !p_from_close) || GoSuiteRegistry::is_editor_input_locked()) {
 		return false;
 	}
 	running = true;

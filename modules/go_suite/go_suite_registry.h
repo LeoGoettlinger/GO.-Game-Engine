@@ -60,5 +60,6 @@ public:
 	static bool is_editor_input_locked() { return editor_input_locked; }
 
 	static void set_auto_commit_callback(bool (*p_callback)()) { auto_commit_callback = p_callback; }
+	static bool is_auto_commit_available() { return auto_commit_callback != nullptr; }
 	static bool request_auto_commit() { return auto_commit_callback != nullptr && auto_commit_callback(); }
 };

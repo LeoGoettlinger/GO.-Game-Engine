@@ -267,3 +267,22 @@ staged LFS content, real git-lfs conversion and cancellation during preflight.
 They are wired into Windows/Linux full CI; adding these tests is not a claim that
 the new runtime suite has passed. Visible native-subwindow/shortcut locking and
 Automatic Commit on close remain outstanding.
+
+### Commit-before-close continuation
+
+The lifecycle controller now has an Automatic Commit action, gated by the same
+availability registration as the Git Suite. It reserves the pending quit through
+preflight and the whole transaction. Normal commit requests cannot bypass that
+reservation; only the explicit close continuation can start the transaction.
+Completion is deferred until the controller has unlocked input and released its
+Git job. Success resumes the original upstream save/discard continuation once;
+failure retains the editor and offers inspection/cancel/explicit close instead.
+Controller teardown reports failure to a surviving close controller. An already
+running manual Git job is allowed to finish before rechecking close status, rather
+than being killed to close the editor; cancelling the close does not cancel that job.
+
+Native `[GO.][GitClose][Editor]` fixtures run the real offline commit pipeline and
+substitute only the final quit callback. They cover success after unlock, failed
+preflight, cancel, explicit close and stale duplicate completion. These are not a
+replacement for unsaved-scene and native-window visual acceptance. The action is
+implemented but remains disabled alongside Automatic Commit pending that evidence.
