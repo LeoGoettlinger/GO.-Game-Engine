@@ -271,7 +271,7 @@ work. Production and test syntax now cover 29 module sources and six native head
 
 Wired the close reminder to an explicit commit-before-close path that retains the
 quit reservation, defers continuation until unlock, and keeps the editor open on
-failure. Existing Git jobs finish before close status is rechecked; cancelling
+failure. Existing Git jobs finish before close status is rechecked; canceling
 close does not terminate another job. Native real-Git close-continuation fixtures
 are added for success/failure/cancel/explicit close and duplicate callbacks.
 The shared availability gate remains off until runtime and visual acceptance;

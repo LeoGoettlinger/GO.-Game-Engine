@@ -279,7 +279,7 @@ Git job. Success resumes the original upstream save/discard continuation once;
 failure retains the editor and offers inspection/cancel/explicit close instead.
 Controller teardown reports failure to a surviving close controller. An already
 running manual Git job is allowed to finish before rechecking close status, rather
-than being killed to close the editor; cancelling the close does not cancel that job.
+than being killed to close the editor; canceling the close does not cancel that job.
 
 Native `[GO.][GitClose][Editor]` fixtures run the real offline commit pipeline and
 substitute only the final quit callback. They cover success after unlock, failed
