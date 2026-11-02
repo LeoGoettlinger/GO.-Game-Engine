@@ -204,6 +204,11 @@ void GoGitLifecycle::_custom_action(const String &p_action) {
 		if (!closing || !GoSuiteRegistry::is_auto_commit_available() || GoSuiteRegistry::is_git_job_busy()) {
 			return;
 		}
+		// Persist this explicit project option before staging, not after the final
+		// commit: otherwise a successful close would leave project.godot dirty.
+		if (dont_remind->is_pressed() && !_save_setting("remind_on_close", false)) {
+			return;
+		}
 		automatic_running = true;
 		dialog->hide();
 		if (!GoAutoCommitController::request_for_close(callable_mp(this, &GoGitLifecycle::_automatic_finished))) {
@@ -230,10 +235,6 @@ void GoGitLifecycle::_automatic_finished(bool p_success, const String &p_message
 	}
 	automatic_running = false;
 	if (p_success) {
-		if (dont_remind->is_pressed() && !_save_setting("remind_on_close", false)) {
-			dialog->show();
-			return;
-		}
 		_continue_quit();
 		return;
 	}
