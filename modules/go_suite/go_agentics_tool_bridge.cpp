@@ -188,6 +188,7 @@ bool editable_subtree(Node *p_node, Node *p_root) {
 void GoAgenticsToolBridge::record_add_node(UndoRedo *p_undo, Node *p_parent, Node *p_child, Node *p_owner) {
 	p_undo->add_do_method(Callable(p_parent, "add_child").bind(p_child, true));
 	p_undo->add_do_method(Callable(p_child, "set_owner").bind(p_owner));
+	p_undo->add_undo_method(Callable(p_child, "set_owner").bind(Variant()));
 	p_undo->add_undo_method(Callable(p_parent, "remove_child").bind(p_child));
 	p_undo->add_do_reference(p_child);
 }

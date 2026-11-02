@@ -130,15 +130,8 @@ jobs:
           else
             EDITOR=bin/godot.windows.editor.x86_64.exe
           fi
-          set +e
-          "$EDITOR" --headless --test --test-case="[GO.][GitProcess]*" 2>&1 | tee go-git-process-tests.log
-          status=${PIPESTATUS[0]}
-          set -e
-          if [ "$status" -ne 0 ]; then
-            python misc/scripts/go_annotate_build_log.py go-git-process-tests.log
-            exit "$status"
-          fi
-          grep -E "[1-9][0-9]* passed" go-git-process-tests.log
+          python misc/scripts/go_native_tests.py --editor "$EDITOR" --suite GitProcess \
+            --minimum 3 --output go-git-process-tests.log
 
       - name: Native scene undo and redo tests
         shell: bash
@@ -148,15 +141,8 @@ jobs:
           else
             EDITOR=bin/godot.windows.editor.x86_64.exe
           fi
-          set +e
-          "$EDITOR" --headless --test --test-case="[GO.][SceneUndo]*" 2>&1 | tee go-scene-undo-tests.log
-          status=${PIPESTATUS[0]}
-          set -e
-          if [ "$status" -ne 0 ]; then
-            python misc/scripts/go_annotate_build_log.py go-scene-undo-tests.log
-            exit "$status"
-          fi
-          grep -E "[1-9][0-9]* passed" go-scene-undo-tests.log
+          python misc/scripts/go_native_tests.py --editor "$EDITOR" --suite SceneUndo \
+            --minimum 3 --output go-scene-undo-tests.log
 
       - name: Automatic Commit overlay ownership tests
         shell: bash
@@ -166,15 +152,8 @@ jobs:
           else
             EDITOR=bin/godot.windows.editor.x86_64.exe
           fi
-          set +e
-          "$EDITOR" --headless --test --test-case="[GO.][AutoOverlay]*" 2>&1 | tee go-auto-overlay-tests.log
-          status=${PIPESTATUS[0]}
-          set -e
-          if [ "$status" -ne 0 ]; then
-            python misc/scripts/go_annotate_build_log.py go-auto-overlay-tests.log
-            exit "$status"
-          fi
-          grep -E "[1-9][0-9]* passed" go-auto-overlay-tests.log
+          python misc/scripts/go_native_tests.py --editor "$EDITOR" --suite AutoOverlay \
+            --minimum 2 --output go-auto-overlay-tests.log
 
       - name: Automatic Commit offline transaction tests
         shell: bash
@@ -184,15 +163,8 @@ jobs:
           else
             EDITOR=bin/godot.windows.editor.x86_64.exe
           fi
-          set +e
-          "$EDITOR" --headless --test --test-case="[GO.][AutoFlow]*" 2>&1 | tee go-auto-flow-tests.log
-          status=${PIPESTATUS[0]}
-          set -e
-          if [ "$status" -ne 0 ]; then
-            python misc/scripts/go_annotate_build_log.py go-auto-flow-tests.log
-            exit "$status"
-          fi
-          grep -E "[1-9][0-9]* passed" go-auto-flow-tests.log
+          python misc/scripts/go_native_tests.py --editor "$EDITOR" --suite AutoFlow \
+            --minimum 4 --output go-auto-flow-tests.log
 
       - name: Automatic Commit close continuation tests
         shell: bash
@@ -202,15 +174,8 @@ jobs:
           else
             EDITOR=bin/godot.windows.editor.x86_64.exe
           fi
-          set +e
-          "$EDITOR" --headless --test --test-case="[GO.][GitClose]*" 2>&1 | tee go-git-close-tests.log
-          status=${PIPESTATUS[0]}
-          set -e
-          if [ "$status" -ne 0 ]; then
-            python misc/scripts/go_annotate_build_log.py go-git-close-tests.log
-            exit "$status"
-          fi
-          grep -E "[1-9][0-9]* passed" go-git-close-tests.log
+          python misc/scripts/go_native_tests.py --editor "$EDITOR" --suite GitClose \
+            --minimum 2 --output go-git-close-tests.log
 
       - name: Local chat history persistence tests
         shell: bash
@@ -220,15 +185,8 @@ jobs:
           else
             EDITOR=bin/godot.windows.editor.x86_64.exe
           fi
-          set +e
-          "$EDITOR" --headless --test --test-case="[GO.][ChatHistory]*" 2>&1 | tee go-chat-history-tests.log
-          status=${PIPESTATUS[0]}
-          set -e
-          if [ "$status" -ne 0 ]; then
-            python misc/scripts/go_annotate_build_log.py go-chat-history-tests.log
-            exit "$status"
-          fi
-          grep -E "[1-9][0-9]* passed" go-chat-history-tests.log
+          python misc/scripts/go_native_tests.py --editor "$EDITOR" --suite ChatHistory \
+            --minimum 1 --output go-chat-history-tests.log
 
       - name: Build release template
         shell: bash
@@ -268,6 +226,7 @@ jobs:
           name: GO-validation-${{ matrix.platform }}-${{ github.run_id }}
           path: |
             go-*-tests.log
+            go-*-tests.xml
             go-build-editor.log
             go-version.txt
             go-validation/

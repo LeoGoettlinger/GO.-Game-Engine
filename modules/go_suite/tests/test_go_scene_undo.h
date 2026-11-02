@@ -39,6 +39,8 @@
 #include "scene/2d/node_2d.h"
 #include "scene/gui/label.h"
 #include "scene/main/node.h"
+#include "scene/main/scene_tree.h"
+#include "scene/main/window.h"
 #include "tests/test_macros.h"
 
 #include <limits>
@@ -76,13 +78,16 @@ TEST_CASE("[GO.][SceneUndo] Add and rename restore scene ownership across undo a
 	memdelete(undo);
 }
 
-TEST_CASE("[GO.][SceneUndo] Remove and move restore subtree owners and sibling order") {
+TEST_CASE("[GO.][SceneUndo][Editor] Remove and move restore subtree owners and sibling order") {
 	UndoRedo *undo = memnew(UndoRedo);
 	Node *root = memnew(Node);
 	Node *left = memnew(Node);
 	Node *right = memnew(Node);
 	Node *child = memnew(Node);
 	Node *grandchild = memnew(Node);
+	// Ownership is invalidated on exit from a live tree. A detached fixture
+	// retains owners and does not model the editor's removal/reparent lifecycle.
+	SceneTree::get_singleton()->get_root()->add_child(root);
 	root->add_child(left);
 	root->add_child(right);
 	left->add_child(child);

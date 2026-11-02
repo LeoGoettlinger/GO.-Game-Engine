@@ -386,3 +386,13 @@ Release exportiert und anschließend ohne Zugriff auf das Quellprojekt ausgefüh
 Fehler verhindern das Packaging; Prüfprotokolle bleiben als Artefakt erhalten.
 Die neue Laufzeitprüfung ist noch ausstehend. Die Testszene wird vom Test angelegt,
 nicht vom Agenten – die geforderte sichtbare Agent-/Player-Abnahme ist separat offen.
+
+### Laufzeitprüfungen: Fehler konkret eingegrenzt
+
+Ältere Linux-Vollbuilds einschließlich Editor und Templates sind inzwischen grün.
+Ein neuer Undo-Test hatte jedoch fälschlich einen losgelösten Szenenbaum wie einen
+geöffneten Editor-Szenenbaum behandelt; die Regression prüft jetzt den echten
+SceneTree-Lebenszyklus. Windows-Automatic-Commit ist weiterhin nicht abgenommen.
+Native Prüfungen verlangen nun vollständige XML-Ergebnisse und isolierte Caches;
+fehlende Testergebnisse führen immer zu einem Fehler mit Diagnose, niemals zu
+scheinbar erfolgreichen Tests.

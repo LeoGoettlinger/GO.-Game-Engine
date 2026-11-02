@@ -299,3 +299,22 @@ Logs/results upload even on failure, and failed exports prevent release packagin
 Local orchestration tests (three cases) and Python lint/type checks pass. Actual
 exports are pending the full builds. This is not evidence of AI scene creation,
 visual screenshots or packaged-release/project-manager E2E.
+
+### Runtime findings and test harness correction
+
+The older `c742faa2`, `fdb84369` and `8716427f` Linux editor/template jobs passed.
+Windows stopped at AutoFlow without the failure annotation, so its cause is not
+yet established: the shell success-count check could fail without preserving the
+underlying output in an API-readable annotation. All native suites now run through
+a bounded Python subprocess runner with separate user/cache directories and a
+required complete doctest XML report. Zero exit, missing/empty output, zero tests
+and partial reports cannot pass. XML and console diagnostics are uploaded and
+annotated on every failure, including startup/cleanup failures. Local harness tests
+are not a substitute for Windows execution.
+
+The `2799dd13` Linux native SceneUndo test exposed a fixture error: a detached
+subtree retains owners until it exits a live SceneTree. Remove/reparent regression
+now attaches its fixture to the mock editor tree, exercising actual editor ownership
+invalidation. Add-node undo also explicitly clears ownership before detaching, so
+its isolated-history redo cannot reinsert a node with a stale owner. Full corrected
+runtime results remain pending; Automatic Commit remains gated.
