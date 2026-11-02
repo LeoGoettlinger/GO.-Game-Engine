@@ -188,6 +188,17 @@ jobs:
           python misc/scripts/go_native_tests.py --editor "$EDITOR" --suite ChatHistory \
             --minimum 1 --output go-chat-history-tests.log
 
+      - name: Bounded project file read tests
+        shell: bash
+        run: |
+          if [ "${{ matrix.platform }}" = "linux" ]; then
+            EDITOR=bin/godot.linuxbsd.editor.x86_64
+          else
+            EDITOR=bin/godot.windows.editor.x86_64.exe
+          fi
+          python misc/scripts/go_native_tests.py --editor "$EDITOR" --suite ReadTools \
+            --minimum 2 --output go-read-tools-tests.log
+
       - name: Build release template
         shell: bash
         run: |

@@ -318,3 +318,14 @@ now attaches its fixture to the mock editor tree, exercising actual editor owner
 invalidation. Add-node undo also explicitly clears ownership before detaching, so
 its isolated-history redo cannot reinsert a node with a stale owner. Full corrected
 runtime results remain pending; Automatic Commit remains gated.
+
+### Read-only project tools implemented
+
+Enabled bounded list/read/search alongside the eight opt-in scene tools (11 total).
+Added bounded raw reads/UTF-8 checks, before-range whole-file secret screening,
+input/output/traversal/search limits, and explicit non-exhaustive search reporting.
+Fixed cross-platform protected-path bypasses through `.GIT` case, trailing dot/space,
+Windows devices and short-name/hidden Unicode variants. No script evaluation or
+file writing is enabled by these tools. Native read/search/privacy/outside-symlink
+fixtures added to full CI; local pure/schema/privacy/Git tests and syntax checks
+pass. File mutation, resource/run tools and live-agent/visual E2E remain open.

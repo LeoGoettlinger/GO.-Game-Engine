@@ -396,3 +396,18 @@ SceneTree-Lebenszyklus. Windows-Automatic-Commit ist weiterhin nicht abgenommen.
 Native Prüfungen verlangen nun vollständige XML-Ergebnisse und isolierte Caches;
 fehlende Testergebnisse führen immer zu einem Fehler mit Diagnose, niemals zu
 scheinbar erfolgreichen Tests.
+
+### Code Agentics: Projektdateien lesen und durchsuchen
+
+Der ausdrücklich aktivierbare **Project tools (experimental)**-Modus bietet jetzt
+zusätzlich `list_files`, `read_file` und `search_text` an: insgesamt elf freigegebene
+Werkzeuge. Lesen unterstützt Startzeile und Zeilenlimit. Such- und Leseausgaben
+sowie Dateigröße und Verzeichnisdurchlauf sind begrenzt; unvollständige Suchen
+werden als solche gekennzeichnet. Es werden keine Dateien geschrieben oder
+Projekt-Scripte zum Lesen ausgeführt.
+
+Symlinks, Git-/Editor-Interna, Windows-Gerätenamen und mehrdeutige Pfadvarianten
+werden abgelehnt. Sensible Dateinamen und erkannte Zugangsdaten/Private Keys führen
+zum Auslassen der gesamten Datei. Dieser heuristische Filter ist kein vollständiger
+Secret-Scanner. Neue native Datei-/Symlink-Tests stehen in CI zur Laufzeitprüfung an;
+lokale Guardrails, Git-Regression und Produktions-/Test-Syntaxprüfungen sind grün.

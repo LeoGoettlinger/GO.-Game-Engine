@@ -1,3 +1,33 @@
+/**************************************************************************/
+/*  go_agentics_path.cpp                                                  */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
+
 // GO. Game Engine — Copyright (c) 2026 SampleCraft / GO. contributors
 // SPDX-License-Identifier: MIT
 
@@ -60,6 +90,21 @@ bool normalize(const std::string &p_path, std::string &r_relative, std::string &
 			r_error = "path contains control characters";
 			return false;
 		}
+		if (segment.front() == '.') {
+			for (unsigned char c : segment) {
+				if (c >= 128) {
+					r_error = "non-ASCII hidden components may alias protected Windows paths";
+					return false;
+				}
+			}
+		}
+		const std::string stem = lower(segment.substr(0, segment.find('.')));
+		const bool device = stem == "con" || stem == "prn" || stem == "aux" || stem == "nul" || stem == "conin$" || stem == "conout$" || stem == "com¹" || stem == "com²" || stem == "com³" || stem == "lpt¹" || stem == "lpt²" || stem == "lpt³" ||
+				(stem.size() == 4 && (starts_with(stem, "com") || starts_with(stem, "lpt")) && stem[3] >= '0' && stem[3] <= '9');
+		if (segment.back() == '.' || segment.back() == ' ' || segment.find('~') != std::string::npos || device) {
+			r_error = "ambiguous Windows path components and device names are not allowed";
+			return false;
+		}
 		parts.push_back(segment);
 	}
 	r_relative = join(parts, "/");
@@ -90,7 +135,7 @@ bool validate_symlink_target(const std::string &p_target, std::string &r_error) 
 		if (!normalize(target, relative, r_error)) {
 			return false;
 		}
-		if (is_blocked_git_or_cache(relative)) {
+		if (is_blocked_git_or_cache(lower(relative))) {
 			r_error = "symlink target points into Git or editor cache data";
 			return false;
 		}
@@ -110,7 +155,7 @@ PathValidationResult validate_res_path(const std::string &p_path, PathOperation 
 	if (!normalize(p_path, relative, result.error)) {
 		return result;
 	}
-	if (is_blocked_git_or_cache(relative)) {
+	if (is_blocked_git_or_cache(lower(relative))) {
 		result.error = "Git internals and .godot cache are not source files";
 		return result;
 	}

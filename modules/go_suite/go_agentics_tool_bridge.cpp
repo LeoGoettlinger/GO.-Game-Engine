@@ -35,6 +35,7 @@
 
 #include "go_agentics_path.h"
 #include "go_agentics_tools.h"
+#include "go_commit_message.h"
 #include "go_git_controller.h"
 #include "go_suite_core.h"
 #include "go_suite_registry.h"
@@ -87,11 +88,6 @@ std::string to_std(const String &p_text) {
 	return go_suite::to_std_string(p_text);
 }
 
-std::string clip(const String &p_text) {
-	const String clipped = p_text.substr(0, MAX_TEXT_CHARS);
-	return to_std(clipped);
-}
-
 // Reject links in every component, including the final target. This intentionally
 // rejects even in-project links until a race-resistant resolver is available.
 bool has_link_component(const String &p_path) {
@@ -109,7 +105,11 @@ bool has_link_component(const String &p_path) {
 	return false;
 }
 
-void collect_files(const String &p_directory, Vector<String> &r_files, int p_depth = 0) {
+void collect_files(const String &p_directory, Vector<String> &r_files, int p_depth = 0, int *p_budget = nullptr) {
+	int local_budget = 2000;
+	if (p_budget == nullptr) {
+		p_budget = &local_budget;
+	}
 	if (p_depth > MAX_DEPTH || r_files.size() >= MAX_FILES) {
 		return;
 	}
@@ -119,11 +119,16 @@ void collect_files(const String &p_directory, Vector<String> &r_files, int p_dep
 	}
 	directory->list_dir_begin();
 	String name = directory->get_next();
-	while (!name.is_empty() && r_files.size() < MAX_FILES) {
+	while (!name.is_empty() && r_files.size() < MAX_FILES && *p_budget > 0) {
+		--*p_budget;
 		if (!directory->current_is_hidden() && name != ".godot" && !directory->is_link(name)) {
 			const String full = p_directory.path_join(name);
+			if (!go::is_safe_res_path(to_std(full), go::PathOperation::READ) || go::looks_like_secret_file(to_std(full))) {
+				name = directory->get_next();
+				continue;
+			}
 			if (directory->current_is_dir()) {
-				collect_files(full, r_files, p_depth + 1);
+				collect_files(full, r_files, p_depth + 1, p_budget);
 			} else {
 				r_files.push_back(full);
 			}
@@ -131,6 +136,54 @@ void collect_files(const String &p_directory, Vector<String> &r_files, int p_dep
 		name = directory->get_next();
 	}
 	directory->list_dir_end();
+}
+
+bool read_project_text(const String &p_path, String &r_text, std::string &r_error) {
+	r_text = String();
+	if (has_link_component(p_path) || go::looks_like_secret_file(to_std(p_path))) {
+		r_error = "Sensitive paths and symbolic links are not readable by the agent";
+		return false;
+	}
+	const String extension = p_path.get_extension().to_lower();
+	const String base = p_path.get_file();
+	if (extension != "gd" && extension != "tscn" && extension != "tres" && extension != "godot" && extension != "cfg" && extension != "json" && extension != "md" && extension != "txt" && extension != "gdshader" && extension != "gdshaderinc" && extension != "csv" && extension != "svg" && extension != "ini" && extension != "yaml" && extension != "yml" && extension != "toml" && base != ".gitignore" && base != ".gitattributes") {
+		r_error = "Only supported UTF-8 project text files can be read";
+		return false;
+	}
+	if (!FileAccess::exists(p_path)) {
+		r_error = "A regular project text file is required";
+		return false;
+	}
+	Ref<FileAccess> file = FileAccess::open(p_path, FileAccess::READ);
+	constexpr uint64_t MAX_BYTES = 200000;
+	if (file.is_null() || file->get_length() > MAX_BYTES) {
+		r_error = "File is unavailable or exceeds the 200000-byte read limit";
+		return false;
+	}
+	// Never use an unbounded get_as_text(): the file can grow after the size check.
+	Vector<uint8_t> bytes;
+	bytes.resize(MAX_BYTES + 1);
+	const uint64_t count = file->get_buffer(bytes.ptrw(), MAX_BYTES + 1);
+	if (count > MAX_BYTES || (file->get_error() != OK && file->get_error() != ERR_FILE_EOF)) {
+		r_error = "Read limit or file I/O error";
+		return false;
+	}
+	for (uint64_t i = 0; i < count; ++i) {
+		if (bytes[i] == 0) {
+			r_error = "Binary content is not readable by the agent";
+			return false;
+		}
+	}
+	if (r_text.append_utf8(reinterpret_cast<const char *>(bytes.ptr()), int(count)) != OK) {
+		r_error = "File is not valid UTF-8";
+		return false;
+	}
+	if (go::looks_like_secret_content(to_std(r_text))) {
+		r_text = String();
+		r_error = "File omitted because it contains possible credentials or private key material";
+		return false;
+	}
+	return true;
 }
 
 std::string describe_node(const Node *p_node, int p_depth, int &r_budget) {
@@ -305,70 +358,78 @@ String GoAgenticsToolBridge::execute(const go::GoKiloToolCall &p_call) const {
 		has_path = true;
 	}
 
-	if (tool == "list_files") {
+	if (tool == "list_files" || tool == "search_text") {
 		Vector<String> files;
-		collect_files(path, files);
-		std::ostringstream out;
-		for (const String &file : files) {
-			out << to_std(file) << "\n";
+		if (DirAccess::dir_exists_absolute(path)) {
+			collect_files(path, files);
+		} else if (tool == "search_text" && FileAccess::exists(path)) {
+			files.push_back(path);
+		} else {
+			return to_godot(error_json("A readable project directory or search file is required"));
 		}
-		return to_godot(ok_json(out.str()));
-	}
-
-	if (tool == "search_text" && path == "res://") {
-		const std::string query = argument_string(arguments, "query");
-		if (query.empty()) {
-			return to_godot(error_json("search_text requires a query"));
+		files.sort();
+		std::string output;
+		if (tool == "list_files") {
+			for (const String &file : files) {
+				const std::string line = to_std(file) + "\n";
+				if (output.size() + line.size() > 48000) {
+					break;
+				}
+				output += line;
+			}
+			return to_godot(ok_json(output + "[Bounded listing: up to 1000 files, depth 8, 2000 directory entries; hidden/sensitive/link paths omitted.]"));
 		}
-		Vector<String> files;
-		collect_files(path, files);
-		std::ostringstream out;
+		const String query = to_godot(argument_string(arguments, "query"));
+		int examined = 0;
 		int matches = 0;
-		for (const String &candidate : files) {
-			if (matches >= 50) {
+		for (const String &file : files) {
+			if (++examined > 64 || matches >= 50 || output.size() >= 48000) {
 				break;
 			}
-			const Ref<FileAccess> candidate_file = FileAccess::open(candidate, FileAccess::READ);
-			if (candidate_file.is_null()) {
+			String text;
+			std::string error;
+			if (!read_project_text(file, text, error)) {
 				continue;
 			}
-			const PackedStringArray lines = candidate_file->get_as_text().split("\n");
+			const PackedStringArray lines = text.split("\n");
 			for (int i = 0; i < lines.size() && matches < 50; ++i) {
-				if (to_std(lines[i]).find(query) != std::string::npos) {
-					out << to_std(candidate) << ":" << (i + 1) << ": " << to_std(lines[i]) << "\n";
-					matches++;
+				if (lines[i].contains(query)) {
+					const std::string line = to_std(file) + ":" + std::to_string(i + 1) + ": " + to_std(lines[i].substr(0, 500)) + "\n";
+					if (output.size() + line.size() > 48000) {
+						break;
+					}
+					output += line;
+					++matches;
 				}
 			}
 		}
-		return to_godot(ok_json(out.str()));
+		return to_godot(ok_json(output + "[Bounded search: first 64 candidate files, 50 matches; unreadable, oversized, binary and sensitive files omitted. Not an exhaustive search.]"));
 	}
 
-	if (tool == "read_file" || tool == "search_text") {
-		if (!has_path || path == "res://" || !FileAccess::exists(path)) {
-			return to_godot(error_json("a valid res:// file path is required"));
+	if (tool == "read_file") {
+		String text;
+		std::string error;
+		if (!read_project_text(path, text, error)) {
+			return to_godot(error_json(error));
 		}
-		const Ref<FileAccess> file = FileAccess::open(path, FileAccess::READ);
-		if (file.is_null()) {
-			return to_godot(error_json("could not open file"));
-		}
-		const String text = file->get_as_text();
-		if (tool == "read_file") {
-			return to_godot(ok_json(clip(text)));
-		}
-		const std::string query = argument_string(arguments, "query");
-		if (query.empty()) {
-			return to_godot(error_json("search_text requires a query"));
+		const auto *start_value = arguments.get("start_line");
+		const auto *limit_value = arguments.get("line_limit");
+		const int start = start_value != nullptr ? int(start_value->as_number()) : 1;
+		const int limit = limit_value != nullptr ? int(limit_value->as_number()) : 200;
+		if (start < 1 || limit < 1 || limit > 400) {
+			return to_godot(error_json("start_line must be positive and line_limit must be between 1 and 400"));
 		}
 		const PackedStringArray lines = text.split("\n");
-		std::ostringstream out;
-		int matches = 0;
-		for (int i = 0; i < lines.size() && matches < 50; ++i) {
-			if (to_std(lines[i]).find(query) != std::string::npos) {
-				out << (i + 1) << ": " << to_std(lines[i]) << "\n";
-				matches++;
+		std::string output;
+		for (int i = start - 1; i < lines.size() && i < start - 1 + limit; ++i) {
+			const std::string line = to_std(lines[i]) + "\n";
+			if (output.size() + line.size() > 48000) {
+				output += "[Output byte limit reached; remaining lines omitted.]";
+				break;
 			}
+			output += line;
 		}
-		return to_godot(ok_json(out.str()));
+		return to_godot(ok_json(output));
 	}
 
 	if (tool == "write_file" || tool == "create_script") {

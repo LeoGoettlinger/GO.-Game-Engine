@@ -106,6 +106,10 @@ std::vector<ToolArgument> tool_arguments(const std::string &p_name) {
 	if (p_name == "add_node" || p_name == "move_node" || p_name == "remove_node" || p_name == "rename_node" || p_name == "set_node_property" || p_name == "get_node_property" || p_name == "attach_script" || p_name == "select_node") {
 		arguments.push_back({ "node_path", false, false });
 	}
+	if (p_name == "read_file") {
+		arguments.push_back({ "start_line", false, false, true });
+		arguments.push_back({ "line_limit", false, false, true });
+	}
 	if (p_name == "move_node") {
 		arguments.push_back({ "parent_path", true, false });
 		arguments.push_back({ "index", false, false, true });
@@ -178,16 +182,20 @@ bool GoAgenticsTools::is_write_tool(const std::string &p_name) {
 	return is_write_tool_name(p_name);
 }
 
+bool GoAgenticsTools::is_enabled_tool(const std::string &p_name) {
+	return is_scene_tool(p_name) || p_name == "list_files" || p_name == "read_file" || p_name == "search_text";
+}
+
 bool GoAgenticsTools::is_scene_tool(const std::string &p_name) {
 	return p_name == "get_current_scene_tree" || p_name == "get_editor_selection" || p_name == "add_node" || p_name == "rename_node" || p_name == "remove_node" || p_name == "move_node" || p_name == "set_node_property" || p_name == "get_node_property";
 }
 
-std::string GoAgenticsTools::tool_definitions_json(bool p_scene_only) {
+std::string GoAgenticsTools::tool_definitions_json(bool p_enabled_only) {
 	std::ostringstream stream;
 	stream << "[";
 	std::vector<std::string> names;
 	for (const std::string &name : TOOL_NAMES) {
-		if (!p_scene_only || is_scene_tool(name)) {
+		if (!p_enabled_only || is_enabled_tool(name)) {
 			names.push_back(name);
 		}
 	}

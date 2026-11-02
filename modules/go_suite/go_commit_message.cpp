@@ -124,6 +124,10 @@ bool looks_like_conventional_commit(const std::string &p_subject) {
 	return is_conventional_prefix(trim(p_subject));
 }
 
+bool looks_like_secret_content(const std::string &p_text) {
+	return looks_like_secret_value(p_text);
+}
+
 bool looks_like_secret_file(const std::string &p_path) {
 	const std::string value = lower(p_path);
 	for (const char *marker : { ".env", "secret", "token", "credential", "key", "id_rsa", "id_ed25519", ".pem", ".key", ".p12", ".pfx", "password" }) {

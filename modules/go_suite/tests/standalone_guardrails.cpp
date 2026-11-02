@@ -127,6 +127,13 @@ void test_path_guardrails() {
 	using namespace go;
 	CHECK(is_safe_res_path("res://scripts/player.gd", PathOperation::WRITE));
 	CHECK(is_safe_res_path("res://", PathOperation::READ));
+	for (const char *path : { "res://.GIT/config", "res://.GoDoT/cache", "res://addons/.GIT/config", "res://.git./config", "res://.git /config", "res://GODOT~1/cache", "res://NUL.txt", "res://CoN", "res://com1.gd", "res://LPT9.log", "res://COM¹.txt", "res://.gıt/config" }) {
+		CHECK(!is_safe_res_path(path, PathOperation::READ));
+		CHECK(!is_safe_res_path(path, PathOperation::WRITE));
+	}
+	CHECK(looks_like_secret_content("api_key = \"fixture-only-not-a-real-key\""));
+	CHECK(looks_like_secret_content("-----BEGIN PRIVATE KEY-----\nfixture\n-----END PRIVATE KEY-----"));
+	CHECK(!looks_like_secret_content("extends Node\nvar speed = 100\n"));
 	CHECK(!is_safe_res_path("res://../secret.txt", PathOperation::READ));
 	CHECK(!is_safe_res_path("res://scripts/../player.gd", PathOperation::WRITE));
 	CHECK(!is_safe_res_path("/etc/passwd", PathOperation::READ));
@@ -176,7 +183,14 @@ void test_agentics_tools() {
 	CHECK(GoAgenticsTools::is_tool_allowed("read_file"));
 	const auto scene_definitions = parse_json(GoAgenticsTools::tool_definitions_json(true), parse_error);
 	CHECK(parse_error.empty());
-	CHECK_EQ(scene_definitions.array_value.size(), size_t(8));
+	CHECK_EQ(scene_definitions.array_value.size(), size_t(11));
+	CHECK(GoAgenticsTools::is_enabled_tool("read_file"));
+	CHECK(GoAgenticsTools::is_enabled_tool("list_files"));
+	CHECK(GoAgenticsTools::is_enabled_tool("search_text"));
+	CHECK(!GoAgenticsTools::is_enabled_tool("write_file"));
+	CHECK(!GoAgenticsTools::is_enabled_tool("run_project"));
+	CHECK(GoAgenticsTools::validate_arguments("read_file", R"({"path":"res://player.gd","start_line":2,"line_limit":10})").empty());
+	CHECK(!GoAgenticsTools::validate_arguments("read_file", R"({"path":"res://player.gd","line_limit":true})").empty());
 	CHECK(GoAgenticsTools::is_scene_tool("remove_node"));
 	CHECK(GoAgenticsTools::is_scene_tool("move_node"));
 	CHECK(GoAgenticsTools::is_scene_tool("set_node_property"));

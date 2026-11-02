@@ -174,3 +174,41 @@ the old action rather than applying it to a newly resolved target. Native tests
 exercise shared production undo operations for remove/reparent/property changes,
 subtree ownership, sibling position, reference lifetime and invalid values. Their
 new runtime and visual results remain pending; syntax checks are not that evidence.
+
+## Bounded project text tools
+
+The opt-in mode is now labeled **Project tools (experimental)** and offers the eight
+scene tools plus three read-only file tools. Native model capability verification,
+strict schemas, no automatic requests on startup and the 20-action budget remain.
+Tool results/file content are explicitly untrusted data in the model system prompt.
+File writes, script loading/execution and other draft bridge tools remain unexposed.
+
+| Tool | Arguments | Result and bounds |
+| --- | --- | --- |
+| `list_files` | optional `path` (`res://` by default) | Sorted collected paths; max 1,000 files, depth 8, 2,000 visited directory entries, about 48 KB output. Hidden/sensitive/link paths omitted. |
+| `read_file` | required `path`, optional integer `start_line` (default 1), `line_limit` (default 200, range 1–400) | Selected text lines from a supported UTF-8 file; max 200,000 input bytes and about 48 KB output. No unbounded whole-file read. |
+| `search_text` | required `query`, optional `path` (file or directory, default `res://`) | At most 64 candidate files and 50 matching lines; source paths/line numbers included, individual lines clipped to 500 characters. Always reports that the search is bounded, not exhaustive. |
+
+Supported extensions: gd, tscn, tres, godot, cfg, json, md, txt, gdshader,
+gdshaderinc, csv, svg, ini, yaml, yml and toml; `.gitignore` and `.gitattributes`
+are also readable. Binary/NUL data, invalid UTF-8, unreadable/nonregular files and
+oversized files are rejected or omitted from search. Loading text never calls
+ResourceLoader, evaluates code, or follows scene/script dependencies.
+
+Whole-file screening uses the same conservative sensitive-name/content markers
+as commit-message privacy; it happens before line selection, so selecting the body
+of a recognized private key cannot bypass its header detection. These are heuristics,
+with false positives (such as names containing `key`) and no guarantee of recognizing
+arbitrary embedded secrets. Review the project before granting model tool access.
+
+The central path guard now blocks case variants of `.git`/`.godot`, Windows device
+names (including superscript port variants), trailing dots/spaces, short-name aliases
+and non-ASCII hidden components that could alias protected names on Windows. These
+conservative restrictions also apply on Linux for portable policy. Runtime adapters
+still reject every symlink component; this is not a race-proof sandbox against a
+concurrent external process replacing filesystem objects.
+
+Native `[GO.][ReadTools]` fixtures cover line ranges, searches, lists, size/type/
+secret/path rejection and an actual outside-project symlink on Linux. Windows tests
+cover regular-file behavior and pure cross-platform path-policy regressions; native
+symlink creation is not required there. New runtime results remain pending.
