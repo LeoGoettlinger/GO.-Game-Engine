@@ -99,22 +99,27 @@ def main() -> int:
         includes.append(ROOT / "thirdparty/doctest")
         test_headers = sorted((MODULE / "tests").glob("test_*.h"))
         failures: list[tuple[Path, str]] = []
-        for source in sources + test_headers:
-            command = [args.compiler, "-std=c++17", "-fsyntax-only", "-fno-exceptions", "-DTOOLS_ENABLED"]
-            if source.suffix == ".h":
-                command += ["-DTESTS_ENABLED", "-x", "c++"]
-            for include in includes:
-                command += ["-I", str(include)]
-            command.append(str(source))
-            result = subprocess.run(
-                command,
-                cwd=ROOT,
-                text=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-            )
-            if result.returncode != 0:
-                failures.append((source, result.stdout))
+        # Match the actual module configuration; upstream TESTS_ENABLED is not
+        # a global engine define. Check production and test layouts separately.
+        for test_build in (False, True):
+            for source in sources + (test_headers if test_build else []):
+                command = [args.compiler, "-std=c++17", "-fsyntax-only", "-fno-exceptions", "-DTOOLS_ENABLED"]
+                if test_build:
+                    command += ["-DGO_SUITE_TESTS_ENABLED"]
+                if source.suffix == ".h":
+                    command += ["-x", "c++"]
+                for include in includes:
+                    command += ["-I", str(include)]
+                command.append(str(source))
+                result = subprocess.run(
+                    command,
+                    cwd=ROOT,
+                    text=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                )
+                if result.returncode != 0:
+                    failures.append((source, result.stdout))
 
         if failures:
             print("GO. Godot-facing syntax check FAILED:", file=sys.stderr)
@@ -122,7 +127,7 @@ def main() -> int:
                 print(f"\n--- {source.relative_to(ROOT)} ---\n{output[-4000:]}", file=sys.stderr)
             return 1
 
-    print(f"OK: {len(sources)} GO. suite C++ files and {len(test_headers)} native test headers pass syntax checks")
+    print(f"OK: {len(sources)} GO. suite C++ files and {len(test_headers)} native test headers pass production/test syntax checks")
     return 0
 
 

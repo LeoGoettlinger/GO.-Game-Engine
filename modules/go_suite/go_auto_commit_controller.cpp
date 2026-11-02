@@ -331,7 +331,7 @@ void GoAutoCommitController::_advance() {
 				return;
 			}
 			case go::AutoCommitStage::GENERATE_MESSAGE: {
-#ifdef TESTS_ENABLED
+#ifdef GO_SUITE_TESTS_ENABLED
 				if (test_message_fallback) {
 					_on_kilo_failed(TTR("Offline test fixture."));
 					return;

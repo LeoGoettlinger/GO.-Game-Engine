@@ -87,7 +87,7 @@ class GoAutoCommitController : public Control {
 	size_t file_index = 0;
 	bool last_success = false;
 	String last_result;
-#ifdef TESTS_ENABLED
+#ifdef GO_SUITE_TESTS_ENABLED
 	bool test_message_fallback = false;
 #endif
 	void _preflight_ready();

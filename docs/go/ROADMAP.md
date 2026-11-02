@@ -235,3 +235,13 @@ compiled editor/CI, `[ ]` open. A user-facing feature comparison lives in
 - Previous `182a9e6d`: quick/static green; full Windows/Linux build still running
   at this checkpoint. Local guardrails, real-Git flow and 28 sources/5 native
   headers pass syntax checks; these are not substitutes for the runtime fixtures.
+
+### Native test-build configuration correction
+
+The `ac64d508` full build failed on both platforms before runtime tests: upstream
+`TESTS_ENABLED` is not globally defined, so the test-only message fallback member
+was missing in `tests/test_main.cpp`. GO. now sets its own consistent
+`GO_SUITE_TESTS_ENABLED` define through module configuration for test builds.
+Local syntax CI now checks both production and test configurations rather than
+inventing an upstream macro only for test headers. Both configurations pass
+locally; the corrected full-build/runtime result remains pending.

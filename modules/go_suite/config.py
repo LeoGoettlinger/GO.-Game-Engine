@@ -5,4 +5,7 @@ def can_build(env, platform):
 
 
 def configure(env):
-    pass
+    # A single definition for module and test translation units is essential:
+    # upstream TESTS_ENABLED is only set on selected SCons environments.
+    if env["tests"]:
+        env.Append(CPPDEFINES=["GO_SUITE_TESTS_ENABLED"])
