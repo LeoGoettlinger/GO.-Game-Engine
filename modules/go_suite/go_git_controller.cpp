@@ -386,7 +386,7 @@ bool GoGitController::save_lfs_policy(const go::LfsPolicy &p_policy, std::string
 bool GoGitController::write_lfs_attributes(const std::vector<std::string> &p_patterns, const std::vector<std::string> &p_exclusions, std::string &r_error) const {
 	const String path = to_godot_string(full_path(project_path, ".gitattributes"));
 	Ref<DirAccess> directory = DirAccess::create(DirAccess::ACCESS_RESOURCES);
-	if (directory->is_link(path) || FileAccess::get_size(path) > 1024 * 1024) {
+	if (directory->is_link(path) || (FileAccess::exists(path) && FileAccess::get_size(path) > 1024 * 1024)) {
 		r_error = "Refusing symlinked or oversized .gitattributes";
 		return false;
 	}

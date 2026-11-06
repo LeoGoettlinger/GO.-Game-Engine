@@ -11,10 +11,25 @@ import unittest
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-from go_native_tests import validate_report
+from go_native_tests import report_diagnostics, validate_report
 
 
 class NativeReportTests(unittest.TestCase):
+    def test_diagnostics_preserve_executed_failure_not_skipped_tail(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "report.xml"
+            path.write_text(
+                '<doctest><TestSuite><TestCase name="actual"><Expression success="false">bad</Expression></TestCase>'
+                + '<TestCase name="irrelevant" skipped="true"/>' * 2000
+                + '</TestSuite><OverallResultsTestCases successes="0" failures="1"/></doctest>',
+                encoding="utf-8",
+            )
+            diagnostic = report_diagnostics(path)
+            self.assertIn('name="actual"', diagnostic)
+            self.assertIn('success="false"', diagnostic)
+            self.assertNotIn("irrelevant", diagnostic)
+            self.assertIn('failures="1"', diagnostic)
+
     def test_complete_success(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / "report.xml"

@@ -18,6 +18,8 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+from go_annotate_build_log import escape_command, summarize
+
 MARKER = "GO_PLAYER_SMOKE_OK"
 PLAYER = """extends CharacterBody2D
 
@@ -105,7 +107,8 @@ def run_step(name: str, command: list[str], cwd: Path, env: dict[str, str], logs
     (logs / f"{name}.log").write_text(output, encoding="utf-8")
     print(f"{name}: exit={result.returncode}\n{output[-6000:]}")
     if result.returncode != 0 or "ERROR:" in output or (marker and marker not in output):
-        raise RuntimeError(f"{name}: failed or required success marker missing (see {name}.log)")
+        summary, _ = summarize(output)
+        raise RuntimeError(f"{name}: exit={result.returncode}; failed or required success marker missing\n{summary}")
 
 
 def main() -> int:
@@ -179,6 +182,7 @@ def main() -> int:
     except (OSError, RuntimeError) as error:
         report["error"] = str(error)
         print(f"GO. export smoke FAILED: {error}")
+        print(f"::error title=GO. export/player failure::{escape_command(str(error)[:50000])}")
     finally:
         (logs / "result.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     return 0 if report["passed"] else 1

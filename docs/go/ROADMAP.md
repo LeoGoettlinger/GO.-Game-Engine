@@ -329,3 +329,15 @@ Windows devices and short-name/hidden Unicode variants. No script evaluation or
 file writing is enabled by these tools. Native read/search/privacy/outside-symlink
 fixtures added to full CI; local pure/schema/privacy/Git tests and syntax checks
 pass. File mutation, resource/run tools and live-agent/visual E2E remain open.
+
+### Runtime follow-up: missing attributes and actionable XML failures
+
+`5cb50fbb` passed its Linux native suites, including live scene ownership, automatic
+commit/close, local history and read tools, then failed the new export/player gate.
+Windows still failed AutoFlow; its diagnostic reports a size query on a missing
+`.gitattributes`. Rule creation now checks existence before querying size, avoiding
+Windows' missing-file engine error. This removes a concrete error, not yet proof of
+the complete Windows transaction passing. XML diagnostics now retain executed test
+cases/contexts instead of a tail dominated by skipped tests. Export failures now
+emit the actual failing step/log excerpt as an API-readable annotation. Both fixes
+await full runtime confirmation; the shared activation gate remains off.

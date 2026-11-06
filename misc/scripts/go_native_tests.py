@@ -34,6 +34,22 @@ def validate_report(path: Path, minimum: int) -> int:
     return passed
 
 
+def report_diagnostics(path: Path) -> str:
+    """Keep executed cases, not thousands of skipped-test records in the XML tail."""
+    try:
+        root = ET.parse(path).getroot()
+    except (OSError, ET.ParseError):
+        return path.read_text(encoding="utf-8", errors="replace")[-16000:] if path.is_file() else "No XML report"
+    parts = [
+        ET.tostring(case, encoding="unicode")[:12000] for case in root.iter("TestCase") if case.get("skipped") != "true"
+    ]
+    for name in ("OverallResultsAsserts", "OverallResultsTestCases"):
+        total = root.find(name)
+        if total is not None:
+            parts.append(ET.tostring(total, encoding="unicode"))
+    return "\n".join(parts)[:45000]
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--editor", type=Path, required=True)
@@ -63,6 +79,7 @@ def main() -> int:
                         "--test",
                         f"--test-case=[GO.][{args.suite}]*",
                         "--reporters=xml",
+                        "--no-skipped-summary",
                         f"--out={report}",
                     ],
                     env=env,
@@ -79,10 +96,8 @@ def main() -> int:
         error = str(exc)
     if error:
         text = output.read_text(encoding="utf-8", errors="replace") if output.is_file() else "No console log"
-        if report.is_file():
-            text += "\n" + report.read_text(encoding="utf-8", errors="replace")
         summary, _ = summarize(text)
-        message = f"{args.suite}: {error}\n{summary}"[:60000]
+        message = f"{args.suite}: {error}\n{summary}\n{report_diagnostics(report)}"[:60000]
         print(f"::error title=GO. native test failure::{escape_command(message)}")
         return 1
     return 0
