@@ -126,3 +126,57 @@ TEST_CASE("[GO.][ReadTools] Symlinks cannot read outside the project or enter li
 #endif
 
 } // namespace TestGoReadTools
+
+namespace TestGoFileChanges {
+TEST_CASE("[GO.][ReadTools] Prepared file changes reject stale approvals and preserve originals") {
+	TestGoReadTools::Fixture fixture;
+	fixture.write("notes.txt", "original text");
+	GoAgenticsToolBridge bridge;
+	go::GoKiloToolCall call = { "file-test", "write_file", R"({"path":"res://notes.txt","content":"replacement text"})" };
+	String preview;
+	String fingerprint;
+	REQUIRE(bridge.prepare_file_change(call, preview, fingerprint).is_empty());
+	CHECK(preview.contains("original text"));
+	CHECK(preview.contains("replacement text"));
+	CHECK(bridge.execute(call).contains("\"ok\":false"));
+	fixture.write("notes.txt", "external change");
+	CHECK(bridge.execute_file_change(call, fingerprint).contains("\"ok\":false"));
+	CHECK(FileAccess::get_file_as_string("res://notes.txt") == "external change");
+	REQUIRE(bridge.prepare_file_change(call, preview, fingerprint).is_empty());
+	CHECK(bridge.execute_file_change(call, fingerprint).contains("\"ok\":true"));
+	CHECK(FileAccess::get_file_as_string("res://notes.txt") == "replacement text");
+	Ref<DirAccess> backups = DirAccess::open("res://.godot/go_agent_backups");
+	REQUIRE(backups.is_valid());
+	REQUIRE(backups->list_dir_begin() == OK);
+	bool recovered = false;
+	for (String name = backups->get_next(); !name.is_empty(); name = backups->get_next()) {
+		if (!backups->current_is_dir()) {
+			recovered |= FileAccess::get_file_as_string("res://.godot/go_agent_backups/" + name) == "external change";
+		}
+	}
+	backups->list_dir_end();
+	CHECK(recovered);
+}
+
+TEST_CASE("[GO.][ReadTools] File plans deny ambiguous edits protected files and editor scripts") {
+	TestGoReadTools::Fixture fixture;
+	fixture.write("notes.txt", "aaa");
+	GoAgenticsToolBridge bridge;
+	String preview;
+	String fingerprint;
+	for (const auto &call : {
+				 go::GoKiloToolCall{ "test", "edit_file", R"({"path":"res://notes.txt","old_text":"aa","new_text":"b"})" },
+				 go::GoKiloToolCall{ "test", "write_file", R"({"path":"res://project.godot","content":"bad"})" },
+				 go::GoKiloToolCall{ "test", "write_file", R"({"path":"res://addons/plugin.gd","content":"extends Node"})" },
+				 go::GoKiloToolCall{ "test", "create_script", R"({"path":"res://tool.gd","content":"@tool\nextends Node"})" },
+				 go::GoKiloToolCall{ "test", "create_script", R"({"path":"res://tool.gd","content":"extends EditorPlugin"})" } }) {
+		CHECK_FALSE(bridge.prepare_file_change(call, preview, fingerprint).is_empty());
+		CHECK(fingerprint.is_empty());
+	}
+	CHECK(FileAccess::get_file_as_string("res://notes.txt") == "aaa");
+	go::GoKiloToolCall create = { "test", "create_script", R"({"path":"res://player.gd","content":"extends Node\nvar speed = 100\n"})" };
+	REQUIRE(bridge.prepare_file_change(create, preview, fingerprint).is_empty());
+	CHECK(bridge.execute_file_change(create, fingerprint).contains("\"ok\":true"));
+	CHECK(FileAccess::get_file_as_string("res://player.gd").contains("var speed = 100"));
+}
+} // namespace TestGoFileChanges

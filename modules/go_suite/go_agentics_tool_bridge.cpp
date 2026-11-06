@@ -48,12 +48,14 @@
 #include "core/io/resource_saver.h"
 #include "core/object/class_db.h"
 #include "core/object/script_language.h"
+#include "core/os/os.h"
 #include "core/string/node_path.h"
 #include "core/variant/variant.h"
 #include "editor/editor_data.h"
 #include "editor/editor_interface.h"
 #include "editor/editor_undo_redo_manager.h"
 #include "editor/file_system/editor_file_system.h"
+#include "editor/script/script_editor_plugin.h"
 #include "scene/2d/node_2d.h"
 #include "scene/main/node.h"
 #include "scene/resources/packed_scene.h"
@@ -138,7 +140,7 @@ void collect_files(const String &p_directory, Vector<String> &r_files, int p_dep
 	directory->list_dir_end();
 }
 
-bool read_project_text(const String &p_path, String &r_text, std::string &r_error) {
+bool read_project_text(const String &p_path, String &r_text, std::string &r_error, Vector<uint8_t> *r_raw = nullptr) {
 	r_text = String();
 	if (has_link_component(p_path) || go::looks_like_secret_file(to_std(p_path))) {
 		r_error = "Sensitive paths and symbolic links are not readable by the agent";
@@ -182,6 +184,10 @@ bool read_project_text(const String &p_path, String &r_text, std::string &r_erro
 		r_text = String();
 		r_error = "File omitted because it contains possible credentials or private key material";
 		return false;
+	}
+	if (r_raw != nullptr) {
+		bytes.resize(count);
+		*r_raw = bytes;
 	}
 	return true;
 }
@@ -234,6 +240,125 @@ bool editable_subtree(Node *p_node, Node *p_root) {
 		}
 	}
 	return true;
+}
+
+struct FileChangePlan {
+	String path;
+	String before;
+	String after;
+	String fingerprint;
+	Vector<uint8_t> original;
+	bool existed = false;
+};
+
+bool file_is_open(const String &p_path) {
+	if (ResourceCache::has(p_path)) {
+		return true;
+	}
+	if (ScriptEditor::get_singleton() != nullptr) {
+		for (const Ref<Script> &script : ScriptEditor::get_singleton()->get_open_scripts()) {
+			if (script.is_valid() && script->get_path() == p_path) {
+				return true;
+			}
+		}
+	}
+	if (EditorInterface::get_singleton() != nullptr) {
+		for (const String &scene : EditorInterface::get_singleton()->get_open_scenes()) {
+			if (scene == p_path) {
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+std::string plan_file_change(const go::GoKiloToolCall &p_call, FileChangePlan &r_plan) {
+	if (!go::GoAgenticsTools::is_file_mutation(p_call.name) || GoSuiteRegistry::is_git_job_busy() || GoSuiteRegistry::is_quit_pending() || GoSuiteRegistry::is_editor_input_locked()) {
+		return "File mutation is unavailable during Git/close operations";
+	}
+	std::string error = go::GoAgenticsTools::validate_arguments(p_call.name, p_call.arguments);
+	if (!error.empty()) {
+		return error;
+	}
+	const auto args = go::parse_json(p_call.arguments, error);
+	const auto checked = go::validate_res_path(argument_string(args, "path"), go::PathOperation::WRITE);
+	if (!checked.ok) {
+		return checked.error;
+	}
+	r_plan.path = to_godot(checked.normalized);
+	const auto parts = go::split(checked.relative, '/');
+	for (const auto &part : parts) {
+		if (part.front() == '.' || go::lower(part) == "addons" || go::looks_like_secret_file(part)) {
+			return "Hidden, sensitive and addon paths cannot be modified by file tools";
+		}
+	}
+	if (has_link_component(r_plan.path) || !DirAccess::dir_exists_absolute(r_plan.path.get_base_dir())) {
+		return "Parent directory must exist and no path component may be a symbolic link";
+	}
+	if (DirAccess::dir_exists_absolute(r_plan.path)) {
+		return "A directory already occupies the target path";
+	}
+	r_plan.existed = FileAccess::exists(r_plan.path);
+	if (p_call.name == "create_folder") {
+		if (r_plan.existed) {
+			return "A file already occupies the folder path";
+		}
+	} else {
+		const String extension = r_plan.path.get_extension().to_lower();
+		if (extension != "gd" && extension != "txt" && extension != "md" && extension != "json" && extension != "csv") {
+			return "File mutations currently support only gd, txt, md, json and csv; use scene/resource tools for other types";
+		}
+		if (file_is_open(r_plan.path)) {
+			return "Close the file/resource in the editor before changing it; unsaved editor work is never overwritten";
+		}
+		if (r_plan.existed && !read_project_text(r_plan.path, r_plan.before, error, &r_plan.original)) {
+			return error;
+		}
+		if (p_call.name == "create_script" && (r_plan.existed || extension != "gd")) {
+			return "create_script requires a new .gd file";
+		}
+		if ((p_call.name == "edit_file" || p_call.name == "delete_file") && !r_plan.existed) {
+			return "The file to edit/delete does not exist";
+		}
+		if (p_call.name == "edit_file") {
+			const std::string old_text = argument_string(args, "old_text");
+			std::string text = to_std(r_plan.before);
+			const size_t found = text.find(old_text);
+			if (old_text.empty() || found == std::string::npos || text.find(old_text, found + 1) != std::string::npos) {
+				return "old_text must match exactly once, including overlapping occurrences";
+			}
+			text.replace(found, old_text.size(), argument_string(args, "new_text"));
+			r_plan.after = to_godot(text);
+			if (r_plan.original.size() >= 3 && r_plan.original[0] == 0xef && r_plan.original[1] == 0xbb && r_plan.original[2] == 0xbf) {
+				r_plan.after = String::chr(0xfeff) + r_plan.after;
+			}
+		} else if (p_call.name != "delete_file") {
+			r_plan.after = to_godot(argument_string(args, "content"));
+		}
+		const std::string content = to_std(r_plan.after);
+		if (content.size() > 200000 || go::looks_like_secret_content(content)) {
+			return "Result exceeds the file limit or contains possible credentials";
+		}
+		if (extension == "gd" && p_call.name != "delete_file") {
+			if (content.find("@tool") != std::string::npos || content.find("static") != std::string::npos || content.find("preload") != std::string::npos) {
+				return "Editor tools, static initialization and preloads are not allowed in generated scripts";
+			}
+			String first;
+			for (const String &line : r_plan.after.split("\n")) {
+				const String trimmed = line.strip_edges();
+				if (!trimmed.is_empty() && !trimmed.begins_with("#")) {
+					first = trimmed;
+					break;
+				}
+			}
+			const String type = first.trim_prefix("extends ").strip_edges();
+			if (!first.begins_with("extends ") || !ClassDB::class_exists(type) || !ClassDB::is_parent_class(type, "Node") || ClassDB::is_parent_class(type, "EditorPlugin")) {
+				return "Generated scripts must begin with extends and a built-in non-editor Node class";
+			}
+		}
+	}
+	r_plan.fingerprint = (ProjectSettings::get_singleton()->globalize_path("res://") + "\n" + r_plan.path + "\n" + to_godot(p_call.name) + "\n" + (r_plan.existed ? "existing" : "new") + "\n" + String::hex_encode_buffer(r_plan.original.ptr(), r_plan.original.size()) + "\n" + r_plan.after).sha256_text();
+	return "";
 }
 
 } // namespace
@@ -313,11 +438,104 @@ std::string GoAgenticsToolBridge::validate_scalar_property(Node *p_node, const S
 	return "Property value has the wrong type or exceeds its bounds";
 }
 
+String GoAgenticsToolBridge::prepare_file_change(const go::GoKiloToolCall &p_call, String &r_preview, String &r_fingerprint) const {
+	r_preview = String();
+	r_fingerprint = String();
+	FileChangePlan plan;
+	const std::string error = plan_file_change(p_call, plan);
+	if (!error.empty()) {
+		return to_godot(error);
+	}
+	r_fingerprint = plan.fingerprint;
+	r_preview = to_godot(p_call.name) + " " + plan.path + "\n\n--- BEFORE ---\n" + plan.before + "\n\n--- AFTER ---\n" + (p_call.name == "delete_file" ? TTR("File will be deleted; a byte-for-byte backup is retained in .godot/go_agent_backups.") : plan.after);
+	return String();
+}
+
+String GoAgenticsToolBridge::execute_file_change(const go::GoKiloToolCall &p_call, const String &p_fingerprint) const {
+	FileChangePlan plan;
+	const std::string error = plan_file_change(p_call, plan);
+	if (!error.empty() || p_fingerprint.is_empty() || plan.fingerprint != p_fingerprint) {
+		return to_godot(error_json(error.empty() ? "File or project changed after approval; request a fresh action" : error));
+	}
+	if (p_call.name == "create_folder") {
+		const Error result = DirAccess::make_dir_absolute(plan.path);
+		if (result != OK) {
+			return to_godot(error_json("Could not create folder"));
+		}
+	} else {
+		String backup;
+		if (plan.existed) {
+			const String folder = "res://.godot/go_agent_backups";
+			if (has_link_component(folder) || DirAccess::make_dir_recursive_absolute(folder) != OK) {
+				return to_godot(error_json("Cannot create a safe local backup directory"));
+			}
+			Ref<DirAccess> directory = DirAccess::open(folder);
+			if (directory.is_null() || directory->list_dir_begin() != OK) {
+				return to_godot(error_json("Cannot inspect local backups"));
+			}
+			int count = 0;
+			while (!directory->get_next().is_empty() && count < 200) {
+				++count;
+			}
+			directory->list_dir_end();
+			if (count >= 200) {
+				return to_godot(error_json("Backup limit reached; review .godot/go_agent_backups before more file changes"));
+			}
+			backup = folder.path_join(itos(OS::get_singleton()->get_ticks_usec()) + "-" + plan.path.get_file() + ".bak");
+			if (has_link_component(backup) || FileAccess::exists(backup)) {
+				return to_godot(error_json("Backup collision; no source file changed"));
+			}
+			Ref<FileAccess> file = FileAccess::open(backup, FileAccess::WRITE);
+			if (file.is_null() || !file->store_buffer(plan.original)) {
+				return to_godot(error_json("Could not write backup; no source file changed"));
+			}
+			file->flush();
+			if (file->get_error() != OK) {
+				return to_godot(error_json("Could not flush backup; no source file changed"));
+			}
+		}
+		String temporary;
+		if (p_call.name != "delete_file") {
+			temporary = plan.path + ".go-agent-" + itos(OS::get_singleton()->get_ticks_usec()) + ".tmp";
+			if (has_link_component(temporary) || FileAccess::exists(temporary)) {
+				return to_godot(error_json("Temporary file collision; no source file changed"));
+			}
+			Ref<FileAccess> file = FileAccess::open(temporary, FileAccess::WRITE);
+			if (file.is_null() || !file->store_string(plan.after)) {
+				return to_godot(error_json("Could not write replacement; original file unchanged"));
+			}
+			file->flush();
+			if (file->get_error() != OK) {
+				return to_godot(error_json("Could not flush replacement; original file unchanged"));
+			}
+		}
+		FileChangePlan current;
+		const std::string changed = plan_file_change(p_call, current);
+		if (!changed.empty() || current.fingerprint != p_fingerprint) {
+			if (!temporary.is_empty()) {
+				DirAccess::remove_absolute(temporary);
+			}
+			return to_godot(error_json("File/editor state changed before replacement; source not modified"));
+		}
+		const Error result = p_call.name == "delete_file" ? DirAccess::remove_absolute(plan.path) : DirAccess::rename_absolute(temporary, plan.path);
+		if (result != OK) {
+			return to_godot(error_json("File operation failed; inspect the original and recovery files. Backup: " + to_std(backup) + "; replacement: " + to_std(temporary)));
+		}
+	}
+	if (EditorFileSystem::get_singleton() != nullptr) {
+		EditorFileSystem::get_singleton()->scan();
+	}
+	return to_godot(ok_json("Applied " + p_call.name + " to " + to_std(plan.path) + ". Existing bytes were backed up locally. File changes are not scene Undo/Redo; script parsing/import results are separate."));
+}
+
 String GoAgenticsToolBridge::execute(const go::GoKiloToolCall &p_call) const {
 	if (GoSuiteRegistry::is_quit_pending() || GoSuiteRegistry::is_editor_input_locked()) {
 		return to_godot(error_json("Editor changes are locked by a pending Git/close operation"));
 	}
 	const std::string tool = p_call.name;
+	if (go::GoAgenticsTools::is_file_mutation(tool)) {
+		return to_godot(error_json("File mutations require a prepared approval snapshot"));
+	}
 	const std::string argument_error = go::GoAgenticsTools::validate_arguments(tool, p_call.arguments);
 	if (!argument_error.empty()) {
 		return to_godot(error_json(argument_error));
@@ -430,79 +648,6 @@ String GoAgenticsToolBridge::execute(const go::GoKiloToolCall &p_call) const {
 			output += line;
 		}
 		return to_godot(ok_json(output));
-	}
-
-	if (tool == "write_file" || tool == "create_script") {
-		if (!has_path) {
-			return to_godot(error_json("a res:// path is required"));
-		}
-		if (tool == "create_script" && !path.ends_with(".gd")) {
-			return to_godot(error_json("create_script requires a .gd path"));
-		}
-		const std::string content = argument_string(arguments, "content");
-		if (content.size() > 200000) {
-			return to_godot(error_json("content exceeds the write limit"));
-		}
-		const Ref<FileAccess> file = FileAccess::open(path, FileAccess::WRITE);
-		if (file.is_null()) {
-			return to_godot(error_json("could not open file for writing"));
-		}
-		file->store_string(to_godot(content.substr(0, 200000)));
-		return to_godot(ok_json("wrote " + to_std(path)));
-	}
-
-	if (tool == "edit_file") {
-		if (!has_path || !FileAccess::exists(path)) {
-			return to_godot(error_json("a valid res:// file path is required"));
-		}
-		const std::string old_text = argument_string(arguments, "old_text");
-		const std::string new_text = argument_string(arguments, "new_text");
-		if (old_text.empty()) {
-			return to_godot(error_json("edit_file requires old_text"));
-		}
-		const Ref<FileAccess> file = FileAccess::open(path, FileAccess::READ);
-		if (file.is_null()) {
-			return to_godot(error_json("could not open file"));
-		}
-		std::string text = to_std(file->get_as_text());
-		const size_t found = text.find(old_text);
-		if (found == std::string::npos || text.find(old_text, found + old_text.size()) != std::string::npos) {
-			return to_godot(error_json("old_text must match exactly once"));
-		}
-		text.replace(found, old_text.size(), new_text);
-		if (text.size() > 200000) {
-			return to_godot(error_json("edited file exceeds the write limit"));
-		}
-		const Ref<FileAccess> output = FileAccess::open(path, FileAccess::WRITE);
-		if (output.is_null()) {
-			return to_godot(error_json("could not open file for writing"));
-		}
-		output->store_string(to_godot(text.substr(0, 200000)));
-		return to_godot(ok_json("edited " + to_std(path)));
-	}
-
-	if (tool == "create_folder") {
-		if (!has_path) {
-			return to_godot(error_json("a res:// folder path is required"));
-		}
-		Ref<DirAccess> directory = DirAccess::create(DirAccess::ACCESS_RESOURCES);
-		const String relative_path = to_godot(path_result.relative);
-		if (directory.is_null() || directory->make_dir_recursive(relative_path) != OK) {
-			return to_godot(error_json("could not create folder"));
-		}
-		return to_godot(ok_json("created folder " + to_std(path)));
-	}
-
-	if (tool == "delete_file") {
-		if (!has_path) {
-			return to_godot(error_json("a res:// path is required"));
-		}
-		Ref<DirAccess> directory = DirAccess::create(DirAccess::ACCESS_RESOURCES);
-		const String relative_path = to_godot(path_result.relative);
-		if (directory.is_null() || directory->remove(relative_path) != OK) {
-			return to_godot(error_json("could not delete file"));
-		}
-		return to_godot(ok_json("deleted " + to_std(path)));
 	}
 
 	if (tool == "validate_script") {

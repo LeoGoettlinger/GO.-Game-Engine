@@ -55,5 +55,7 @@ public:
 	static void record_rename_node(UndoRedo *p_undo, Node *p_node, const String &p_name);
 	// Executes one whitelisted tool call against the open project. All paths are
 	// validated by go_agentics_path before any Godot file/editor API is touched.
+	String prepare_file_change(const go::GoKiloToolCall &p_call, String &r_preview, String &r_fingerprint) const;
+	String execute_file_change(const go::GoKiloToolCall &p_call, const String &p_fingerprint) const;
 	String execute(const go::GoKiloToolCall &p_call) const;
 };

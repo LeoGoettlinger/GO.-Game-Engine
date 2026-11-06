@@ -341,3 +341,20 @@ the complete Windows transaction passing. XML diagnostics now retain executed te
 cases/contexts instead of a tail dominated by skipped tests. Export failures now
 emit the actual failing step/log excerpt as an API-readable annotation. Both fixes
 await full runtime confirmation; the shared activation gate remains off.
+
+### Dateiänderungen: abgesichertes Backend, noch nicht freigeschaltet
+
+- Vorbereitungs-/Ausführungs-API bindet eine Änderung an Projektpfad, Ziel, Operation,
+  ursprüngliche Bytes und neuen Inhalt. Eine veraltete Freigabe wird verworfen.
+- Bestehende Dateien werden for Ersatz/Löschung bytegetreu under
+  `.godot/go_agent_backups` gesichert (maximal 200 Einträge); Ersatzdateien werden
+  zuerst separate geschrieben. Geladene Ressourcen/offene Skripte, Addons,
+  versteckte und sensible Pfade sowie Symlinks werden abgelehnt.
+- Zunächst nur kleine UTF-8-Dateien (`gd`, `txt`, `md`, `json`, `csv`);
+  Skripte mit Tool-/Static-/Preload-Inhalten werden konservativ abgelehnt.
+- Zwei zusätzliche native Regressionen prüfen veraltete Freigaben, Sicherungen,
+  überlappende Suchtreffer und geschützte Ziele. Windows-/Linux-Lauf steht aus.
+- **Nicht freigeschaltet:** Der vollständige Datei-Vorschau-/Freigabedialog fehlt.
+  Die Modell-Whitelist bleibt bei elf Werkzeugen. Sicherungen sind kein
+  Editor-Undo/Redo. Kein Schutzversprechen gegen gleichzeitig manipulierende
+  externe Prozesse, keine Skript-Sandbox und keine Crash-Durability-Garantie.

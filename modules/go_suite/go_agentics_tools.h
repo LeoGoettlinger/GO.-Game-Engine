@@ -41,6 +41,7 @@ namespace go {
 class GoAgenticsTools {
 public:
 	static std::string tool_definitions_json(bool p_enabled_only = false);
+	static bool is_file_mutation(const std::string &p_name);
 	static bool is_enabled_tool(const std::string &p_name);
 	static bool is_scene_tool(const std::string &p_name);
 	static std::string validate_arguments(const std::string &p_name, const std::string &p_arguments_json);
