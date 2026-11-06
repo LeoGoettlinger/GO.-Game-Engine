@@ -346,9 +346,9 @@ await full runtime confirmation; the shared activation gate remains off.
 
 - Vorbereitungs-/Ausführungs-API bindet eine Änderung an Projektpfad, Ziel, Operation,
   ursprüngliche Bytes und neuen Inhalt. Eine veraltete Freigabe wird verworfen.
-- Bestehende Dateien werden for Ersatz/Löschung bytegetreu under
+- Bestehende Dateien erhalten eine bytegetreue Sicherung in
   `.godot/go_agent_backups` gesichert (maximal 200 Einträge); Ersatzdateien werden
-  zuerst separate geschrieben. Geladene Ressourcen/offene Skripte, Addons,
+  zuerst getrennt geschrieben. Geladene Ressourcen/offene Skripte, Addons,
   versteckte und sensible Pfade sowie Symlinks werden abgelehnt.
 - Zunächst nur kleine UTF-8-Dateien (`gd`, `txt`, `md`, `json`, `csv`);
   Skripte mit Tool-/Static-/Preload-Inhalten werden konservativ abgelehnt.
