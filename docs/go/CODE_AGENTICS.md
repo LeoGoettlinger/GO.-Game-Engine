@@ -147,7 +147,7 @@ tool replay. Native Windows/Linux runtime results and visual acceptance are pend
 
 ## Expanded scene operations
 
-The opt-in scene-only native loop now offers eight tools: `get_current_scene_tree`,
+The scene subset of the opt-in native loop offers eight tools: `get_current_scene_tree`,
 `get_editor_selection`, `add_node`, `rename_node`, `remove_node`, `move_node`,
 `get_node_property`, and `set_node_property`. Other draft bridge tools remain
 unexposed. Writes still require confirmation unless Auto-Approve was explicitly
@@ -178,10 +178,11 @@ new runtime and visual results remain pending; syntax checks are not that eviden
 ## Bounded project text tools
 
 The opt-in mode is now labeled **Project tools (experimental)** and offers the eight
-scene tools plus three read-only file tools. Native model capability verification,
+scene tools, three read-only file tools and five separately approved file mutations
+(see below). Native model capability verification,
 strict schemas, no automatic requests on startup and the 20-action budget remain.
 Tool results/file content are explicitly untrusted data in the model system prompt.
-File writes, script loading/execution and other draft bridge tools remain unexposed.
+Script loading/execution and other draft bridge tools remain unexposed.
 
 | Tool | Arguments | Result and bounds |
 | --- | --- | --- |

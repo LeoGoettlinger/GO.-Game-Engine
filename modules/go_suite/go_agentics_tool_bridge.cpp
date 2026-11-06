@@ -458,13 +458,13 @@ String GoAgenticsToolBridge::execute_file_change(const go::GoKiloToolCall &p_cal
 	if (!error.empty() || p_fingerprint.is_empty() || plan.fingerprint != p_fingerprint) {
 		return to_godot(error_json(error.empty() ? "File or project changed after approval; request a fresh action" : error));
 	}
+	String backup;
 	if (p_call.name == "create_folder") {
 		const Error result = DirAccess::make_dir_absolute(plan.path);
 		if (result != OK) {
 			return to_godot(error_json("Could not create folder"));
 		}
 	} else {
-		String backup;
 		if (plan.existed) {
 			const String folder = "res://.godot/go_agent_backups";
 			if (has_link_component(folder) || DirAccess::make_dir_recursive_absolute(folder) != OK) {
@@ -526,7 +526,7 @@ String GoAgenticsToolBridge::execute_file_change(const go::GoKiloToolCall &p_cal
 	if (EditorFileSystem::get_singleton() != nullptr) {
 		EditorFileSystem::get_singleton()->scan();
 	}
-	return to_godot(ok_json("Applied " + p_call.name + " to " + to_std(plan.path) + ". Existing bytes were backed up locally. File changes are not scene Undo/Redo; script parsing/import results are separate."));
+	return to_godot(ok_json("Applied " + p_call.name + " to " + to_std(plan.path) + (backup.is_empty() ? ". No previous file required a backup." : ". Backup: " + to_std(backup)) + " File changes are not scene Undo/Redo; script parsing/import results are separate."));
 }
 
 String GoAgenticsToolBridge::execute(const go::GoKiloToolCall &p_call) const {

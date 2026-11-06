@@ -82,6 +82,7 @@ class GoAgenticsDock : public VBoxContainer {
 	CheckButton *scene_tools = nullptr;
 	ConfirmationDialog *approval = nullptr;
 	TextEdit *file_preview = nullptr;
+	Label *approval_summary = nullptr;
 	String file_fingerprint;
 	std::vector<go::GoKiloMessage> conversation;
 	std::vector<go::GoKiloToolCall> pending_calls;

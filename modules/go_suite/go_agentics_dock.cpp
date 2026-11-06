@@ -193,7 +193,7 @@ void GoAgenticsDock::_advance_tools() {
 		// File operations always require their own approval, even when scene
 		// auto-approval is enabled. They are not part of the scene undo history.
 		waiting_approval = true;
-		approval->set_text(TTR("Allow this file change? Review the complete before/after contents below. Existing files are backed up locally; file changes are NOT editor Undo/Redo actions."));
+		approval_summary->set_text(TTR("Allow this file change? Review the complete before/after contents below. Existing files are backed up locally; file changes are NOT editor Undo/Redo actions."));
 		file_preview->set_text(preview);
 		file_preview->show();
 		approval->popup_centered(Size2i(800, 600));
@@ -219,7 +219,7 @@ void GoAgenticsDock::_advance_tools() {
 		Node *destination = parent_path != nullptr ? root->get_node_or_null(NodePath(go_suite::to_godot_string(parent_path->as_string()))) : nullptr;
 		approval_destination = destination != nullptr ? destination->get_instance_id() : ObjectID();
 		waiting_approval = true;
-		approval->set_text(TTR("Allow this scene change? It will be added to the editor undo history.") + "\n\n" + go_suite::to_godot_string(call.name + "\n" + call.arguments));
+		approval_summary->set_text(TTR("Allow this scene change? It will be added to the editor undo history.") + "\n\n" + go_suite::to_godot_string(call.name + "\n" + call.arguments));
 		approval->popup_centered(Size2i(620, 300));
 		return;
 	}
@@ -661,12 +661,22 @@ GoAgenticsDock::GoAgenticsDock() {
 	approval->connect("custom_action", callable_mp(this, &GoAgenticsDock::_on_approval_action));
 	approval->connect("confirmed", callable_mp(this, &GoAgenticsDock::_on_tool_confirmed));
 	approval->connect("canceled", callable_mp(this, &GoAgenticsDock::_on_tool_rejected));
+	// AcceptDialog overlays direct Control children. Keep the warning and
+	// preview in one container so the text editor cannot obscure the warning.
+	VBoxContainer *approval_content = memnew(VBoxContainer);
+	approval_content->set_custom_minimum_size(Size2(600, 0) * EDSCALE);
+	approval->add_child(approval_content);
+	approval_summary = memnew(Label);
+	approval_summary->set_autowrap_mode(TextServer::AUTOWRAP_WORD_SMART);
+	approval_content->add_child(approval_summary);
+	approval->get_ok_button()->set_text(TTR("Apply"));
 	file_preview = memnew(TextEdit);
 	file_preview->set_editable(false);
-	file_preview->set_custom_minimum_size(Size2(600, 380));
+	file_preview->set_custom_minimum_size(Size2(600, 380) * EDSCALE);
+	file_preview->set_v_size_flags(Control::SIZE_EXPAND_FILL);
 	file_preview->set_line_wrapping_mode(TextEdit::LINE_WRAPPING_BOUNDARY);
 	file_preview->hide();
-	approval->add_child(file_preview);
+	approval_content->add_child(file_preview);
 	add_child(approval);
 
 	model_status = memnew(Label);

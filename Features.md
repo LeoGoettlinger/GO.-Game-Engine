@@ -412,13 +412,12 @@ zum Auslassen der gesamten Datei. Dieser heuristische Filter ist kein vollständ
 Secret-Scanner. Neue native Datei-/Symlink-Tests stehen in CI zur Laufzeitprüfung an;
 lokale Guardrails, Git-Regression und Produktions-/Test-Syntaxprüfungen sind grün.
 
-#### Dateiänderungs-Backend (noch nicht für Agenten freigeschaltet)
+#### Dateiänderungs-Backend (experimentell)
 
 Zusätzlich zu Godots normalen Editor-Funktionen ist eine vorbereitete
 Dateiänderungs-API mit Inhaltsfingerabdruck, lokaler Sicherung und Schutz offener
-Ressourcen vorhanden. Der Agent erhält weiterhin nur die elf bisher aktivierten
-Werkzeuge; Datei-Freigabedialog, native Laufzeitabnahme und weitere Fehlertests
-stehen noch aus. Datei-Sicherungen ersetzen kein Undo/Redo.
+Ressourcen vorhanden. Der Datei-Freigabedialog ist inzwischen angeschlossen;
+die native Laufzeitabnahme und weitere Fehlertests stehen noch aus. Datei-Sicherungen ersetzen kein Undo/Redo.
 
 #### Update: Datei-Freigabedialog im experimentellen Projektmodus
 

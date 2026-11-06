@@ -42,6 +42,7 @@
 #include "core/os/os.h"
 #include "scene/gui/check_button.h"
 #include "scene/gui/dialogs.h"
+#include "scene/gui/label.h"
 #include "scene/gui/text_edit.h"
 #include "scene/main/scene_tree.h"
 #include "scene/main/window.h"
@@ -81,6 +82,8 @@ struct GoChatHistoryDockTest {
 			CHECK(dock->waiting_approval);
 			CHECK_FALSE(dock->file_fingerprint.is_empty());
 			CHECK(dock->file_preview->get_text().contains("replacement"));
+			CHECK(dock->approval_summary->get_parent() == dock->file_preview->get_parent());
+			CHECK(dock->approval_summary->get_text().contains("NOT editor Undo/Redo"));
 		};
 		write("original");
 		prepare();
