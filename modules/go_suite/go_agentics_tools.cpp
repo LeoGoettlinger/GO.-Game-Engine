@@ -187,7 +187,7 @@ bool GoAgenticsTools::is_file_mutation(const std::string &p_name) {
 }
 
 bool GoAgenticsTools::is_enabled_tool(const std::string &p_name) {
-	return is_scene_tool(p_name) || p_name == "list_files" || p_name == "read_file" || p_name == "search_text";
+	return is_file_mutation(p_name) || is_scene_tool(p_name) || p_name == "list_files" || p_name == "read_file" || p_name == "search_text";
 }
 
 bool GoAgenticsTools::is_scene_tool(const std::string &p_name) {

@@ -6,11 +6,15 @@
 
 from __future__ import annotations
 
+import io
+import subprocess
 import tempfile
 import unittest
 import xml.etree.ElementTree as ET
 from pathlib import Path
+from unittest.mock import patch
 
+import go_native_tests as native
 from go_native_tests import report_diagnostics, validate_report
 
 
@@ -29,6 +33,28 @@ class NativeReportTests(unittest.TestCase):
             self.assertIn('success="false"', diagnostic)
             self.assertNotIn("irrelevant", diagnostic)
             self.assertIn('failures="1"', diagnostic)
+
+    def test_failure_annotation_survives_ascii_console(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "native.log"
+            stream = io.BytesIO()
+            console = io.TextIOWrapper(stream, encoding="ascii")
+
+            def fail(command: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+                report = Path(next(item.removeprefix("--out=") for item in command if item.startswith("--out=")))
+                report.write_text('<doctest><TestCase name="failed ✓ Grüße"/></doctest>', encoding="utf-8")
+                return subprocess.CompletedProcess(command, 1)
+
+            args = ["native", "--editor", "unused", "--suite", "AutoFlow", "--minimum", "1", "--output", str(output)]
+            with (
+                patch("sys.argv", args),
+                patch("sys.stdout", console),
+                patch.object(native.subprocess, "run", side_effect=fail),
+            ):
+                self.assertEqual(native.main(), 1)
+            console.flush()
+            self.assertIn(b"::error title=GO. native test failure::", stream.getvalue())
+            self.assertIn(b"failed", stream.getvalue())
 
     def test_complete_success(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

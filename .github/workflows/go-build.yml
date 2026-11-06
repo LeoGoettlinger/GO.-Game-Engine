@@ -186,7 +186,7 @@ jobs:
             EDITOR=bin/godot.windows.editor.x86_64.exe
           fi
           python misc/scripts/go_native_tests.py --editor "$EDITOR" --suite ChatHistory \
-            --minimum 1 --output go-chat-history-tests.log
+            --minimum 2 --output go-chat-history-tests.log
 
       - name: Bounded project file read tests
         shell: bash
@@ -197,7 +197,7 @@ jobs:
             EDITOR=bin/godot.windows.editor.x86_64.exe
           fi
           python misc/scripts/go_native_tests.py --editor "$EDITOR" --suite ReadTools \
-            --minimum 4 --output go-read-tools-tests.log
+            --minimum 5 --output go-read-tools-tests.log
 
       - name: Build release template
         shell: bash

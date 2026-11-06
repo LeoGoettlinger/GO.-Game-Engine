@@ -38,6 +38,7 @@
 
 #include "core/io/dir_access.h"
 #include "core/io/file_access.h"
+#include "core/io/resource.h"
 #include "core/os/os.h"
 #include "tests/test_macros.h"
 #include "tests/test_utils.h"
@@ -178,5 +179,31 @@ TEST_CASE("[GO.][ReadTools] File plans deny ambiguous edits protected files and 
 	REQUIRE(bridge.prepare_file_change(create, preview, fingerprint).is_empty());
 	CHECK(bridge.execute_file_change(create, fingerprint).contains("\"ok\":true"));
 	CHECK(FileAccess::get_file_as_string("res://player.gd").contains("var speed = 100"));
+}
+} // namespace TestGoFileChanges
+
+namespace TestGoFileChanges {
+TEST_CASE("[GO.][ReadTools] Approvals are bound to the project and reject newly loaded resources") {
+	TestGoReadTools::Fixture fixture;
+	fixture.write("notes.txt", "original");
+	GoAgenticsToolBridge bridge;
+	go::GoKiloToolCall call = { "test", "write_file", R"({"path":"res://notes.txt","content":"replacement"})" };
+	String preview;
+	String fingerprint;
+	REQUIRE(bridge.prepare_file_change(call, preview, fingerprint).is_empty());
+	{
+		TestGoReadTools::Fixture other_project;
+		other_project.write("notes.txt", "original");
+		CHECK(bridge.execute_file_change(call, fingerprint).contains("\"ok\":false"));
+		CHECK(FileAccess::get_file_as_string("res://notes.txt") == "original");
+	}
+	{
+		Ref<Resource> resource;
+		resource.instantiate();
+		resource->set_path("res://notes.txt");
+		CHECK(bridge.execute_file_change(call, fingerprint).contains("\"ok\":false"));
+		CHECK(FileAccess::get_file_as_string("res://notes.txt") == "original");
+	}
+	CHECK(bridge.execute_file_change(call, fingerprint).contains("\"ok\":true"));
 }
 } // namespace TestGoFileChanges

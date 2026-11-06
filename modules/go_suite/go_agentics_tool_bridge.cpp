@@ -53,6 +53,7 @@
 #include "core/variant/variant.h"
 #include "editor/editor_data.h"
 #include "editor/editor_interface.h"
+#include "editor/editor_node.h"
 #include "editor/editor_undo_redo_manager.h"
 #include "editor/file_system/editor_file_system.h"
 #include "editor/script/script_editor_plugin.h"
@@ -262,7 +263,7 @@ bool file_is_open(const String &p_path) {
 			}
 		}
 	}
-	if (EditorInterface::get_singleton() != nullptr) {
+	if (EditorNode::get_singleton() != nullptr && EditorInterface::get_singleton() != nullptr) {
 		for (const String &scene : EditorInterface::get_singleton()->get_open_scenes()) {
 			if (scene == p_path) {
 				return true;

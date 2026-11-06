@@ -419,3 +419,11 @@ Dateiänderungs-API mit Inhaltsfingerabdruck, lokaler Sicherung und Schutz offen
 Ressourcen vorhanden. Der Agent erhält weiterhin nur die elf bisher aktivierten
 Werkzeuge; Datei-Freigabedialog, native Laufzeitabnahme und weitere Fehlertests
 stehen noch aus. Datei-Sicherungen ersetzen kein Undo/Redo.
+
+#### Update: Datei-Freigabedialog im experimentellen Projektmodus
+
+Der Projektmodus bietet jetzt 16 Werkzeuge inklusive fünf Dateioperationen.
+Dateiänderungen benötigen immer eine eigene vollständige Vorher-/Nachher-Vorschau
+mit Bestätigung; die Szenen-Autofreigabe umgeht diese nicht. Ablehnen und Stoppen
+verwerfen die Freigabe. Native Tests für diese Abläufe sind ergänzt, die neue
+Windows-/Linux-Laufzeitabnahme und visuelle Prüfung stehen noch aus.

@@ -212,3 +212,29 @@ Native `[GO.][ReadTools]` fixtures cover line ranges, searches, lists, size/type
 secret/path rejection and an actual outside-project symlink on Linux. Windows tests
 cover regular-file behavior and pure cross-platform path-policy regressions; native
 symlink creation is not required there. New runtime results remain pending.
+
+## Guarded file changes (experimental, runtime acceptance pending)
+
+The opt-in project-tool whitelist now contains 16 tools: the previous eight scene
+and three read tools plus `write_file`, `edit_file`, `create_script`,
+`create_folder` and `delete_file`. Every file mutation requires a separate dialog
+with the complete before/after text. Scene auto-approval never bypasses it.
+Reject, Stop and editor shutdown invalidate pending approval state.
+
+The approval fingerprint binds the project, target, operation, original bytes
+and replacement. The bridge rechecks it immediately before replacement and
+rejects loaded resources/open scripts, protected/addon/sensitive paths, symlinks,
+ambiguous edits and unsupported extensions. Parents must exist; folders are
+created one level at a time. Text is limited to 200000 bytes and gd/txt/md/json/csv.
+Generated scripts must extend a built-in non-editor Node and may not contain
+`@tool`, `static` or `preload`. This conservative filter is not a script sandbox.
+
+Existing bytes are backed up in `.godot/go_agent_backups` (at most 200 entries),
+then replacement text is written separately before rename. Filesystem scanning
+follows successful changes. Backups are not scene Undo/Redo, and are not encrypted.
+There is no crash-durability or hostile external-process race guarantee. Resource
+editing, script attachment and project run tools remain outside this whitelist.
+
+Native regressions now cover approval denial, stopping, stale disk state,
+scene-auto-approval isolation, project changes, loaded resources and backups.
+Their new Windows/Linux runtime results and visual UI acceptance remain pending.

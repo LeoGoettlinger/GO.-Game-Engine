@@ -358,3 +358,22 @@ await full runtime confirmation; the shared activation gate remains off.
   Die Modell-Whitelist bleibt bei elf Werkzeugen. Sicherungen sind kein
   Editor-Undo/Redo. Kein Schutzversprechen gegen gleichzeitig manipulierende
   externe Prozesse, keine Skript-Sandbox und keine Crash-Durability-Garantie.
+
+### Follow-up: file approval UI and runtime failure fixes
+
+The experimental project-tool whitelist now has 16 tools. File changes always
+show a complete before/after dialog, even with scene auto-approval enabled.
+Reject/Stop clear approval state; execution revalidates the fingerprint. This
+supersedes the preceding note that the file dialog was missing.
+
+Run 42221639673 crashed in the new ReadTools fixture: EditorInterface exists in
+native tests without an EditorNode. The open-scene check now requires both.
+Run 42220860133 identified missing include_filter/exclude_filter fields in the
+export fixture; those required preset fields are now supplied and asserted.
+Windows AutoFlow still failed without its diagnostic annotation. The report
+printer now escapes Unicode for legacy Windows console encodings, with a
+regression using an ASCII-only stream; the underlying Windows failure is not
+yet diagnosed or claimed fixed. Automatic Commit remains disabled.
+
+Added native approval-dialog, project-switch and loaded-resource regressions.
+Full native runtime, export and visual acceptance still await the next CI run.

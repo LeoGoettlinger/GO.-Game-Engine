@@ -40,6 +40,11 @@
 #include "core/io/dir_access.h"
 #include "core/io/file_access.h"
 #include "core/os/os.h"
+#include "scene/gui/check_button.h"
+#include "scene/gui/dialogs.h"
+#include "scene/gui/text_edit.h"
+#include "scene/main/scene_tree.h"
+#include "scene/main/window.h"
 #include "tests/test_macros.h"
 #include "tests/test_utils.h"
 
@@ -57,6 +62,53 @@ struct GoChatHistoryDockTest {
 			access->erase_contents_recursive();
 			DirAccess::remove_absolute(directory);
 		}
+	}
+	void check_file_approval() {
+		GoAgenticsDock *dock = memnew(GoAgenticsDock);
+		SceneTree::get_singleton()->get_root()->add_child(dock);
+		dock->auto_approve->set_pressed(true);
+		const String path = directory.path_join("notes.txt");
+		auto write = [&](const String &text) {
+			Ref<FileAccess> file = FileAccess::open(path, FileAccess::WRITE);
+			REQUIRE(file.is_valid());
+			file->store_string(text);
+		};
+		auto prepare = [&]() {
+			dock->agent_loop_active = true;
+			dock->next_call = 0;
+			dock->pending_calls = { { "approval-test", "write_file", R"({"path":"res://notes.txt","content":"replacement"})" } };
+			dock->_advance_tools();
+			CHECK(dock->waiting_approval);
+			CHECK_FALSE(dock->file_fingerprint.is_empty());
+			CHECK(dock->file_preview->get_text().contains("replacement"));
+		};
+		write("original");
+		prepare();
+		CHECK(FileAccess::get_file_as_string(path) == "original");
+		dock->approval->hide();
+		dock->_on_tool_rejected();
+		CHECK_FALSE(dock->waiting_approval);
+		CHECK(dock->file_fingerprint.is_empty());
+		CHECK(FileAccess::get_file_as_string(path) == "original");
+		prepare();
+		write("external change");
+		dock->approval->hide();
+		dock->_on_tool_confirmed();
+		CHECK(FileAccess::get_file_as_string(path) == "external change");
+		CHECK(dock->conversation.back().content.find("changed after approval") != std::string::npos);
+		prepare();
+		dock->approval->hide();
+		dock->_on_tool_confirmed();
+		CHECK(FileAccess::get_file_as_string(path) == "replacement");
+		CHECK(dock->file_preview->get_text().is_empty());
+		prepare();
+		dock->_on_stop_pressed();
+		CHECK_FALSE(dock->waiting_approval);
+		CHECK(dock->pending_calls.empty());
+		CHECK(dock->file_fingerprint.is_empty());
+		CHECK_FALSE(dock->request_active);
+		CHECK(FileAccess::get_file_as_string(path) == "replacement");
+		memdelete(dock);
 	}
 	void check_storage() {
 		const String path = directory.path_join(".godot/editor/go_chat_history.json");
@@ -99,4 +151,9 @@ struct GoChatHistoryDockTest {
 TEST_CASE("[GO.][ChatHistory][Editor] History survives restart, recovers backup and clears without replay") {
 	GoChatHistoryDockTest fixture;
 	fixture.check_storage();
+}
+
+TEST_CASE("[GO.][ChatHistory][Editor] File approval cannot be bypassed by scene auto-approval") {
+	GoChatHistoryDockTest fixture;
+	fixture.check_file_approval();
 }

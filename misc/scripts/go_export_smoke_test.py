@@ -28,6 +28,8 @@ class ExportSmokeTests(unittest.TestCase):
                 self.assertIn("custom_template/debug=", preset)
                 self.assertIn("custom_template/release=", preset)
                 self.assertIn("binary_format/embed_pck=true", preset)
+                self.assertIn('include_filter=""', preset)
+                self.assertIn('exclude_filter=""', preset)
                 scene = (project / "player.tscn").read_text(encoding="utf-8")
                 for node_type in ("CharacterBody2D", "Sprite2D", "CollisionShape2D"):
                     self.assertIn(f'type="{node_type}"', scene)

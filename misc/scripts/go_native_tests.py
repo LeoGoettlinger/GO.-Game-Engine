@@ -98,7 +98,10 @@ def main() -> int:
         text = output.read_text(encoding="utf-8", errors="replace") if output.is_file() else "No console log"
         summary, _ = summarize(text)
         message = f"{args.suite}: {error}\n{summary}\n{report_diagnostics(report)}"[:60000]
-        print(f"::error title=GO. native test failure::{escape_command(message)}")
+        # Windows CI consoles may use legacy encodings; diagnostics must never fail
+        # while printing a Unicode test name, assertion or engine log.
+        annotation = escape_command(message).encode("ascii", errors="backslashreplace").decode("ascii")
+        print(f"::error title=GO. native test failure::{annotation}")
         return 1
     return 0
 

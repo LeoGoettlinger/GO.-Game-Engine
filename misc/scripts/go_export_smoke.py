@@ -84,7 +84,7 @@ def prepare_project(project: Path, platform: str, debug: Path, release: Path) ->
     (project / "export_presets.cfg").write_text(
         '[preset.0]\nname="GO Smoke"\nplatform='
         + json.dumps(target)
-        + '\nrunnable=true\nexport_filter="all_resources"\n'
+        + '\nrunnable=true\nexport_filter="all_resources"\ninclude_filter=""\nexclude_filter=""\n'
         "\n[preset.0.options]\ncustom_template/debug="
         + json.dumps(debug.as_posix())
         + "\ncustom_template/release="
