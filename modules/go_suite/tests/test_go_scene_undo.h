@@ -157,3 +157,34 @@ TEST_CASE("[GO.][SceneUndo][Editor] Scalar properties validate types and restore
 }
 
 } // namespace TestGoSceneUndo
+
+namespace TestGoSceneUndo {
+TEST_CASE("[GO.][SceneUndo][SceneTree] Player physics node creation uses the production allowlist and undo path") {
+	CHECK(GoAgenticsToolBridge::create_allowed_node("EditorPlugin") == nullptr);
+	CHECK(GoAgenticsToolBridge::create_allowed_node("GDScript") == nullptr);
+	CHECK(GoAgenticsToolBridge::create_allowed_node("res://custom.gd") == nullptr);
+	CHECK(GoAgenticsToolBridge::create_allowed_node("OS") == nullptr);
+	Node *root = memnew(Node);
+	SceneTree::get_singleton()->get_root()->add_child(root);
+	UndoRedo *undo = memnew(UndoRedo);
+	for (const char *type : { "CharacterBody2D", "CollisionShape2D", "CharacterBody3D", "CollisionShape3D", "Sprite2D" }) {
+		Node *child = GoAgenticsToolBridge::create_allowed_node(type);
+		REQUIRE(child != nullptr);
+		CHECK(child->is_class(type));
+		undo->create_action("Add player component");
+		GoAgenticsToolBridge::record_add_node(undo, root, child, root);
+		undo->commit_action();
+		CHECK(child->get_parent() == root);
+		CHECK(child->get_owner() == root);
+		CHECK(undo->undo());
+		CHECK(child->get_parent() == nullptr);
+		CHECK(child->get_owner() == nullptr);
+		CHECK(undo->redo());
+		CHECK(child->get_parent() == root);
+		CHECK(child->get_owner() == root);
+	}
+	undo->clear_history();
+	memdelete(undo);
+	memdelete(root);
+}
+} // namespace TestGoSceneUndo

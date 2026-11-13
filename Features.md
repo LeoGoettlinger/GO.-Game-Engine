@@ -453,3 +453,16 @@ mit wählbarem erlaubtem Root-Typ und Namen; `create_resource` erstellt neue
 Dateivorschau und eine separate Bestätigung, überschreiben keine vorhandenen
 Dateien und öffnen keine Szene automatisch. Native Lade-/Instanziierungstests
 sind ergänzt; die neue Laufzeitabnahme steht noch aus.
+
+#### Player-Physik-Nodes und aktueller Build-Nachweis
+
+`add_node` unterstützt zusätzlich `CharacterBody2D`, `CollisionShape2D`,
+`CharacterBody3D` und `CollisionShape3D`. Die Erzeugung verwendet eine zentrale
+Allowlist und den bestehenden Editor-Undo-/Redo-Pfad; beliebige Klassen und
+Skripte bleiben ausgeschlossen. Ein neuer nativer Test prüft Parent/Owner nach
+Anlegen, Undo und Redo. Die Laufzeitabnahme dieser Erweiterung steht noch aus.
+
+Für den vorherigen Stand `c9960d2f` sind im Lauf `43481803336` Editor-Build,
+Starttest und sämtliche nativen GO.-Tests auf Windows und Linux erfolgreich.
+Templates und abschließende Export-/Player-Abnahme waren bei dieser Prüfung
+noch nicht vollständig abgeschlossen. Das ist keine visuelle Gesamtabnahme.

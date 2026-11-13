@@ -389,6 +389,23 @@ std::string plan_file_change(const go::GoKiloToolCall &p_call, FileChangePlan &r
 
 } // namespace
 
+Node *GoAgenticsToolBridge::create_allowed_node(const String &p_type) {
+	// Never instantiate arbitrary classes supplied by the model. In particular,
+	// editor plugins, custom scripts and OS/process-bearing classes stay excluded.
+	if (p_type != "Node" && p_type != "Node2D" && p_type != "Node3D" && p_type != "Control" && p_type != "Sprite2D" && p_type != "Label" && p_type != "CharacterBody2D" && p_type != "CollisionShape2D" && p_type != "CharacterBody3D" && p_type != "CollisionShape3D") {
+		return nullptr;
+	}
+	if (!ClassDB::can_instantiate(p_type)) {
+		return nullptr;
+	}
+	Object *instance = ClassDB::instantiate(p_type);
+	Node *node = Object::cast_to<Node>(instance);
+	if (node == nullptr && instance != nullptr) {
+		memdelete(instance);
+	}
+	return node;
+}
+
 void GoAgenticsToolBridge::record_add_node(UndoRedo *p_undo, Node *p_parent, Node *p_child, Node *p_owner) {
 	p_undo->add_do_method(Callable(p_parent, "add_child").bind(p_child, true));
 	p_undo->add_do_method(Callable(p_child, "set_owner").bind(p_owner));
@@ -837,16 +854,9 @@ String GoAgenticsToolBridge::execute(const go::GoKiloToolCall &p_call) const {
 		if (tool == "add_node") {
 			const std::string type = argument_string(arguments, "type", "Node");
 			const std::string name = argument_string(arguments, "name", "Node");
-			if (type != "Node" && type != "Node2D" && type != "Node3D" && type != "Control" && type != "Sprite2D" && type != "Label") {
-				return to_godot(error_json("Only basic built-in node types are enabled"));
-			}
-			Object *instance = ClassDB::instantiate(StringName(to_godot(type)));
-			Node *child = Object::cast_to<Node>(instance);
+			Node *child = create_allowed_node(to_godot(type));
 			if (child == nullptr) {
-				if (instance != nullptr) {
-					memdelete(instance);
-				}
-				return to_godot(error_json("node type is not a Node"));
+				return to_godot(error_json("Node type is outside the built-in allowlist or unavailable in this build"));
 			}
 			child->set_name(to_godot(name));
 			EditorUndoRedoManager *undo = EditorUndoRedoManager::get_singleton();

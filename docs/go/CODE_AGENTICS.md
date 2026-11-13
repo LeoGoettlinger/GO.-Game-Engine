@@ -281,3 +281,14 @@ regression tests load the generated files with Godot and instantiate the scene,
 check root type/name, and reject overwrite, unsupported classes and extensions.
 Opening scenes, attaching scripts, changing resource properties and saving edited
 scenes remain separate unfinished tools, not implicit side effects of creation.
+
+## Player physics node support
+
+`add_node` now accepts Node, Node2D, Node3D, Control, Sprite2D, Label,
+CharacterBody2D, CollisionShape2D, CharacterBody3D and CollisionShape3D. A shared
+factory checks this exact allowlist before calling ClassDB. Creation still uses
+the existing scene approval, ownership restrictions and UndoRedo operations.
+Shape nodes start without a shape resource; adding one does not implicitly create
+or attach resources, scripts, or claim a runnable player has been completed.
+A native SceneTree fixture tests the production factory and undo/redo ownership
+for both dimensions; unsupported editor/script/process types are rejected.

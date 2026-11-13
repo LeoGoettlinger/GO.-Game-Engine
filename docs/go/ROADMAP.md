@@ -417,3 +417,16 @@ create-scene draft that saved/opened a hardcoded Node2D was removed. Native test
 load generated resources, instantiate the scene with initialized physics servers,
 and verify denied types/names/overwrites. The whitelist is now 20 tools. Full
 runtime and visual acceptance of these additions is still pending.
+
+### Cross-platform native checkpoint and physics node gap
+
+At c9960d2f, run 43481803336 passed editor compilation/startup and all native GO.
+suites on both Windows and Linux, including the previously failing AutoFlow test
+and new script-validation/scene/resource tests. Both jobs were building debug
+templates when inspected; final exports and visual acceptance are not yet proven.
+
+Added CharacterBody2D/3D and CollisionShape2D/3D to the bounded add-node factory,
+with a native SceneTree undo/redo regression. This removes the missing physics-node
+restriction for the requested player structure, not the remaining script-attachment,
+resource assignment, scene open/save/main-scene and execution-tool gaps. Runtime
+confirmation of the new node test remains pending. Automatic Commit stays gated.

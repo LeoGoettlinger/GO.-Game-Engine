@@ -45,6 +45,7 @@ class UndoRedo;
 
 class GoAgenticsToolBridge {
 public:
+	static Node *create_allowed_node(const String &p_type);
 	// Record operations into an already-open core history action. The editor
 	// supplies its scene-specific UndoRedo; tests use an isolated core history.
 	static void record_add_node(UndoRedo *p_undo, Node *p_parent, Node *p_child, Node *p_owner);
