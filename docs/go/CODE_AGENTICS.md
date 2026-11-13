@@ -260,3 +260,24 @@ settings, objects and credentials are never enumerated/stringified.
 Native fixtures exercise syntax success/failure, a static initializer that must
 not execute or enter ResourceCache, semantic errors explicitly outside scope,
 path/type rejection and setting allowlist/type checks. Runtime CI is pending.
+
+## New scene and resource files
+
+The experimental whitelist now has 20 tools. Both additions use the same full
+before/after approval and fingerprint revalidation as file changes, even when
+scene auto-approval is selected. Both require a new target with an existing
+parent; neither overwrites existing files nor opens/instantiates project content.
+Successful creation triggers the existing filesystem scan. These are file
+creation operations, not changes to the active scene's undo history.
+
+| Tool | Required arguments | Supported types |
+| --- | --- | --- |
+| `create_scene` | `path` (.tscn), `type`, `name` | Node, Node2D, Node3D, CharacterBody2D, CharacterBody3D, Control |
+| `create_resource` | `path` (.tres), `type` | RectangleShape2D, CircleShape2D, CapsuleShape2D, BoxShape3D, SphereShape3D, StandardMaterial3D, Gradient, SpriteFrames |
+
+Scene names are ASCII identifiers of at most 128 characters. Files contain only
+a built-in root/default resource and no script or external dependencies. Native
+regression tests load the generated files with Godot and instantiate the scene,
+check root type/name, and reject overwrite, unsupported classes and extensions.
+Opening scenes, attaching scripts, changing resource properties and saving edited
+scenes remain separate unfinished tools, not implicit side effects of creation.

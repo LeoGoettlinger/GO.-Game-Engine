@@ -308,8 +308,11 @@ std::string plan_file_change(const go::GoKiloToolCall &p_call, FileChangePlan &r
 		}
 	} else {
 		const String extension = r_plan.path.get_extension().to_lower();
-		if (extension != "gd" && extension != "txt" && extension != "md" && extension != "json" && extension != "csv") {
+		if (p_call.name != "create_scene" && p_call.name != "create_resource" && extension != "gd" && extension != "txt" && extension != "md" && extension != "json" && extension != "csv") {
 			return "File mutations currently support only gd, txt, md, json and csv; use scene/resource tools for other types";
+		}
+		if ((p_call.name == "create_scene" && (extension != "tscn" || r_plan.existed)) || (p_call.name == "create_resource" && (extension != "tres" || r_plan.existed))) {
+			return "Scene/resource creation requires a new .tscn/.tres target; existing files are never overwritten";
 		}
 		if (file_is_open(r_plan.path)) {
 			return "Close the file/resource in the editor before changing it; unsaved editor work is never overwritten";
@@ -323,7 +326,27 @@ std::string plan_file_change(const go::GoKiloToolCall &p_call, FileChangePlan &r
 		if ((p_call.name == "edit_file" || p_call.name == "delete_file") && !r_plan.existed) {
 			return "The file to edit/delete does not exist";
 		}
-		if (p_call.name == "edit_file") {
+		if (p_call.name == "create_scene" || p_call.name == "create_resource") {
+			const String type = to_godot(argument_string(args, "type"));
+			if (p_call.name == "create_scene") {
+				if (type != "Node" && type != "Node2D" && type != "Node3D" && type != "CharacterBody2D" && type != "CharacterBody3D" && type != "Control") {
+					return "Scene root type is outside the supported built-in allowlist";
+				}
+				const String name = to_godot(argument_string(args, "name"));
+				if (!name.is_valid_ascii_identifier() || name.length() > 128) {
+					return "Scene root name must be an ASCII identifier of at most 128 characters";
+				}
+				r_plan.after = "[gd_scene format=3]\n\n[node name=\"" + name + "\" type=\"" + type + "\"]\n";
+			} else {
+				if (type != "RectangleShape2D" && type != "CircleShape2D" && type != "CapsuleShape2D" && type != "BoxShape3D" && type != "SphereShape3D" && type != "StandardMaterial3D" && type != "Gradient" && type != "SpriteFrames") {
+					return "Resource type is outside the supported built-in allowlist";
+				}
+				r_plan.after = "[gd_resource type=\"" + type + "\" format=3]\n\n[resource]\n";
+			}
+			if (!ClassDB::can_instantiate(type)) {
+				return "Requested built-in type is unavailable in this build";
+			}
+		} else if (p_call.name == "edit_file") {
 			const std::string old_text = argument_string(args, "old_text");
 			std::string text = to_std(r_plan.before);
 			const size_t found = text.find(old_text);
@@ -704,23 +727,6 @@ String GoAgenticsToolBridge::execute(const go::GoKiloToolCall &p_call) const {
 	EditorInterface *editor = EditorInterface::get_singleton();
 	if (editor == nullptr) {
 		return to_godot(error_json("the Godot editor is not available for this tool"));
-	}
-
-	if (tool == "create_scene") {
-		if (!has_path || !path.ends_with(".tscn")) {
-			return to_godot(error_json("create_scene requires a res://.tscn path"));
-		}
-		Node2D *root = memnew(Node2D);
-		root->set_name("Node2D");
-		Ref<PackedScene> scene;
-		scene.instantiate();
-		const Error packed = scene->pack(root);
-		memdelete(root);
-		if (packed != OK || ResourceSaver::save(scene, path) != OK) {
-			return to_godot(error_json("could not save scene"));
-		}
-		editor->open_scene_from_path(path);
-		return to_godot(ok_json("created scene " + to_std(path)));
 	}
 
 	if (tool == "open_scene") {

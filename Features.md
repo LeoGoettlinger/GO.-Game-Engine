@@ -444,3 +444,12 @@ zu laden oder auszuführen. Typ-/Abhängigkeits-/Laufzeitprüfung ist ausdrückl
 nicht enthalten. `get_project_setting` liest vier erlaubte String-Einstellungen;
 beliebige Einstellungen und Objekte bleiben gesperrt. Native Tests sind ergänzt,
 die neue Laufzeitbestätigung steht noch aus.
+
+#### Neue Szenen und Ressourcen mit Freigabe
+
+20 aktive experimentelle Werkzeuge: `create_scene` erstellt neue `.tscn`-Dateien
+mit wählbarem erlaubtem Root-Typ und Namen; `create_resource` erstellt neue
+`.tres`-Dateien aus acht einfachen Ressourcentypen. Beide nutzen die vollständige
+Dateivorschau und eine separate Bestätigung, überschreiben keine vorhandenen
+Dateien und öffnen keine Szene automatisch. Native Lade-/Instanziierungstests
+sind ergänzt; die neue Laufzeitabnahme steht noch aus.

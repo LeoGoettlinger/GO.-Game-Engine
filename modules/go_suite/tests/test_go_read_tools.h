@@ -40,7 +40,9 @@
 #include "core/io/dir_access.h"
 #include "core/io/file_access.h"
 #include "core/io/resource.h"
+#include "core/io/resource_loader.h"
 #include "core/os/os.h"
+#include "scene/resources/packed_scene.h"
 #include "tests/test_macros.h"
 #include "tests/test_utils.h"
 
@@ -245,3 +247,42 @@ TEST_CASE("[GO.][ReadTools] Project setting reads are allowlisted and never stri
 	settings->set_setting(name, existed ? previous : Variant());
 }
 } // namespace TestGoScriptValidation
+
+namespace TestGoSceneResourceCreation {
+TEST_CASE("[GO.][ReadTools][SceneTree] New scenes and resources require approval and preserve existing files") {
+	TestGoReadTools::Fixture fixture;
+	GoAgenticsToolBridge bridge;
+	String preview;
+	String fingerprint;
+	go::GoKiloToolCall scene = { "test", "create_scene", R"({"path":"res://player.tscn","type":"CharacterBody2D","name":"Player"})" };
+	CHECK(bridge.execute(scene).contains("\"ok\":false"));
+	REQUIRE(bridge.prepare_file_change(scene, preview, fingerprint).is_empty());
+	CHECK(preview.contains("CharacterBody2D"));
+	CHECK_FALSE(FileAccess::exists("res://player.tscn"));
+	CHECK(bridge.execute_file_change(scene, fingerprint).contains("\"ok\":true"));
+	const String content = FileAccess::get_file_as_string("res://player.tscn");
+	CHECK_FALSE(bridge.prepare_file_change(scene, preview, fingerprint).is_empty());
+	CHECK(FileAccess::get_file_as_string("res://player.tscn") == content);
+	Ref<PackedScene> loaded_scene = ResourceLoader::load("res://player.tscn");
+	REQUIRE(loaded_scene.is_valid());
+	Node *root = loaded_scene->instantiate();
+	REQUIRE(root != nullptr);
+	CHECK(root->is_class("CharacterBody2D"));
+	CHECK(root->get_name() == StringName("Player"));
+	memdelete(root);
+	go::GoKiloToolCall resource = { "test", "create_resource", R"({"path":"res://shape.tres","type":"RectangleShape2D"})" };
+	REQUIRE(bridge.prepare_file_change(resource, preview, fingerprint).is_empty());
+	CHECK(bridge.execute_file_change(resource, fingerprint).contains("\"ok\":true"));
+	Ref<Resource> loaded_resource = ResourceLoader::load("res://shape.tres");
+	REQUIRE(loaded_resource.is_valid());
+	CHECK(loaded_resource->is_class("RectangleShape2D"));
+	for (const auto &call : {
+				 go::GoKiloToolCall{ "test", "create_scene", R"({"path":"res://other.tscn","type":"EditorPlugin","name":"Bad"})" },
+				 go::GoKiloToolCall{ "test", "create_scene", R"({"path":"res://other.tscn","type":"Node","name":"Bad/Name"})" },
+				 go::GoKiloToolCall{ "test", "create_resource", R"({"path":"res://other.tres","type":"GDScript"})" },
+				 go::GoKiloToolCall{ "test", "create_resource", R"({"path":"res://other.txt","type":"Gradient"})" } }) {
+		CHECK_FALSE(bridge.prepare_file_change(call, preview, fingerprint).is_empty());
+		CHECK(fingerprint.is_empty());
+	}
+}
+} // namespace TestGoSceneResourceCreation

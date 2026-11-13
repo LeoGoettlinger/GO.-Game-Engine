@@ -407,3 +407,13 @@ Outstanding tool families remain scene creation/open/save/instantiation, script
 attachment, resource creation, project-setting writes/main-scene selection,
 filesystem scan/selection, run controls, editor logs and agent Git integration.
 These are not claimed implemented by adding the two inspection tools.
+
+### New scene/resource creation through the file-approval boundary
+
+`create_scene` and `create_resource` now create new .tscn/.tres files from bounded
+built-in type allowlists. They never overwrite or auto-open a scene; both use the
+existing full file preview, explicit approval and stale-state guard. The old
+create-scene draft that saved/opened a hardcoded Node2D was removed. Native tests
+load generated resources, instantiate the scene with initialized physics servers,
+and verify denied types/names/overwrites. The whitelist is now 20 tools. Full
+runtime and visual acceptance of these additions is still pending.

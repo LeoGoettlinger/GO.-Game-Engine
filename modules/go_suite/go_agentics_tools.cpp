@@ -58,6 +58,7 @@ const std::vector<std::string> TOOL_NAMES = {
 	"get_project_setting",
 	"attach_script",
 	"create_scene",
+	"create_resource",
 	"open_scene",
 	"save_current_scene",
 	"save_scene_as",
@@ -91,7 +92,7 @@ std::vector<ToolArgument> tool_arguments(const std::string &p_name) {
 	std::vector<ToolArgument> arguments;
 	if (p_name == "list_files" || p_name == "search_text") {
 		arguments.push_back({ "path", false, false });
-	} else if (p_name == "read_file" || p_name == "write_file" || p_name == "edit_file" || p_name == "create_folder" || p_name == "delete_file" || p_name == "create_script" || p_name == "validate_script" || p_name == "create_scene" || p_name == "open_scene" || p_name == "save_scene_as" || p_name == "set_main_scene") {
+	} else if (p_name == "read_file" || p_name == "write_file" || p_name == "edit_file" || p_name == "create_folder" || p_name == "delete_file" || p_name == "create_script" || p_name == "validate_script" || p_name == "create_scene" || p_name == "create_resource" || p_name == "open_scene" || p_name == "save_scene_as" || p_name == "set_main_scene") {
 		arguments.push_back({ "path", true, false });
 	}
 	if (p_name == "get_project_setting") {
@@ -118,10 +119,10 @@ std::vector<ToolArgument> tool_arguments(const std::string &p_name) {
 		arguments.push_back({ "parent_path", true, false });
 		arguments.push_back({ "index", false, false, true });
 	}
-	if (p_name == "add_node") {
+	if (p_name == "add_node" || p_name == "create_scene" || p_name == "create_resource") {
 		arguments.push_back({ "type", true, false });
 	}
-	if (p_name == "add_node" || p_name == "rename_node") {
+	if (p_name == "add_node" || p_name == "rename_node" || p_name == "create_scene") {
 		arguments.push_back({ "name", true, false });
 	}
 	if (p_name == "set_node_property" || p_name == "get_node_property") {
@@ -145,6 +146,7 @@ bool is_write_tool_name(const std::string &p_name) {
 		"create_script",
 		"attach_script",
 		"create_scene",
+		"create_resource",
 		"save_current_scene",
 		"save_scene_as",
 		"set_main_scene",
@@ -186,7 +188,7 @@ bool GoAgenticsTools::is_write_tool(const std::string &p_name) {
 }
 
 bool GoAgenticsTools::is_file_mutation(const std::string &p_name) {
-	return p_name == "write_file" || p_name == "edit_file" || p_name == "create_script" || p_name == "create_folder" || p_name == "delete_file";
+	return p_name == "write_file" || p_name == "edit_file" || p_name == "create_script" || p_name == "create_folder" || p_name == "delete_file" || p_name == "create_scene" || p_name == "create_resource";
 }
 
 bool GoAgenticsTools::is_enabled_tool(const std::string &p_name) {
