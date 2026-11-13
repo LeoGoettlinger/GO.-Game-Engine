@@ -292,3 +292,30 @@ Shape nodes start without a shape resource; adding one does not implicitly creat
 or attach resources, scripts, or claim a runnable player has been completed.
 A native SceneTree fixture tests the production factory and undo/redo ownership
 for both dimensions; unsupported editor/script/process types are rejected.
+
+## Explicit editor execution approval (experimental)
+
+The project-tool whitelist now contains 24 tools. `open_scene` requires `path`
+(a readable saved res:// .tscn). `run_project`, `run_current_scene` and
+`stop_project` accept no arguments. Main-scene UIDs are resolved through the
+existing ResourceUID database; unresolved UIDs and binary scenes are rejected.
+
+These four actions always use their own warning/approval preview, independently
+of scene auto-approval. The generic bridge refuses direct execution. Approval
+binds the project, action/arguments, target scene bytes, edited-root identity,
+undo version and current run state; execution prepares again and compares the
+fingerprint. It does not freeze every dependency or sandbox project code.
+Opening a scene may execute tool scripts. Running a project executes project code
+with the editor user's permissions and normal editor import/build/run side effects.
+Only approve projects you trust. The UI explicitly warns about these effects.
+
+Opening/running is refused while a project is playing, while any scene or
+script/text buffer is unsaved, or during a Git/close lock. Stop remains possible
+with unsaved work but still requires approval. These are not Undo/Redo actions.
+Results say **requested**, not that opening, import, parsing or execution finished
+successfully; inspect the editor/debugger for asynchronous errors.
+
+Native regression checks cover direct-call bypass, empty approval, invalid paths,
+wrong action types and absence of a full EditorNode. They do not demonstrate an
+actual project launch or successful visual approval flow. Those acceptance tests
+remain outstanding.

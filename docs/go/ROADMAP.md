@@ -430,3 +430,20 @@ with a native SceneTree undo/redo regression. This removes the missing physics-n
 restriction for the requested player structure, not the remaining script-attachment,
 resource assignment, scene open/save/main-scene and execution-tool gaps. Runtime
 confirmation of the new node test remains pending. Automatic Commit stays gated.
+
+### Scene opening and run/stop controls
+
+The experimental whitelist now includes open_scene, run_project,
+run_current_scene and stop_project (24 tools total). They have a separate explicit
+execution approval that cannot be bypassed through scene auto-approval or the
+normal bridge entry point. Approval snapshots bind scene/project/run state and
+are revalidated before dispatch. Unsaved scenes and script buffers block opening
+and running; project execution is explicitly not a sandbox. Successful dispatch
+is reported as requested, not completed. Native denial/bypass tests are added;
+real-editor execution/visual acceptance of this addition remains pending.
+
+The previous 963090f2 Linux full job is successful. Its Windows job had passed
+native suites and was still building the debug template at inspection time.
+Remaining major tool gaps include scene save/save-as/instantiation, script/resource
+assignment, project-setting writes/main-scene selection, and agent Git/log access.
+Automatic Commit activation and full visual/end-to-end acceptance remain open.

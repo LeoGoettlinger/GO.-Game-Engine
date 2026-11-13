@@ -46,6 +46,7 @@
 #include "core/io/file_access.h"
 #include "core/io/resource_loader.h"
 #include "core/io/resource_saver.h"
+#include "core/io/resource_uid.h"
 #include "core/object/class_db.h"
 #include "core/object/script_language.h"
 #include "core/os/os.h"
@@ -481,6 +482,104 @@ std::string GoAgenticsToolBridge::validate_scalar_property(Node *p_node, const S
 	return "Property value has the wrong type or exceeds its bounds";
 }
 
+String GoAgenticsToolBridge::prepare_editor_action(const go::GoKiloToolCall &p_call, String &r_preview, String &r_fingerprint) const {
+	r_preview = String();
+	r_fingerprint = String();
+	if (!go::GoAgenticsTools::is_editor_action(p_call.name)) {
+		return TTR("Not an editor execution action.");
+	}
+	const std::string validation = go::GoAgenticsTools::validate_arguments(p_call.name, p_call.arguments);
+	if (!validation.empty()) {
+		return to_godot(validation);
+	}
+	if (GoSuiteRegistry::is_git_job_busy() || GoSuiteRegistry::is_quit_pending() || GoSuiteRegistry::is_editor_input_locked()) {
+		return TTR("Editor execution is locked by a Git/close operation.");
+	}
+	EditorInterface *editor = EditorInterface::get_singleton();
+	if (EditorNode::get_singleton() == nullptr || editor == nullptr) {
+		return TTR("A running editor is required.");
+	}
+	if (p_call.name != "stop_project" && !editor->get_unsaved_scenes().is_empty()) {
+		return TTR("Save or discard unsaved scenes yourself before this action; the agent will not autosave them.");
+	}
+	if (p_call.name != "stop_project" && ScriptEditor::get_singleton() != nullptr && (!ScriptEditor::get_singleton()->get_unsaved_files().is_empty() || !ScriptEditor::get_singleton()->get_unsaved_scripts().is_empty())) {
+		return TTR("Save or discard unsaved script/text buffers yourself before this action.");
+	}
+	if (p_call.name != "stop_project" && editor->is_playing_scene()) {
+		return TTR("Stop the running project before opening or starting another scene.");
+	}
+	Node *root = editor->get_edited_scene_root();
+	const String project = ProjectSettings::get_singleton()->globalize_path("res://");
+	String path;
+	String source;
+	if (p_call.name == "open_scene") {
+		std::string error;
+		const auto args = go::parse_json(p_call.arguments, error);
+		path = to_godot(argument_string(args, "path"));
+	} else if (p_call.name == "run_current_scene") {
+		if (root == nullptr) {
+			return TTR("No current scene is open.");
+		}
+		path = root->get_scene_file_path();
+	} else if (p_call.name == "run_project") {
+		path = ProjectSettings::get_singleton()->get_setting("application/run/main_scene", String());
+	}
+	if (p_call.name != "stop_project") {
+		if (path.begins_with("uid://")) {
+			const ResourceUID::ID uid = ResourceUID::get_singleton()->text_to_id(path);
+			if (!ResourceUID::get_singleton()->has_id(uid)) {
+				return TTR("Main scene UID is not resolved; import/save the project first.");
+			}
+			path = ResourceUID::get_singleton()->get_id_path(uid);
+		}
+		const auto checked = go::validate_res_path(to_std(path), go::PathOperation::READ);
+		if (!checked.ok || path.get_extension().to_lower() != "tscn") {
+			return TTR("A saved res:// text scene is required for this action.");
+		}
+		path = to_godot(checked.normalized);
+		std::string error;
+		if (!read_project_text(path, source, error)) {
+			return to_godot(error);
+		}
+		if (!source.strip_edges().begins_with("[gd_scene ")) {
+			return TTR("Target does not have a text-scene header.");
+		}
+	}
+	String state = project + "\n" + to_godot(p_call.name) + "\n" + to_godot(p_call.arguments) + "\n" + path + "\n" + source.sha256_text();
+	state += "\n" + itos(root != nullptr ? uint64_t(root->get_instance_id()) : 0);
+	state += "\n" + editor->get_playing_scene() + "\n" + (editor->is_playing_scene() ? "playing" : "stopped");
+	if (root != nullptr && EditorUndoRedoManager::get_singleton() != nullptr) {
+		EditorUndoRedoManager *undo = EditorUndoRedoManager::get_singleton();
+		state += "\n" + itos(undo->get_history_undo_redo(undo->get_history_id_for_object(root))->get_version());
+	}
+	r_fingerprint = state.sha256_text();
+	r_preview = to_godot(p_call.name) + "\n" + project + "\n" + path + "\n\n";
+	r_preview += p_call.name == "stop_project" ? TTR("Stop the editor's running project. This is not an Undo/Redo action.") : TTR("Opening scenes may execute tool scripts. Running a project executes its scripts with your user permissions. This is NOT a sandbox. Normal editor imports/build/run side effects still apply. Dependencies are not frozen by this approval; review and trust the entire project first. This is not an Undo/Redo action.");
+	return String();
+}
+
+String GoAgenticsToolBridge::execute_editor_action(const go::GoKiloToolCall &p_call, const String &p_fingerprint) const {
+	String preview;
+	String fingerprint;
+	const String error = prepare_editor_action(p_call, preview, fingerprint);
+	if (!error.is_empty() || p_fingerprint.is_empty() || fingerprint != p_fingerprint) {
+		return to_godot(error_json(error.is_empty() ? "Project, scene or run state changed after approval; request a fresh action" : to_std(error)));
+	}
+	EditorInterface *editor = EditorInterface::get_singleton();
+	if (p_call.name == "open_scene") {
+		std::string parse_error;
+		const auto args = go::parse_json(p_call.arguments, parse_error);
+		editor->open_scene_from_path(to_godot(argument_string(args, "path")));
+	} else if (p_call.name == "run_project") {
+		editor->play_main_scene();
+	} else if (p_call.name == "run_current_scene") {
+		editor->play_current_scene();
+	} else {
+		editor->stop_playing_scene();
+	}
+	return to_godot(ok_json(p_call.name + " requested. Completion, imports and script/runtime errors must be checked in the editor; this is not a successful-run assertion."));
+}
+
 String GoAgenticsToolBridge::prepare_file_change(const go::GoKiloToolCall &p_call, String &r_preview, String &r_fingerprint) const {
 	r_preview = String();
 	r_fingerprint = String();
@@ -576,8 +675,8 @@ String GoAgenticsToolBridge::execute(const go::GoKiloToolCall &p_call) const {
 		return to_godot(error_json("Editor changes are locked by a pending Git/close operation"));
 	}
 	const std::string tool = p_call.name;
-	if (go::GoAgenticsTools::is_file_mutation(tool)) {
-		return to_godot(error_json("File mutations require a prepared approval snapshot"));
+	if (go::GoAgenticsTools::is_file_mutation(tool) || go::GoAgenticsTools::is_editor_action(tool)) {
+		return to_godot(error_json("File mutations and editor execution require a prepared approval snapshot"));
 	}
 	const std::string argument_error = go::GoAgenticsTools::validate_arguments(tool, p_call.arguments);
 	if (!argument_error.empty()) {
@@ -744,14 +843,6 @@ String GoAgenticsToolBridge::execute(const go::GoKiloToolCall &p_call) const {
 	EditorInterface *editor = EditorInterface::get_singleton();
 	if (editor == nullptr) {
 		return to_godot(error_json("the Godot editor is not available for this tool"));
-	}
-
-	if (tool == "open_scene") {
-		if (!has_path || (!path.ends_with(".tscn") && !path.ends_with(".scn"))) {
-			return to_godot(error_json("open_scene requires a res:// scene path"));
-		}
-		editor->open_scene_from_path(path);
-		return to_godot(ok_json("opened scene " + to_std(path)));
 	}
 
 	if (tool == "save_current_scene") {
@@ -953,17 +1044,6 @@ String GoAgenticsToolBridge::execute(const go::GoKiloToolCall &p_call) const {
 			node->set_script(Variant(script));
 			return to_godot(ok_json("attached script " + script_path));
 		}
-	}
-
-	if (tool == "run_project" || tool == "run_current_scene" || tool == "stop_project") {
-		if (tool == "run_project") {
-			editor->play_main_scene();
-		} else if (tool == "run_current_scene") {
-			editor->play_current_scene();
-		} else {
-			editor->stop_playing_scene();
-		}
-		return to_godot(ok_json(tool + " requested"));
 	}
 
 	if (tool == "git_status") {

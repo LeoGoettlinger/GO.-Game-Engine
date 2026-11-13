@@ -466,3 +466,16 @@ Für den vorherigen Stand `c9960d2f` sind im Lauf `43481803336` Editor-Build,
 Starttest und sämtliche nativen GO.-Tests auf Windows und Linux erfolgreich.
 Templates und abschließende Export-/Player-Abnahme waren bei dieser Prüfung
 noch nicht vollständig abgeschlossen. Das ist keine visuelle Gesamtabnahme.
+
+#### Szenen öffnen und Projekt starten/stoppen (experimentell)
+
+24 aktive Werkzeuge: `open_scene`, `run_project`, `run_current_scene` und
+`stop_project` sind über eine separate Ausführungsfreigabe angeschlossen.
+Szenen-Autofreigabe umgeht diese nicht. Vor Ausführung werden Projekt,
+Szenendatei und Editorzustand erneut geprüft. Ungespeicherte Szenen und
+Skript-/Textpuffer blockieren Öffnen/Starten. Der Dialog warnt ausdrücklich,
+dass Projektcode ohne Sandbox mit den Benutzerrechten ausgeführt wird.
+
+Ergebnisse melden die angeforderte Aktion, keinen garantierten Laufzeiterfolg.
+Native Ablehnungs-/Bypass-Tests sind ergänzt; die tatsächliche Editor-Ausführung
+und visuelle Gesamtabnahme dieser Erweiterung stehen noch aus.

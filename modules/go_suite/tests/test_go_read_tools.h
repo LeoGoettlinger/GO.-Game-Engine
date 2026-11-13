@@ -286,3 +286,27 @@ TEST_CASE("[GO.][ReadTools][SceneTree] New scenes and resources require approval
 	}
 }
 } // namespace TestGoSceneResourceCreation
+
+namespace TestGoEditorActions {
+TEST_CASE("[GO.][ReadTools] Editor execution cannot bypass approval or dereference a missing editor") {
+	TestGoReadTools::Fixture fixture;
+	GoAgenticsToolBridge bridge;
+	for (const auto &call : {
+				 go::GoKiloToolCall{ "test", "open_scene", R"({"path":"res://player.tscn"})" },
+				 go::GoKiloToolCall{ "test", "run_project", "{}" },
+				 go::GoKiloToolCall{ "test", "run_current_scene", "{}" },
+				 go::GoKiloToolCall{ "test", "stop_project", "{}" } }) {
+		CHECK(bridge.execute(call).contains("prepared approval snapshot"));
+		CHECK(bridge.execute_editor_action(call, "").contains("\"ok\":false"));
+		String preview = "stale preview";
+		String fingerprint = "stale token";
+		CHECK_FALSE(bridge.prepare_editor_action(call, preview, fingerprint).is_empty());
+		CHECK(preview.is_empty());
+		CHECK(fingerprint.is_empty());
+	}
+	String preview;
+	String fingerprint;
+	CHECK_FALSE(bridge.prepare_editor_action({ "test", "read_file", R"({"path":"res://player.gd"})" }, preview, fingerprint).is_empty());
+	CHECK_FALSE(bridge.prepare_editor_action({ "test", "open_scene", R"({"path":"res://../outside.tscn"})" }, preview, fingerprint).is_empty());
+}
+} // namespace TestGoEditorActions

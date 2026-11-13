@@ -187,12 +187,16 @@ bool GoAgenticsTools::is_write_tool(const std::string &p_name) {
 	return is_write_tool_name(p_name);
 }
 
+bool GoAgenticsTools::is_editor_action(const std::string &p_name) {
+	return p_name == "open_scene" || p_name == "run_project" || p_name == "run_current_scene" || p_name == "stop_project";
+}
+
 bool GoAgenticsTools::is_file_mutation(const std::string &p_name) {
 	return p_name == "write_file" || p_name == "edit_file" || p_name == "create_script" || p_name == "create_folder" || p_name == "delete_file" || p_name == "create_scene" || p_name == "create_resource";
 }
 
 bool GoAgenticsTools::is_enabled_tool(const std::string &p_name) {
-	return is_file_mutation(p_name) || is_scene_tool(p_name) || p_name == "list_files" || p_name == "read_file" || p_name == "search_text" || p_name == "validate_script" || p_name == "get_project_setting";
+	return is_editor_action(p_name) || is_file_mutation(p_name) || is_scene_tool(p_name) || p_name == "list_files" || p_name == "read_file" || p_name == "search_text" || p_name == "validate_script" || p_name == "get_project_setting";
 }
 
 bool GoAgenticsTools::is_scene_tool(const std::string &p_name) {

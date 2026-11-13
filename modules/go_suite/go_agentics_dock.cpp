@@ -183,9 +183,10 @@ void GoAgenticsDock::_advance_tools() {
 		_record_tool_result(go_suite::to_godot_string("{\"ok\":false,\"error\":" + go::escape_json_string(error.empty() ? "Tool not enabled in project-tool mode" : error) + "}"));
 		return;
 	}
-	if (go::GoAgenticsTools::is_file_mutation(call.name)) {
+	if (go::GoAgenticsTools::is_file_mutation(call.name) || go::GoAgenticsTools::is_editor_action(call.name)) {
 		String preview;
-		const String preparation_error = tool_bridge.prepare_file_change(call, preview, file_fingerprint);
+		const bool execution = go::GoAgenticsTools::is_editor_action(call.name);
+		const String preparation_error = execution ? tool_bridge.prepare_editor_action(call, preview, file_fingerprint) : tool_bridge.prepare_file_change(call, preview, file_fingerprint);
 		if (!preparation_error.is_empty()) {
 			_record_tool_result(go_suite::to_godot_string("{\"ok\":false,\"error\":" + go::escape_json_string(go_suite::to_std_string(preparation_error)) + "}"));
 			return;
@@ -193,7 +194,7 @@ void GoAgenticsDock::_advance_tools() {
 		// File operations always require their own approval, even when scene
 		// auto-approval is enabled. They are not part of the scene undo history.
 		waiting_approval = true;
-		approval_summary->set_text(TTR("Allow this file change? Review the complete before/after contents below. Existing files are backed up locally; file changes are NOT editor Undo/Redo actions."));
+		approval_summary->set_text(execution ? TTR("Allow this editor execution action? Review the warnings below. Scene auto-approval does not apply.") : TTR("Allow this file change? Review the complete before/after contents below. Existing files are backed up locally; file changes are NOT editor Undo/Redo actions."));
 		file_preview->set_text(preview);
 		file_preview->show();
 		approval->popup_centered(Size2i(800, 600));
@@ -231,11 +232,12 @@ void GoAgenticsDock::_on_tool_confirmed() {
 		return;
 	}
 	waiting_approval = false;
-	if (go::GoAgenticsTools::is_file_mutation(pending_calls[next_call].name)) {
+	if (go::GoAgenticsTools::is_file_mutation(pending_calls[next_call].name) || go::GoAgenticsTools::is_editor_action(pending_calls[next_call].name)) {
 		const String fingerprint = file_fingerprint;
 		file_fingerprint = String();
 		file_preview->clear();
-		_record_tool_result(tool_bridge.execute_file_change(pending_calls[next_call], fingerprint));
+		const auto &call = pending_calls[next_call];
+		_record_tool_result(go::GoAgenticsTools::is_editor_action(call.name) ? tool_bridge.execute_editor_action(call, fingerprint) : tool_bridge.execute_file_change(call, fingerprint));
 		return;
 	}
 	Node *root = EditorInterface::get_singleton()->get_edited_scene_root();
@@ -652,7 +654,7 @@ GoAgenticsDock::GoAgenticsDock() {
 	top_row->add_child(auto_approve);
 	scene_tools = memnew(CheckButton);
 	scene_tools->set_text(TTR("Project tools (experimental)"));
-	scene_tools->set_tooltip_text(TTR("Bounded project text reads/search, undoable scene edits and guarded text-file changes. File changes always require separate approval and use local backups, not scene Undo/Redo. No arbitrary commands. Requires verified native tool support."));
+	scene_tools->set_tooltip_text(TTR("Bounded project text reads/search, undoable scene edits and guarded text-file changes. File changes always require separate approval and use local backups, not scene Undo/Redo. Scene opening and project run/stop require separate execution approval. No arbitrary commands. Requires verified native tool support."));
 	add_child(scene_tools);
 	approval = memnew(ConfirmationDialog);
 	approval->set_title(TTR("Code Agentics: Confirm Change"));
