@@ -426,3 +426,12 @@ Dateiänderungen benötigen immer eine eigene vollständige Vorher-/Nachher-Vors
 mit Bestätigung; die Szenen-Autofreigabe umgeht diese nicht. Ablehnen und Stoppen
 verwerfen die Freigabe. Native Tests für diese Abläufe sind ergänzt, die neue
 Windows-/Linux-Laufzeitabnahme und visuelle Prüfung stehen noch aus.
+
+#### Laufzeitstatus nach 13b24d8f
+
+Der vollständige Linux-Lauf einschließlich nativer Datei-Freigaben und
+Debug-/Release-Export mit Player-Start ist erfolgreich. Windows scheiterte am
+LFS-Negativtest: Leere Prozessargumente gingen verloren, sodass die Testvorbereitung
+den vorhandenen Filter abfragte statt deaktivierte. Beide Git-Prozessadapter
+bewahren diese Argumente jetzt; neue native Regressionen prüfen den Effekt.
+Die Windows-Bestätigung und visuelle Gesamtabnahme stehen noch aus.

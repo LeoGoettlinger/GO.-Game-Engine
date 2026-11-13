@@ -34,10 +34,14 @@
 // SPDX-License-Identifier: MIT
 
 #include "../go_git_process.h"
+#include "../go_suite_core.h"
 #include "../go_system_git_runner.h"
 
+#include "core/io/dir_access.h"
+#include "core/io/file_access.h"
 #include "core/os/os.h"
 #include "tests/test_macros.h"
+#include "tests/test_utils.h"
 
 namespace TestGoGitProcess {
 
@@ -93,6 +97,40 @@ TEST_CASE("[GO.][GitProcess] Reject invalid commands without launching") {
 	CHECK_FALSE(process.start(go::GitCommand()));
 	CHECK_FALSE(process.is_running());
 	CHECK_FALSE(process.succeeded());
+}
+
+TEST_CASE("[GO.][GitProcess] Empty config arguments survive synchronous and asynchronous Windows launching") {
+	const String directory = TestUtils::get_temp_path("go-empty-argument-" + itos(OS::get_singleton()->get_ticks_usec()));
+	REQUIRE(DirAccess::make_dir_recursive_absolute(directory) == OK);
+	struct Cleanup {
+		String path;
+		~Cleanup() {
+			DirAccess::remove_absolute(path.path_join("config"));
+			DirAccess::remove_absolute(path);
+		}
+	} cleanup{ directory };
+	const std::string project = go_suite::to_std_string(directory);
+	const std::string config = go_suite::to_std_string(directory.path_join("config"));
+	go_suite::GoSystemGitRunner runner;
+	std::string output;
+	int exit = -1;
+	for (bool asynchronous : { false, true }) {
+		REQUIRE(runner.run(go::git(project, { "config", "--file", config, "go.empty", "previous" }), output, exit));
+		REQUIRE(exit == 0);
+		const auto command = go::git(project, { "config", "--file", config, "go.empty", "" });
+		if (asynchronous) {
+			GoGitProcess process;
+			REQUIRE(process.start(command));
+			REQUIRE(wait_for_git(process));
+			CHECK(process.succeeded());
+		} else {
+			REQUIRE(runner.run(command, output, exit));
+			CHECK(exit == 0);
+		}
+		REQUIRE(runner.run(go::git(project, { "config", "--file", config, "--get", "go.empty" }), output, exit));
+		CHECK(exit == 0);
+		CHECK(go::trim(output).empty());
+	}
 }
 
 } // namespace TestGoGitProcess

@@ -44,6 +44,7 @@ namespace go_suite {
 
 std::string to_std_string(const String &p_string);
 String to_godot_string(const std::string &p_string);
+String to_git_process_argument(const std::string &p_argument);
 
 class GoSystemGitRunner {
 	std::string project_path;

@@ -52,7 +52,7 @@ bool GoGitProcess::start(const go::GitCommand &p_command, uint64_t p_timeout_mse
 	}
 	List<String> arguments;
 	for (const std::string &argument : p_command.arguments) {
-		arguments.push_back(go_suite::to_godot_string(argument));
+		arguments.push_back(go_suite::to_git_process_argument(argument));
 	}
 	const Dictionary process = OS::get_singleton()->execute_with_pipe("git", arguments, false);
 	if (!process.has("pid") || !process.has("stdio") || !process.has("stderr")) {

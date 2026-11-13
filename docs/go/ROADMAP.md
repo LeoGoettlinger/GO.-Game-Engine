@@ -377,3 +377,20 @@ yet diagnosed or claimed fixed. Automatic Commit remains disabled.
 
 Added native approval-dialog, project-switch and loaded-resource regressions.
 Full native runtime, export and visual acceptance still await the next CI run.
+
+### Runtime acceptance at 13b24d8f and Windows empty-argument fix
+
+Full run 42273906776 passed the entire Linux job, including native file approval,
+read/write guards, Automatic Commit transactions and both exported player builds.
+Windows failed only at AutoFlow before reaching the later suites/export gates.
+The retained XML shows the invalid-LFS negative fixture unexpectedly committed;
+normal commit/push/rejected-push and the real LFS filter test passed.
+
+The base Windows process adapter drops empty arguments. Consequently, the test's
+`git config filter.lfs.process ""` became a query of the inherited filter, returned
+success, and never disabled the filter. Both GO. Git launch paths now preserve
+empty argv entries on Windows. A dedicated native test verifies empty config
+writes through synchronous and asynchronous launching; the negative LFS fixture
+also verifies its local config values before running the transaction. Windows
+runtime confirmation remains pending. Automatic Commit stays gated until full
+runtime and visual acceptance; Linux success alone is not cross-platform proof.

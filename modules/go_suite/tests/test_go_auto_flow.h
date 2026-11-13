@@ -153,6 +153,12 @@ TEST_CASE("[GO.][AutoFlow][Editor] Invalid staged LFS content prevents a commit"
 	REQUIRE(fixture.git({ "config", "filter.lfs.process", "" }));
 	REQUIRE(fixture.git({ "config", "filter.lfs.clean", "" }));
 	REQUIRE(fixture.git({ "config", "filter.lfs.required", "false" }));
+	// A successful exit alone is insufficient: a lost empty argv entry can
+	// turn the setter into a successful query of an inherited LFS filter.
+	for (const char *key : { "filter.lfs.process", "filter.lfs.clean" }) {
+		REQUIRE(fixture.git({ "config", "--local", "--get", key }));
+		REQUIRE(go::trim(fixture.output).empty());
+	}
 	fixture.write(".gitattributes", "*.png filter=lfs diff=lfs merge=lfs -text\n");
 	fixture.write("asset.png", "not a pointer");
 	fixture.run(false);

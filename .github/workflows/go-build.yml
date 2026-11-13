@@ -131,7 +131,7 @@ jobs:
             EDITOR=bin/godot.windows.editor.x86_64.exe
           fi
           python misc/scripts/go_native_tests.py --editor "$EDITOR" --suite GitProcess \
-            --minimum 3 --output go-git-process-tests.log
+            --minimum 4 --output go-git-process-tests.log
 
       - name: Native scene undo and redo tests
         shell: bash
