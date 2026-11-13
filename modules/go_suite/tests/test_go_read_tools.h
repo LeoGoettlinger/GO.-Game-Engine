@@ -36,6 +36,7 @@
 #include "../go_agentics_tool_bridge.h"
 #include "../go_system_git_runner.h"
 
+#include "core/config/project_settings.h"
 #include "core/io/dir_access.h"
 #include "core/io/file_access.h"
 #include "core/io/resource.h"
@@ -207,3 +208,40 @@ TEST_CASE("[GO.][ReadTools] Approvals are bound to the project and reject newly 
 	CHECK(bridge.execute_file_change(call, fingerprint).contains("\"ok\":true"));
 }
 } // namespace TestGoFileChanges
+
+namespace TestGoScriptValidation {
+TEST_CASE("[GO.][ReadTools] Script validation parses saved source without loading or initializing scripts") {
+	TestGoReadTools::Fixture fixture;
+	fixture.write("valid.gd", "extends Node\nvar speed = 100\n");
+	const String valid = fixture.call("validate_script", R"({"path":"res://valid.gd"})");
+	CHECK(valid.contains("\"ok\":true"));
+	CHECK(valid.contains("syntax parsing only"));
+	fixture.write("invalid.gd", "extends Node\nfunc broken(\n");
+	const String invalid = fixture.call("validate_script", R"({"path":"res://invalid.gd"})");
+	CHECK(invalid.contains("\"ok\":false"));
+	CHECK(invalid.contains("syntax errors"));
+	fixture.write("initialize.gd", "@tool\nextends Node\nstatic func _static_init():\n\tvar file = FileAccess.open(\"res://executed.txt\", FileAccess.WRITE)\n\tfile.store_string(\"executed\")\n");
+	CHECK(fixture.call("validate_script", R"({"path":"res://initialize.gd"})").contains("\"ok\":true"));
+	CHECK_FALSE(FileAccess::exists("res://executed.txt"));
+	CHECK_FALSE(ResourceCache::has("res://initialize.gd"));
+	fixture.write("semantic.gd", "extends Node\nfunc example():\n\tunknown_identifier()\n");
+	CHECK(fixture.call("validate_script", R"({"path":"res://semantic.gd"})").contains("syntax parsing only"));
+	fixture.write("notes.txt", "extends Node");
+	CHECK(fixture.call("validate_script", R"({"path":"res://notes.txt"})").contains("\"ok\":false"));
+	CHECK(fixture.call("validate_script", R"({"path":"res://.git/config"})").contains("\"ok\":false"));
+}
+
+TEST_CASE("[GO.][ReadTools] Project setting reads are allowlisted and never stringify arbitrary variants") {
+	TestGoReadTools::Fixture fixture;
+	ProjectSettings *settings = ProjectSettings::get_singleton();
+	const String name = "application/config/name";
+	const bool existed = settings->has_setting(name);
+	const Variant previous = settings->get_setting(name, Variant());
+	settings->set_setting(name, "GO fixture");
+	CHECK(fixture.call("get_project_setting", R"({"name":"application/config/name"})").contains("GO fixture"));
+	CHECK(fixture.call("get_project_setting", R"({"name":"private/api_key"})").contains("\"ok\":false"));
+	settings->set_setting(name, 123);
+	CHECK(fixture.call("get_project_setting", R"({"name":"application/config/name"})").contains("\"ok\":false"));
+	settings->set_setting(name, existed ? previous : Variant());
+}
+} // namespace TestGoScriptValidation

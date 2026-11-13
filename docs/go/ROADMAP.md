@@ -394,3 +394,16 @@ writes through synchronous and asynchronous launching; the negative LFS fixture
 also verifies its local config values before running the transaction. Windows
 runtime confirmation remains pending. Automatic Commit stays gated until full
 runtime and visual acceptance; Linux success alone is not cross-platform proof.
+
+### Current additions: script syntax and project-setting reads
+
+`validate_script` now parses saved GDScript text without loading or initializing
+Script resources. Success explicitly excludes semantic/dependency/runtime checks.
+`get_project_setting` exposes four string-only non-secret settings with bounds.
+The experimental whitelist is now 18 tools; native tests are added but await CI.
+The full Windows/Linux run for the preceding empty-argument fix is still running.
+
+Outstanding tool families remain scene creation/open/save/instantiation, script
+attachment, resource creation, project-setting writes/main-scene selection,
+filesystem scan/selection, run controls, editor logs and agent Git integration.
+These are not claimed implemented by adding the two inspection tools.

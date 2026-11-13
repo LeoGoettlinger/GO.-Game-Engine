@@ -435,3 +435,12 @@ LFS-Negativtest: Leere Prozessargumente gingen verloren, sodass die Testvorberei
 den vorhandenen Filter abfragte statt deaktivierte. Beide Git-Prozessadapter
 bewahren diese Argumente jetzt; neue native Regressionen prüfen den Effekt.
 Die Windows-Bestätigung und visuelle Gesamtabnahme stehen noch aus.
+
+#### Skript-Syntaxprüfung und lesender Zugriff auf Projekteinstellungen
+
+Der experimentelle Agent verfügt jetzt über 18 aktive Werkzeuge.
+`validate_script` prüft gespeicherten GDScript-Text mit dem Parser, ohne Skripte
+zu laden oder auszuführen. Typ-/Abhängigkeits-/Laufzeitprüfung ist ausdrücklich
+nicht enthalten. `get_project_setting` liest vier erlaubte String-Einstellungen;
+beliebige Einstellungen und Objekte bleiben gesperrt. Native Tests sind ergänzt,
+die neue Laufzeitbestätigung steht noch aus.

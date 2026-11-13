@@ -183,7 +183,7 @@ void test_agentics_tools() {
 	CHECK(GoAgenticsTools::is_tool_allowed("read_file"));
 	const auto scene_definitions = parse_json(GoAgenticsTools::tool_definitions_json(true), parse_error);
 	CHECK(parse_error.empty());
-	CHECK_EQ(scene_definitions.array_value.size(), size_t(16));
+	CHECK_EQ(scene_definitions.array_value.size(), size_t(18));
 	CHECK(GoAgenticsTools::is_enabled_tool("read_file"));
 	CHECK(GoAgenticsTools::is_enabled_tool("list_files"));
 	CHECK(GoAgenticsTools::is_enabled_tool("search_text"));
@@ -191,6 +191,9 @@ void test_agentics_tools() {
 	CHECK(GoAgenticsTools::is_file_mutation("delete_file"));
 	CHECK(!GoAgenticsTools::is_file_mutation("remove_node"));
 	CHECK(!GoAgenticsTools::is_enabled_tool("run_project"));
+	CHECK(GoAgenticsTools::is_enabled_tool("validate_script"));
+	CHECK(!GoAgenticsTools::is_write_tool("validate_script"));
+	CHECK(GoAgenticsTools::is_enabled_tool("get_project_setting"));
 	CHECK(GoAgenticsTools::validate_arguments("read_file", R"({"path":"res://player.gd","start_line":2,"line_limit":10})").empty());
 	CHECK(!GoAgenticsTools::validate_arguments("read_file", R"({"path":"res://player.gd","line_limit":true})").empty());
 	CHECK(GoAgenticsTools::is_scene_tool("remove_node"));
@@ -216,7 +219,7 @@ void test_agentics_tools() {
 	CHECK(!GoAgenticsTools::is_write_tool("read_file"));
 	CHECK(GoAgenticsTools::is_write_tool("open_scene"));
 	CHECK(GoAgenticsTools::is_write_tool("run_project"));
-	CHECK(GoAgenticsTools::is_write_tool("validate_script"));
+	CHECK(!GoAgenticsTools::is_write_tool("validate_script"));
 	CHECK(GoAgenticsTools::validate_arguments("read_file", R"({"path":"res://player.gd"})").empty());
 	CHECK(!GoAgenticsTools::validate_arguments("read_file", R"({"path":false})").empty());
 	CHECK(!GoAgenticsTools::validate_arguments("read_file", R"({"path":"res://player.gd","shell":"whoami"})").empty());

@@ -239,3 +239,24 @@ editing, script attachment and project run tools remain outside this whitelist.
 Native regressions now cover approval denial, stopping, stale disk state,
 scene-auto-approval isolation, project changes, loaded resources and backups.
 Their new Windows/Linux runtime results and visual UI acceptance remain pending.
+
+## Saved-script syntax and bounded project-setting inspection
+
+The experimental whitelist now has 18 tools. `validate_script` takes required
+`path` pointing to a readable `.gd` file within the existing 200000-byte/privacy
+limits. It directly invokes the GDScript parser, never ResourceLoader, the
+analyzer or compiler. A successful result means **syntax only**, not valid types,
+resolved dependencies or a runnable script. Unsaved editor buffers are not read.
+Errors contain at most 20 line/column diagnostics, each clipped to 500 characters.
+The previous draft that loaded Script resources has been removed. GO. now declares
+its GDScript module dependency explicitly.
+
+`get_project_setting` takes required string `name`. The readable allowlist is
+`application/run/main_scene`, `application/config/name`,
+`application/boot_splash/image`, `rendering/renderer/rendering_method`. Missing,
+non-string, oversized or potentially sensitive values return errors. Arbitrary
+settings, objects and credentials are never enumerated/stringified.
+
+Native fixtures exercise syntax success/failure, a static initializer that must
+not execute or enter ResourceCache, semantic errors explicitly outside scope,
+path/type rejection and setting allowlist/type checks. Runtime CI is pending.

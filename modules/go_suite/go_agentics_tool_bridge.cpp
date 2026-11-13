@@ -61,6 +61,8 @@
 #include "scene/main/node.h"
 #include "scene/resources/packed_scene.h"
 
+#include "modules/gdscript/gdscript_parser.h"
+
 #include <cmath>
 #include <sstream>
 
@@ -652,15 +654,51 @@ String GoAgenticsToolBridge::execute(const go::GoKiloToolCall &p_call) const {
 	}
 
 	if (tool == "validate_script") {
-		if (!has_path) {
-			return to_godot(error_json("a res:// script path is required"));
+		if (!has_path || path.get_extension().to_lower() != "gd") {
+			return to_godot(error_json("validate_script requires a res:// .gd file"));
 		}
-		Ref<Resource> resource = ResourceLoader::load(path, "Script", ResourceFormatLoader::CACHE_MODE_IGNORE);
-		Ref<Script> script = Object::cast_to<Script>(resource.ptr());
-		if (script.is_null()) {
-			return to_godot(error_json("script did not parse as a Godot Script resource"));
+		String source;
+		std::string error;
+		if (!read_project_text(path, source, error)) {
+			return to_godot(error_json(error));
 		}
-		return to_godot(ok_json("script is valid: " + to_std(path)));
+		// Parse the saved source only. Do NOT run the analyzer/compiler or use
+		// ResourceLoader: validation must not initialize scripts/dependencies.
+		GDScriptParser parser;
+		const Error result = parser.parse(source, path, false);
+		if (result != OK) {
+			std::string diagnostics = "GDScript syntax errors in " + to_std(path) + ":\n";
+			int count = 0;
+			for (const GDScriptParser::ParserError &entry : parser.get_errors()) {
+				if (++count > 20) {
+					diagnostics += "Additional diagnostics omitted.\n";
+					break;
+				}
+				diagnostics += std::to_string(entry.start_line) + ":" + std::to_string(entry.start_column) + " " + to_std(entry.message.substr(0, 500)) + "\n";
+			}
+			return to_godot(error_json(diagnostics));
+		}
+		return to_godot(ok_json("Saved source passed GDScript syntax parsing only. Semantic/type analysis, dependencies, unsaved editor buffers and runtime behavior were NOT validated."));
+	}
+
+	if (tool == "get_project_setting") {
+		const std::string name = argument_string(arguments, "name");
+		if (name != "application/run/main_scene" && name != "application/config/name" && name != "application/boot_splash/image" && name != "rendering/renderer/rendering_method") {
+			return to_godot(error_json("Project setting is outside the readable allowlist"));
+		}
+		ProjectSettings *settings = ProjectSettings::get_singleton();
+		if (!settings->has_setting(to_godot(name))) {
+			return to_godot(error_json("Project setting is not configured"));
+		}
+		const Variant value = settings->get_setting(to_godot(name));
+		if (value.get_type() != Variant::STRING && value.get_type() != Variant::STRING_NAME) {
+			return to_godot(error_json("Project setting is not a string"));
+		}
+		const std::string text = to_std(String(value));
+		if (text.size() > 4096 || go::looks_like_secret_content(text)) {
+			return to_godot(error_json("Project setting omitted because it is oversized or potentially sensitive"));
+		}
+		return to_godot(ok_json(name + "=" + text));
 	}
 
 	EditorInterface *editor = EditorInterface::get_singleton();

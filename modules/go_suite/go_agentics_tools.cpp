@@ -55,6 +55,7 @@ const std::vector<std::string> TOOL_NAMES = {
 	"search_text",
 	"create_script",
 	"validate_script",
+	"get_project_setting",
 	"attach_script",
 	"create_scene",
 	"open_scene",
@@ -92,6 +93,9 @@ std::vector<ToolArgument> tool_arguments(const std::string &p_name) {
 		arguments.push_back({ "path", false, false });
 	} else if (p_name == "read_file" || p_name == "write_file" || p_name == "edit_file" || p_name == "create_folder" || p_name == "delete_file" || p_name == "create_script" || p_name == "validate_script" || p_name == "create_scene" || p_name == "open_scene" || p_name == "save_scene_as" || p_name == "set_main_scene") {
 		arguments.push_back({ "path", true, false });
+	}
+	if (p_name == "get_project_setting") {
+		arguments.push_back({ "name", true, false });
 	}
 	if (p_name == "write_file" || p_name == "create_script") {
 		arguments.push_back({ "content", true, false });
@@ -152,7 +156,6 @@ bool is_write_tool_name(const std::string &p_name) {
 		"auto_commit",
 		// These actions can execute scripts or change editor state even without
 		// directly writing a file. They must not bypass future approval gates.
-		"validate_script",
 		"open_scene",
 		"scan_filesystem",
 		"select_node",
@@ -187,7 +190,7 @@ bool GoAgenticsTools::is_file_mutation(const std::string &p_name) {
 }
 
 bool GoAgenticsTools::is_enabled_tool(const std::string &p_name) {
-	return is_file_mutation(p_name) || is_scene_tool(p_name) || p_name == "list_files" || p_name == "read_file" || p_name == "search_text";
+	return is_file_mutation(p_name) || is_scene_tool(p_name) || p_name == "list_files" || p_name == "read_file" || p_name == "search_text" || p_name == "validate_script" || p_name == "get_project_setting";
 }
 
 bool GoAgenticsTools::is_scene_tool(const std::string &p_name) {
