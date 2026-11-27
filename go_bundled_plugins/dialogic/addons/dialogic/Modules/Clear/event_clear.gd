@@ -55,7 +55,7 @@ func _execute() -> void:
 			if step_by_step: await dialogic.get_tree().create_timer(final_time).timeout
 
 	if clear_style and dialogic.has_subsystem("Styles"):
-		if auto_avoid_style_change and Dialogic.current_event_idx == Dialogic.current_timeline_events.size()-1:
+		if auto_avoid_style_change and dialogic.current_event_idx == dialogic.current_timeline_events.size()-1:
 			pass
 		else:
 			dialogic.Styles.change_style()

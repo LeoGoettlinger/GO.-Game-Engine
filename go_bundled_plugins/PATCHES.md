@@ -22,3 +22,10 @@ This is the only source patch among the seven vendored GDScript plugins as of
   methods emit failure/unavailable without HTTP requests. This prevents automatic
   network access and mutable self-updates of the pinned offline bundle. Upstream
   licenses are unchanged. Reapply this patch after re-vendoring.
+
+- `addons/dialogic/Modules/Clear/event_clear.gd`: use the event's supplied
+  `dialogic` handler instance for the last-event check, consistent with every
+  other operation in `_execute`, rather than referencing the autoload global.
+  Official 4.7.2 `--check-only --script` does not initialize autoload globals;
+  this was the sole parse/compile failure remaining after adding Dialogic. The
+  instance-based check also respects non-global handlers. Reapply after vendoring.

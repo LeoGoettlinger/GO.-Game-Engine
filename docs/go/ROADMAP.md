@@ -696,3 +696,11 @@ nonzero exits block release packaging; per-plugin logs are preserved. This new
 startup gate has not completed yet. Defaults remain disabled until startup and
 visual/interaction checks pass. An editor starting successfully does not by
 itself prove every plugin feature or exported-project behavior.
+
+### Dialogic parse gate correction
+
+Official 4.7.2 parsing identified one remaining compile failure in Dialogic's
+Clear event: a direct autoload global access despite the supplied per-event
+handler. The last-event check now uses `dialogic`, as the rest of that event
+already does. The patch is recorded in source provenance and PATCHES.md; no test
+was excluded. Re-run confirmation is pending.

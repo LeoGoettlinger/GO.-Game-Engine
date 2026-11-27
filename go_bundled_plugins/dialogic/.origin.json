@@ -10,6 +10,7 @@
   "source_subdir": "addons/dialogic",
   "addon_path": "addons/dialogic",
   "patches": [
-    "Disable editor update-check and download requests for pinned offline GO. bundles."
+    "Disable editor update-check and download requests for pinned offline GO. bundles.",
+    "Clear event uses its supplied dialogic handler instance instead of the autoload global, matching the rest of _execute and allowing standalone parser checks."
   ]
 }
