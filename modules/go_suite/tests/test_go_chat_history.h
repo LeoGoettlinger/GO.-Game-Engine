@@ -34,6 +34,7 @@
 // SPDX-License-Identifier: MIT
 
 #include "../go_agentics_dock.h"
+#include "../go_lfs_dialog.h"
 #include "../go_suite_registry.h"
 #include "../go_system_git_runner.h"
 
@@ -64,6 +65,27 @@ struct GoChatHistoryDockTest {
 			access->erase_contents_recursive();
 			DirAccess::remove_absolute(directory);
 		}
+	}
+	void check_lfs_cancel() {
+		go_suite::GoGitController controller;
+		controller.set_project(directory);
+		GoLfsDialog *dialog = memnew(GoLfsDialog(&controller));
+		SceneTree::get_singleton()->get_root()->add_child(dialog);
+		CHECK_FALSE(dialog->owns_job); // Constructor must not start a hidden Git query.
+		dialog->_start_command(go::git(go_suite::to_std_string(directory), { "hash-object", "--stdin" }));
+		CHECK(dialog->owns_job);
+		CHECK(GoSuiteRegistry::is_git_job_busy());
+		dialog->_cancel_job();
+		CHECK_FALSE(dialog->owns_job);
+		CHECK_FALSE(dialog->command_process.is_running());
+		CHECK_FALSE(GoSuiteRegistry::is_git_job_busy());
+		GoSuiteRegistry::set_git_job_busy(true);
+		dialog->_cancel_job();
+		CHECK(GoSuiteRegistry::is_git_job_busy());
+		dialog->_start_command(go::git(go_suite::to_std_string(directory), { "--version" }));
+		CHECK_FALSE(dialog->owns_job);
+		GoSuiteRegistry::set_git_job_busy(false);
+		memdelete(dialog);
 	}
 	void check_json_fallback() {
 		GoAgenticsDock *dock = memnew(GoAgenticsDock);
@@ -246,4 +268,9 @@ TEST_CASE("[GO.][ChatHistory][Editor] Agent Git status is nonblocking private an
 TEST_CASE("[GO.][ChatHistory][Editor] JSON fallback requires opt-in approval and enforces action budget") {
 	GoChatHistoryDockTest fixture;
 	fixture.check_json_fallback();
+}
+
+TEST_CASE("[GO.][ChatHistory][Editor] LFS operations own and release only their own asynchronous reservation") {
+	GoChatHistoryDockTest fixture;
+	fixture.check_lfs_cancel();
 }

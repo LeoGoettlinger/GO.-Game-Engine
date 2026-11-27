@@ -57,16 +57,133 @@ void GoLfsDialog::_append(const String &p_text) {
 	}
 }
 
+void GoLfsDialog::_set_owned(bool p_owned) {
+	owns_job = p_owned;
+	GoSuiteRegistry::set_git_job_busy(p_owned);
+	for (Button *button : { check_button, install_button, init_button, rules_button, track_button, pull_button, push_button, quota_button }) {
+		if (button != nullptr) {
+			button->set_disabled(p_owned);
+		}
+	}
+	if (cancel_button != nullptr) {
+		cancel_button->set_disabled(!p_owned);
+	}
+	set_process(p_owned);
+}
+
+void GoLfsDialog::_cancel_job() {
+	if (!owns_job) {
+		return;
+	}
+	snapshot_job.cancel();
+	command_process.cancel();
+	_set_owned(false);
+	_append(TTR("LFS operation cancelled. Completed file, transfer or system-package changes are not undone."));
+}
+
+void GoLfsDialog::_visibility_changed() {
+	if (!is_visible()) {
+		_cancel_job();
+	}
+}
+
+void GoLfsDialog::_start_command(const go::GitCommand &p_command, bool p_rules) {
+	if (controller == nullptr || GoSuiteRegistry::is_git_job_busy() || GoSuiteRegistry::is_quit_pending()) {
+		return;
+	}
+	reading = false;
+	applying_rules = p_rules;
+	job_project = controller->get_project_path();
+	_set_owned(true);
+	if (!command_process.start(p_command, 180000)) {
+		_append(TTR("Could not start LFS operation: ") + command_process.get_output());
+		_set_owned(false);
+	}
+}
+
+void GoLfsDialog::_start_read(ReadPurpose p_purpose) {
+	if (controller == nullptr || GoSuiteRegistry::is_git_job_busy() || GoSuiteRegistry::is_quit_pending()) {
+		return;
+	}
+	read_purpose = p_purpose;
+	reading = true;
+	job_project = controller->get_project_path();
+	_set_owned(true);
+	if (!snapshot_job.start(job_project)) {
+		_append(go_suite::to_godot_string(snapshot_job.get_result().error));
+		_set_owned(false);
+	}
+}
+
+void GoLfsDialog::_notification(int p_what) {
+	if (p_what == NOTIFICATION_EXIT_TREE) {
+		_cancel_job();
+		return;
+	}
+	if (p_what != NOTIFICATION_PROCESS || !owns_job) {
+		return;
+	}
+	if (controller == nullptr || controller->get_project_path() != job_project) {
+		_cancel_job();
+		return;
+	}
+	if (reading) {
+		if (!snapshot_job.poll()) {
+			return;
+		}
+		auto snapshot = snapshot_job.get_result();
+		_set_owned(false);
+		if (!snapshot.is_repo) {
+			_append(go_suite::to_godot_string(snapshot.error));
+			state_label->set_text(TTR("Could not read Git LFS state."));
+			return;
+		}
+		controller->decorate_snapshot(snapshot);
+		_show_snapshot(snapshot);
+		if (read_purpose == ReadPurpose::TRACK) {
+			if (snapshot.suggested_lfs_patterns.empty()) {
+				_append(TTR("No additional LFS patterns are needed right now."));
+				return;
+			}
+			std::string error;
+			if (!controller->write_lfs_attributes(go::default_lfs_patterns(), {}, error)) {
+				_append(go_suite::to_godot_string(error));
+				return;
+			}
+			_start_command(go::lfs_track_many(job_project, snapshot.suggested_lfs_patterns));
+		} else if (read_purpose == ReadPurpose::QUOTA) {
+			for (const auto &file : snapshot.lfs.largest) {
+				_append(go_suite::to_godot_string(file.path + " — " + go::human_size(file.size_bytes)));
+			}
+			_append(go_suite::to_godot_string(go::quota_warning(snapshot.remote.host_kind, snapshot.lfs.total_bytes)));
+		}
+	} else {
+		if (!command_process.poll()) {
+			return;
+		}
+		bool success = command_process.succeeded() && !command_process.is_output_truncated();
+		if (success && applying_rules) {
+			std::string error;
+			const std::string files = command_process.get_stdout_bytes();
+			success = controller->ensure_lfs_attributes(error, &files);
+			if (!success) {
+				_append(go_suite::to_godot_string(error));
+			}
+		}
+		_append(success ? TTR("LFS operation finished. Refreshing status…") : TTR("LFS operation failed or timed out. Inspect status before retrying."));
+		if (!applying_rules) {
+			_append(command_process.get_output());
+		}
+		_set_owned(false);
+		_refresh_state();
+	}
+}
+
 void GoLfsDialog::_refresh_state() {
-	if (state_label == nullptr || controller == nullptr) {
-		return;
-	}
-	std::string error;
-	const go_suite::GoGitSnapshot snapshot = controller->snapshot(error);
-	if (!snapshot.is_repo) {
-		state_label->set_text(TTR("Not a Git repository."));
-		return;
-	}
+	_start_read(ReadPurpose::STATE);
+}
+
+void GoLfsDialog::_show_snapshot(const go_suite::GoGitSnapshot &snapshot) {
 	String text = TTR("Git LFS installed: ") + String(snapshot.lfs_installed ? "yes" : "no");
 	text += "\n" + TTR("Project LFS ready: ") + String(snapshot.lfs_ready ? "yes" : "no");
 	text += "\n" + TTR("Tracked LFS files: ") + String::num_int64(snapshot.lfs.files.size());
@@ -84,49 +201,21 @@ void GoLfsDialog::_on_check_pressed() {
 		return;
 	}
 	_refresh_state();
-	_append(TTR("Checked Git LFS state."));
+	_append(TTR("Checking Git LFS state asynchronously…"));
 }
 
 void GoLfsDialog::_on_install_pressed() {
-	if ((GoSuiteRegistry::is_git_job_busy() || GoSuiteRegistry::is_quit_pending())) {
-		_append(TTR("Another Git operation is running. Try again after it finishes."));
-		return;
-	}
 	if (controller == nullptr) {
 		return;
 	}
-	std::string platform = "linux";
-	if (OS::get_singleton() != nullptr && OS::get_singleton()->get_name().to_lower().contains("windows")) {
-		platform = "windows";
-	}
-	_append(TTR("Running the system package manager with admin confirmation. This can be cancelled by the OS."));
-	std::string output;
-	std::string error;
-	if (controller->lfs_install_system(platform, output, error)) {
-		_append(TTR("System Git LFS installation command finished."));
-		_append(go_suite::to_godot_string(output));
-	} else {
-		_append(TTR("System Git LFS installation failed: ") + go_suite::to_godot_string(error));
-	}
-	_refresh_state();
+	_append(TTR("Starting the system package manager with OS admin confirmation. Canceling does not roll back package changes."));
+	_start_command(OS::get_singleton()->get_name().to_lower().contains("windows") ? go::lfs_install_windows() : go::lfs_install_linux());
 }
 
 void GoLfsDialog::_on_init_pressed() {
-	if ((GoSuiteRegistry::is_git_job_busy() || GoSuiteRegistry::is_quit_pending())) {
-		_append(TTR("Another Git operation is running. Try again after it finishes."));
-		return;
+	if (controller != nullptr) {
+		_start_command(go::lfs_install_local(controller->get_project_path()));
 	}
-	if (controller == nullptr) {
-		return;
-	}
-	std::string output;
-	std::string error;
-	if (controller->lfs_install_local(output, error)) {
-		_append(TTR("Git LFS initialized for this project."));
-	} else {
-		_append(TTR("Git LFS local init failed: ") + go_suite::to_godot_string(error));
-	}
-	_refresh_state();
 }
 
 void GoLfsDialog::_on_rules_pressed() {
@@ -135,6 +224,10 @@ void GoLfsDialog::_on_rules_pressed() {
 		return;
 	}
 	if (controller == nullptr) {
+		return;
+	}
+	if (controller->lfs_policy().mode == go::LfsMode::SIZE) {
+		_start_command(go::git(controller->get_project_path(), { "-c", "core.quotePath=false", "ls-files", "--cached", "--others", "--exclude-standard" }), true);
 		return;
 	}
 	std::string error;
@@ -147,89 +240,30 @@ void GoLfsDialog::_on_rules_pressed() {
 }
 
 void GoLfsDialog::_on_track_pressed() {
-	if ((GoSuiteRegistry::is_git_job_busy() || GoSuiteRegistry::is_quit_pending())) {
-		_append(TTR("Another Git operation is running. Try again after it finishes."));
+	if (controller == nullptr) {
 		return;
 	}
-	if (controller != nullptr && controller->lfs_policy().mode != go::LfsMode::FILE_TYPES) {
+	if (controller->lfs_policy().mode != go::LfsMode::FILE_TYPES) {
 		_on_rules_pressed();
 		return;
 	}
-	if (controller == nullptr) {
-		return;
-	}
-	std::string error;
-	const go_suite::GoGitSnapshot snapshot = controller->snapshot(error);
-	if (snapshot.suggested_lfs_patterns.empty()) {
-		_append(TTR("No additional LFS patterns are needed right now."));
-		return;
-	}
-	std::string output;
-	if (controller->lfs_track_patterns(snapshot.suggested_lfs_patterns, output, error)) {
-		_append(TTR("Tracked suggested LFS patterns."));
-		_append(go_suite::to_godot_string(go::join(snapshot.suggested_lfs_patterns, ", ")));
-	} else {
-		_append(TTR("Could not track LFS patterns: ") + go_suite::to_godot_string(error));
-	}
-	_refresh_state();
+	_start_read(ReadPurpose::TRACK);
 }
 
 void GoLfsDialog::_on_pull_pressed() {
-	if ((GoSuiteRegistry::is_git_job_busy() || GoSuiteRegistry::is_quit_pending())) {
-		_append(TTR("Another Git operation is running. Try again after it finishes."));
-		return;
+	if (controller != nullptr) {
+		_start_command(go::lfs_pull(controller->get_project_path()));
 	}
-	if (controller == nullptr) {
-		return;
-	}
-	std::string output;
-	std::string error;
-	if (controller->lfs_pull(output, error)) {
-		_append(TTR("Git LFS objects downloaded."));
-	} else {
-		_append(TTR("Git LFS download failed: ") + go_suite::to_godot_string(error));
-	}
-	_refresh_state();
 }
 
 void GoLfsDialog::_on_push_pressed() {
-	if ((GoSuiteRegistry::is_git_job_busy() || GoSuiteRegistry::is_quit_pending())) {
-		_append(TTR("Another Git operation is running. Try again after it finishes."));
-		return;
+	if (controller != nullptr) {
+		_start_command(go::lfs_push(controller->get_project_path()));
 	}
-	if (controller == nullptr) {
-		return;
-	}
-	std::string output;
-	std::string error;
-	if (controller->lfs_push(output, error)) {
-		_append(TTR("Git LFS objects uploaded."));
-	} else {
-		_append(TTR("Git LFS upload failed: ") + go_suite::to_godot_string(error));
-	}
-	_refresh_state();
 }
 
 void GoLfsDialog::_on_quota_pressed() {
-	if ((GoSuiteRegistry::is_git_job_busy() || GoSuiteRegistry::is_quit_pending())) {
-		_append(TTR("Another Git operation is running. Try again after it finishes."));
-		return;
-	}
-	if (controller == nullptr) {
-		return;
-	}
-	std::string error;
-	const go_suite::GoGitSnapshot snapshot = controller->snapshot(error);
-	_append(TTR("Largest tracked LFS files:"));
-	for (const go::LfsFile &file : snapshot.lfs.largest) {
-		_append(go_suite::to_godot_string(file.path + " — " + go::human_size(file.size_bytes)));
-	}
-	const std::string warning = go::quota_warning(snapshot.remote.host_kind, snapshot.lfs.total_bytes);
-	if (!warning.empty()) {
-		_append(TTR("Quota note: ") + go_suite::to_godot_string(warning));
-	} else {
-		_append(TTR("No host quota warning threshold reached."));
-	}
+	_start_read(ReadPurpose::QUOTA);
 }
 
 void GoLfsDialog::_on_mode_selected(int p_index) {
@@ -268,6 +302,9 @@ void GoLfsDialog::_on_remove_folder() {
 }
 
 void GoLfsDialog::_on_save_policy() {
+	if (GoSuiteRegistry::is_git_job_busy() || GoSuiteRegistry::is_quit_pending()) {
+		return;
+	}
 	if (controller == nullptr) {
 		return;
 	}
@@ -400,5 +437,10 @@ GoLfsDialog::GoLfsDialog(go_suite::GoGitController *p_controller) {
 	output_view->set_v_size_flags(Control::SIZE_EXPAND_FILL);
 	root->add_child(output_view);
 
-	_refresh_state();
+	cancel_button = memnew(Button);
+	cancel_button->set_text(TTR("Cancel LFS operation"));
+	cancel_button->set_disabled(true);
+	cancel_button->connect("pressed", callable_mp(this, &GoLfsDialog::_cancel_job));
+	root->add_child(cancel_button);
+	connect("visibility_changed", callable_mp(this, &GoLfsDialog::_visibility_changed));
 }

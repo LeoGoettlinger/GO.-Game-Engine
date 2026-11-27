@@ -417,7 +417,7 @@ bool GoGitController::write_lfs_attributes(const std::vector<std::string> &p_pat
 	return true;
 }
 
-bool GoGitController::ensure_lfs_attributes(std::string &r_error) const {
+bool GoGitController::ensure_lfs_attributes(std::string &r_error, const std::string *p_listed_files) const {
 	const std::string path = full_path(project_path, ".gitattributes");
 	const std::string existing = read_text_file(path);
 	const go::LfsPolicy policy = lfs_policy();
@@ -441,8 +441,8 @@ bool GoGitController::ensure_lfs_attributes(std::string &r_error) const {
 		exclusions = go::lfs_folder_patterns(policy.folders, true);
 	} else {
 		// Git supplies only tracked or unignored candidates; never recurse into .git.
-		std::string files;
-		if (!run_checked(go::git(project_path, { "-c", "core.quotePath=false", "ls-files", "--cached", "--others", "--exclude-standard" }), files, r_error)) {
+		std::string files = p_listed_files != nullptr ? *p_listed_files : "";
+		if (p_listed_files == nullptr && !run_checked(go::git(project_path, { "-c", "core.quotePath=false", "ls-files", "--cached", "--others", "--exclude-standard" }), files, r_error)) {
 			return false;
 		}
 		for (const std::string &file : go::split(files, '\n')) {
@@ -459,7 +459,7 @@ bool GoGitController::ensure_lfs_attributes(std::string &r_error) const {
 				current += "/" + part;
 				symlink = symlink || directory->is_link(to_godot_string(current));
 			}
-			if (symlink || !go::valid_lfs_folder(file)) {
+			if (symlink || !go::valid_lfs_folder(file) || !FileAccess::exists(to_godot_string(current))) {
 				continue;
 			}
 			const int64_t size = FileAccess::get_size(to_godot_string(current));

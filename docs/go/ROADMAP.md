@@ -872,3 +872,19 @@ marker after opening the existing player scene and selecting 2D. The hook requir
 the named disposable fixture, marker file and explicit CLI flag; it is absent
 from non-test builds. Mocked sequencing tests reject missing readiness and check
 resize/capture ordering. A fresh real screenshot must still be reviewed.
+
+### LFS responsiveness follow-up
+
+Migrated LFS dialog Git subprocesses (including automatic size-mode enumeration)
+to polled, cancellable jobs. The constructor no longer queries Git before the
+dialog enters the scene tree. Close/cancel/exit release only this dialog's own
+reservation; policy writes are rejected during another Git operation. Added a
+native editor regression for ownership, cancellation and foreign-lock retention.
+Local filesystem scanning/attribute writes and other ancillary configuration
+paths are not claimed fully nonblocking. Syntax checks and standalone guardrails
+pass; native/runtime validation of these changes remains pending.
+
+Quick Checks 46064309084 passed at 68e17657, including addon parsing. Full runs
+for 2f479106/3300b3c8/0e17a529 were superseded by subsequent pushes, so they do not
+prove plugin startup fixed. The next full run must reach both platform gates
+before release readiness can be claimed.

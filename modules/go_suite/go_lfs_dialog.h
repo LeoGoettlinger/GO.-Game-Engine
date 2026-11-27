@@ -34,6 +34,7 @@
 // SPDX-License-Identifier: MIT
 
 #include "go_git_controller.h"
+#include "go_git_snapshot_job.h"
 
 #include "scene/gui/dialogs.h"
 
@@ -47,8 +48,28 @@ class FileDialog;
 
 class GoLfsDialog : public AcceptDialog {
 	GDCLASS(GoLfsDialog, AcceptDialog);
+#ifdef GO_SUITE_TESTS_ENABLED
+	friend struct GoChatHistoryDockTest;
+#endif
 
 	go_suite::GoGitController *controller = nullptr;
+	enum class ReadPurpose { STATE,
+		TRACK,
+		QUOTA };
+	ReadPurpose read_purpose = ReadPurpose::STATE;
+	GoGitSnapshotJob snapshot_job;
+	GoGitProcess command_process;
+	bool owns_job = false;
+	bool reading = false;
+	bool applying_rules = false;
+	std::string job_project;
+	Button *cancel_button = nullptr;
+	void _set_owned(bool p_owned);
+	void _cancel_job();
+	void _visibility_changed();
+	void _start_command(const go::GitCommand &p_command, bool p_rules = false);
+	void _start_read(ReadPurpose p_purpose);
+	void _show_snapshot(const go_suite::GoGitSnapshot &p_snapshot);
 	Label *state_label = nullptr;
 	TextEdit *output_view = nullptr;
 	Button *check_button = nullptr;
@@ -82,6 +103,7 @@ class GoLfsDialog : public AcceptDialog {
 
 protected:
 	static void _bind_methods();
+	void _notification(int p_what);
 
 public:
 	explicit GoLfsDialog(go_suite::GoGitController *p_controller = nullptr);

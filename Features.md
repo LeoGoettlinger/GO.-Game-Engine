@@ -818,3 +818,13 @@ Actual editor/player screenshots from 551a0fa2 are now preserved with checksums 
 `docs/go/evidence/551a0fa2/`. Review confirms the visible gradient player. The
 editor capture is clipped/incomplete and is not a satisfactory full UI acceptance;
 capture sizing/readiness is being corrected rather than marking it approved.
+
+### LFS dialog responsiveness
+
+LFS status, quota and suggested-pattern reads now reuse the cancellable Git
+snapshot pipeline. Install/init, download/upload and tracking execute through
+bounded asynchronous processes. Automatic size-mode candidate enumeration is
+asynchronous too; local policy/attribute processing remains synchronous. Closing
+the dialog cancels its owned operation without releasing another job's lock.
+Cancellation does not undo completed package, transfer or file changes. Native
+lock/cancellation coverage is added; runtime confirmation remains pending.
