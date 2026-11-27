@@ -58,6 +58,23 @@ bool safe_component(const String &p_text) {
 	}
 	return true;
 }
+bool has_extension(const String &p_path) {
+	Ref<DirAccess> dir = DirAccess::open(p_path);
+	if (dir.is_null()) {
+		return false;
+	}
+	dir->list_dir_begin();
+	while (true) {
+		String name = dir->get_next();
+		if (name.is_empty()) {
+			break;
+		}
+		if (!dir->current_is_dir() && !dir->is_link(name) && name.ends_with(".gdextension")) {
+			return true;
+		}
+	}
+	return false;
+}
 bool safe_tree(const String &p_path, int &r_count, int p_depth = 0) {
 	if (p_depth > 32 || ++r_count > 20000) {
 		return false;
@@ -140,12 +157,16 @@ void GoPluginsDialog::refresh() {
 		if (!safe_component(id) || !addon.begins_with("addons/") || !safe_component(addon.trim_prefix("addons/"))) {
 			continue;
 		}
-		bool installed = FileAccess::exists(project.path_join(addon).path_join("plugin.cfg"));
-		bool present = FileAccess::exists(bundle.path_join(id).path_join(addon).path_join("plugin.cfg"));
+		bool native = String(item.get("type", "")) == "gdextension";
+		bool installed = FileAccess::exists(project.path_join(addon).path_join("plugin.cfg")) || (native && has_extension(project.path_join(addon)));
+		bool present = FileAccess::exists(bundle.path_join(id).path_join(addon).path_join("plugin.cfg")) || (native && has_extension(bundle.path_join(id).path_join(addon)));
 		bool enabled = installed && EditorInterface::get_singleton()->is_plugin_enabled(addon.trim_prefix("addons/"));
 		String state = enabled ? TTR("Enabled") : installed ? TTR("Installed, disabled")
 				: present									? TTR("Available offline")
 															: TTR("Not bundled");
+		if (native && installed) {
+			state = TTR("Native extension installed; see editor output");
+		}
 		int row = list->add_item(String(item.get("name", id)) + " — " + String(item.get("tag", "")) + " — " + state);
 		list->set_item_metadata(row, i);
 	}
@@ -160,8 +181,8 @@ void GoPluginsDialog::request_action(int p_operation) {
 	pending = list->get_item_metadata(list->get_selected_items()[0]);
 	operation = p_operation;
 	Dictionary item = catalog[pending];
-	approval->set_text(String(item.get("name", "")) + "\n" + String(item.get("notes", "")) + "\n\n" + (operation == 0 ? TTR("Copy this bundled addon into the project without overwriting existing files? Importing addon resources may execute editor code. Files are not removed on failure; inspect any reported staging folder.") : operation == 1 ? TTR("Enable this plugin and execute its third-party editor code? Conflicting enabled plugins must be disabled first. This is not undoable with scene Undo/Redo.")
-																																																																																					   : TTR("Disable this plugin? Its files and project data are retained.")));
+	approval->set_text(String(item.get("name", "")) + "\n" + String(item.get("notes", "")) + "\n\n" + (operation == 0 ? TTR("Copy this bundled addon into the project without overwriting existing files? Importing addon resources may execute editor code. Native extensions load executable machine code immediately on import; disabling an editor plugin does not unload its native library. Files are not removed on failure; inspect any reported staging folder.") : operation == 1 ? TTR("Enable this plugin and execute its third-party editor code? Conflicting enabled plugins must be disabled first. This is not undoable with scene Undo/Redo.")
+																																																																																																																							: TTR("Disable this plugin? Its files and project data are retained.")));
 	approval->popup_centered(Size2i(640, 320));
 }
 
@@ -185,7 +206,7 @@ void GoPluginsDialog::apply_action() {
 	String destination = project.path_join(addon);
 	if (operation == 0) {
 		String source = bundle.path_join(id).path_join(addon);
-		if (DirAccess::dir_exists_absolute(destination) || FileAccess::exists(destination) || !FileAccess::exists(source.path_join("plugin.cfg")) || !is_safe_tree(source)) {
+		if (DirAccess::dir_exists_absolute(destination) || FileAccess::exists(destination) || (!FileAccess::exists(source.path_join("plugin.cfg")) && !(String(item.get("type", "")) == "gdextension" && has_extension(source))) || !is_safe_tree(source)) {
 			status->set_text(TTR("Install refused: destination exists, bundle is absent, or source is unsafe/too large."));
 			return;
 		}
@@ -206,7 +227,7 @@ void GoPluginsDialog::apply_action() {
 		EditorFileSystem::get_singleton()->scan();
 	} else {
 		if (!FileAccess::exists(destination.path_join("plugin.cfg")) || !is_safe_tree(destination)) {
-			status->set_text(TTR("Installed addon is missing or contains unsafe paths."));
+			status->set_text(TTR("Installed addon is missing, contains unsafe paths, or has no editor-plugin switch. Native-only extensions are loaded by Godot on import; this dialog does not remove or unload their libraries."));
 			return;
 		}
 		if (operation == 1) {

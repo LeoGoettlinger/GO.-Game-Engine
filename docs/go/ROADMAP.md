@@ -671,3 +671,13 @@ init/finish exactly as the upstream GDScript runner does. Production attachment
 code is unchanged; rerun confirmation is pending. The extension archive job's
 first run also failed; structured error annotations are added for diagnosis in
 environments that cannot retrieve Actions log-CDN files.
+
+### Native-only addon installation
+
+The offline manager now also recognizes root `.gdextension` descriptors without
+`plugin.cfg`, allowing verified release addons such as Godot Git Plugin to be
+copied. Consent explicitly warns that import loads native machine code. Native
+extensions without an EditorPlugin switch cannot be disabled/unloaded from this
+dialog; no unsafe file deletion or unload is attempted. For addons with both,
+disabling the editor plugin does not unload the native library. Native startup
+acceptance and the actual UI interaction remain pending.

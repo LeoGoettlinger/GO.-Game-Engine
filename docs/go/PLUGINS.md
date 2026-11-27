@@ -108,3 +108,13 @@ Dialogic's upstream automatic updater was also disabled: its check/download
 methods return unavailable/failure without HTTP requests. This additive source
 patch is recorded in PATCHES.md and its provenance; pinned bundles must not
 self-update when opened offline.
+
+### Native-only addon installation
+
+The offline manager now also recognizes root `.gdextension` descriptors without
+`plugin.cfg`, allowing verified release addons such as Godot Git Plugin to be
+copied. Consent explicitly warns that import loads native machine code. Native
+extensions without an EditorPlugin switch cannot be disabled/unloaded from this
+dialog; no unsafe file deletion or unload is attempted. For addons with both,
+disabling the editor plugin does not unload the native library. Native startup
+acceptance and the actual UI interaction remain pending.
