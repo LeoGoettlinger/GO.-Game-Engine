@@ -38,7 +38,10 @@ def prepare_project(destination: Path) -> list[str]:
     (project / "project.godot").write_text(
         'config_version=5\n\n[application]\n\nconfig/name="GO. Plugin Parse Check"\n'
         'config/features=PackedStringArray("4.7", "GL Compatibility")\n\n'
-        "[editor_plugins]\n\nenabled=PackedStringArray()\n",
+        "[editor_plugins]\n\nenabled=PackedStringArray()\n"
+        # Dialogic scripts refer to the singleton registered by their plugin.
+        # Supply the declaration for parser resolution without enabling its UI.
+        '\n[autoload]\nDialogic="*res://addons/dialogic/Core/DialogicGameHandler.gd"\n',
         encoding="utf-8",
     )
     manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
