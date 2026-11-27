@@ -1,5 +1,8 @@
 name: GO. Compiled Plugin Acceptance
 on:
+  push:
+    branches: [arena/a15e5657-go-game-engine]
+    paths: ['.github/workflows/go-plugin-candidate.yml']
   workflow_dispatch:
     inputs:
       run_id:
@@ -16,7 +19,7 @@ permissions:
   actions: read
 jobs:
   acceptance:
-    if: github.ref == 'refs/heads/arena/a15e5657-go-game-engine'
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/arena/a15e5657-go-game-engine'
     runs-on: ${{ inputs.platform == 'windows' && 'windows-2022' || 'ubuntu-22.04' }}
     timeout-minutes: 45
     steps:
