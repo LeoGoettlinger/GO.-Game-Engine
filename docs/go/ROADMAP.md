@@ -4,7 +4,7 @@ Legend: `[x]` implemented and locally verifiable, `[~]` implemented but not yet 
 compiled editor/CI, `[ ]` open. A user-facing feature comparison lives in
 [`Features.md`](../../Features.md).
 
-## Current completion checkpoint (code 8dd3159e)
+## Current completion checkpoint (code 551a0fa2)
 
 This summary supersedes the historical checklists below. Implemented does not
 mean visually or end-to-end accepted.
@@ -20,18 +20,22 @@ mean visually or end-to-end accepted.
   local bare-Git flow, native-report validator, export-harness, archive-safety,
   plugin-startup orchestration and live-probe safety tests pass. These are not
   substitutes for running the new compiled editor.
-- Current full build **46045792091**: Windows editor compilation started; Linux
-  and several validation jobs are still waiting for hosted runners. No current
-  full pass or screenshot is claimed.
-- Synthetic live gateway probe **46045515518**: queued, no live result yet.
-  It does not execute editor actions or send repository/user content.
+- Official quick validation **46046844194** at c6843a70 passed, including all
+  eight vendored GDScript addons and the current Python/C++ quick suites.
+- Latest native test-only correction **551a0fa2** uses the production tool-call
+  serializer in the JSON fallback dock regression. Syntax checks pass. Full
+  build **46048025646** and quick checks **46048025548** validate that revision;
+  no completed full result or screenshot is claimed.
+- Synthetic live gateway probe **46045515518** passed, proving live anonymous
+  free-model planning and production C++ response/schema validation. It does not
+  execute editor actions or send repository/user content.
 - Full release blockers: current native test results after fixes, actual-editor
   creation/export gates, per-plugin startup/compatibility, user-clicked dialogs,
   screenshots, live AI/editor integration and clean-machine release acceptance.
   Plugin defaults remain disabled until their acceptance is established.
 - Old-run cancellation from the sandbox returned HTTP 403. Per-ref concurrency
   now supersedes future obsolete validations; the restricted Actions maintenance
-  job is also queued. No credentials are needed or requested from the user.
+  job **46045792111** completed successfully. No credentials are needed or requested from the user.
 
 ## Historical implementation checklist
 
@@ -811,3 +815,12 @@ Separately, the live anonymous synthetic Kilo planning workflow **46045515518**
 passed using production C++ response/argument validation. It did not execute an
 editor action. Queue maintenance **46045792111** completed successfully. Current
 full runtime, UI and plugin acceptance still require completed build results.
+
+### Remaining Git responsiveness scope
+
+Manual transfer/commit operations and the agent's Git status use nonblocking
+processes. The richer Git dock `refresh_status()` still calls the synchronous
+controller snapshot, and several ancillary LFS/configuration reads retain the
+synchronous runner. Full nonblocking coverage of every Git-related read is not
+claimed; large repositories can still expose UI stalls on those paths. This is
+an implementation limitation in addition to the outstanding runtime/UI checks.
