@@ -43,6 +43,7 @@
 #include "scene/main/scene_tree.h"
 #include "scene/main/window.h"
 #include "scene/resources/2d/rectangle_shape_2d.h"
+#include "scene/resources/packed_scene.h"
 #include "tests/test_macros.h"
 
 #include "modules/gdscript/gdscript.h"
@@ -237,5 +238,40 @@ TEST_CASE("[GO.][SceneUndo][SceneTree] Shape assignment restores the prior resou
 	undo->clear_history();
 	memdelete(undo);
 	memdelete(node);
+}
+} // namespace TestGoSceneUndo
+
+namespace TestGoSceneUndo {
+TEST_CASE("[GO.][SceneUndo][SceneTree] Instantiated children retain their own owners across undo and redo") {
+	Node *source = memnew(Node);
+	Node *child = memnew(Node);
+	child->set_name("Child");
+	source->add_child(child);
+	child->set_owner(source);
+	Ref<PackedScene> scene;
+	scene.instantiate();
+	REQUIRE(scene->pack(source) == OK);
+	memdelete(source);
+	Node *instance = scene->instantiate();
+	REQUIRE(instance != nullptr);
+	Node *nested = instance->get_node_or_null(NodePath("Child"));
+	REQUIRE(nested != nullptr);
+	Node *root = memnew(Node);
+	SceneTree::get_singleton()->get_root()->add_child(root);
+	UndoRedo *undo = memnew(UndoRedo);
+	undo->create_action("Instantiate scene");
+	GoAgenticsToolBridge::record_add_node(undo, root, instance, root);
+	undo->commit_action();
+	CHECK(instance->get_owner() == root);
+	CHECK(nested->get_owner() == instance);
+	CHECK(undo->undo());
+	CHECK(instance->get_parent() == nullptr);
+	CHECK(nested->get_owner() == instance);
+	CHECK(undo->redo());
+	CHECK(instance->get_owner() == root);
+	CHECK(nested->get_owner() == instance);
+	undo->clear_history();
+	memdelete(undo);
+	memdelete(root);
 }
 } // namespace TestGoSceneUndo

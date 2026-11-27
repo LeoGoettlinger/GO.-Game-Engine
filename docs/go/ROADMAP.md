@@ -521,3 +521,15 @@ requires explicit execution approval, not scene auto-approval. Only assignment,
 not arbitrary initialization effects, is undoable. GradientTexture2D is now also
 allowed by create_resource. Native shape-reference undo/redo and bypass tests are
 added; real editor assignment and visual validation remain pending.
+
+### Scene instantiation with approved initialization
+
+`instantiate_scene` adds a 30th tool: required .tscn `path`, required unique ASCII
+`name`, optional local parent `node_path`. It loads/instantiates only after an
+explicit execution warning and then rechecks parent/history/file state before
+inserting through UndoRedo. The parent must be locally owned and non-scripted;
+inherited scenes and name collisions are refused. Instances over 1000 nodes are
+rejected after creation; this is not a pre-allocation sandbox. Loading and script
+initialization effects are not undone. Nested scene ownership is preserved by the
+shared insertion path and covered by a new native undo/redo fixture. Real-editor
+instantiation acceptance still needs the new full CI run.

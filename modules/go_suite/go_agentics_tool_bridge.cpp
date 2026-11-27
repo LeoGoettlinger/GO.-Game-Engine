@@ -582,8 +582,9 @@ String GoAgenticsToolBridge::prepare_editor_action(const go::GoKiloToolCall &p_c
 		return TTR("A running editor is required.");
 	}
 	const bool saving = p_call.name == "save_current_scene" || p_call.name == "save_scene_as";
+	const bool instantiating = p_call.name == "instantiate_scene";
 	const bool resource_assignment = p_call.name == "assign_resource";
-	const bool attaching = p_call.name == "attach_script" || resource_assignment;
+	const bool attaching = p_call.name == "attach_script" || resource_assignment || instantiating;
 	if (!attaching && !saving && p_call.name != "stop_project" && !editor->get_unsaved_scenes().is_empty()) {
 		return TTR("Save or discard unsaved scenes yourself before this action; the agent will not autosave them.");
 	}
@@ -601,7 +602,7 @@ String GoAgenticsToolBridge::prepare_editor_action(const go::GoKiloToolCall &p_c
 	if (attaching) {
 		std::string parse_error;
 		const auto args = go::parse_json(p_call.arguments, parse_error);
-		path = to_godot(argument_string(args, resource_assignment ? "path" : "script_path"));
+		path = to_godot(argument_string(args, (resource_assignment || instantiating) ? "path" : "script_path"));
 		const String node_path = to_godot(argument_string(args, "node_path", "."));
 		if (root == nullptr || root->get_scene_inherited_state().is_valid() || node_path.is_empty() || node_path.begins_with("/") || node_path.contains("..") || node_path.contains(":")) {
 			return TTR("A local target inside the current non-inherited scene is required.");
@@ -609,6 +610,12 @@ String GoAgenticsToolBridge::prepare_editor_action(const go::GoKiloToolCall &p_c
 		attachment_target = root->get_node_or_null(NodePath(node_path));
 		if (attachment_target == nullptr || !attachment_target->get_script().is_null() || (attachment_target != root && (attachment_target->get_owner() != root || !attachment_target->get_scene_file_path().is_empty()))) {
 			return TTR("Attach Script requires a locally owned node without an existing script; existing script state is never replaced.");
+		}
+		if (instantiating) {
+			const String name = to_godot(argument_string(args, "name"));
+			if (!name.is_valid_ascii_identifier() || name.length() > 128 || attachment_target->has_node(NodePath(name))) {
+				return TTR("Instance name must be an unused ASCII identifier of at most 128 characters.");
+			}
 		}
 		if (resource_assignment) {
 			const std::string property = argument_string(args, "property");
@@ -651,7 +658,7 @@ String GoAgenticsToolBridge::prepare_editor_action(const go::GoKiloToolCall &p_c
 			path = ResourceUID::get_singleton()->get_id_path(uid);
 		}
 		const auto checked = go::validate_res_path(to_std(path), saving ? go::PathOperation::WRITE : go::PathOperation::READ);
-		if (!checked.ok || path.get_extension().to_lower() != (resource_assignment ? "tres" : (attaching ? "gd" : "tscn"))) {
+		if (!checked.ok || path.get_extension().to_lower() != (resource_assignment ? "tres" : ((attaching && !instantiating) ? "gd" : "tscn"))) {
 			return TTR("A saved res:// .tscn scene or .gd attachment script is required for this action.");
 		}
 		path = to_godot(checked.normalized);
@@ -669,7 +676,7 @@ String GoAgenticsToolBridge::prepare_editor_action(const go::GoKiloToolCall &p_c
 			if (resource_assignment && !source.strip_edges().begins_with("[gd_resource ")) {
 				return TTR("Target does not have a text-resource header.");
 			}
-			if (!attaching && !source.strip_edges().begins_with("[gd_scene ")) {
+			if ((!attaching || instantiating) && !source.strip_edges().begins_with("[gd_scene ")) {
 				return TTR("Target does not have a text-scene header.");
 			}
 		}
@@ -690,6 +697,10 @@ String GoAgenticsToolBridge::prepare_editor_action(const go::GoKiloToolCall &p_c
 	}
 	r_fingerprint = state.sha256_text();
 	r_preview = to_godot(p_call.name) + "\n" + project + "\n" + path + "\n\n";
+	if (instantiating) {
+		r_preview += TTR("Load and instantiate this scene as a child of the approved local node. Scene loading/initialization may execute scripts with your user permissions; this is NOT a sandbox. Only insertion has Undo/Redo, not arbitrary script effects.");
+		return String();
+	}
 	if (resource_assignment) {
 		r_preview += TTR("Load and assign this resource to the approved built-in property. Resource dependencies may execute tool/static scripts; this is NOT a sandbox. Only the property assignment has Undo/Redo, not resource-loading side effects.");
 		return String();
@@ -714,6 +725,47 @@ String GoAgenticsToolBridge::execute_editor_action(const go::GoKiloToolCall &p_c
 		return to_godot(error_json(error.is_empty() ? "Project, scene or run state changed after approval; request a fresh action" : to_std(error)));
 	}
 	EditorInterface *editor = EditorInterface::get_singleton();
+	if (p_call.name == "instantiate_scene") {
+		std::string parse_error;
+		const auto args = go::parse_json(p_call.arguments, parse_error);
+		const auto checked = go::validate_res_path(argument_string(args, "path"), go::PathOperation::READ);
+		Ref<PackedScene> scene = ResourceLoader::load(to_godot(checked.normalized), "PackedScene", ResourceFormatLoader::CACHE_MODE_IGNORE);
+		if (scene.is_null() || !scene->can_instantiate()) {
+			return to_godot(error_json("Scene did not load or cannot be instantiated; inspect editor errors"));
+		}
+		Node *instance = scene->instantiate(PackedScene::GEN_EDIT_STATE_INSTANCE);
+		if (instance == nullptr) {
+			return to_godot(error_json("Scene instantiation failed"));
+		}
+		std::vector<Node *> pending = { instance };
+		int count = 0;
+		while (!pending.empty() && count <= 1000) {
+			Node *node = pending.back();
+			pending.pop_back();
+			++count;
+			if (node->get_child_count() > 1000 - count) {
+				count = 1001;
+				break;
+			}
+			for (int i = 0; i < node->get_child_count(); ++i) {
+				pending.push_back(node->get_child(i));
+			}
+		}
+		const String recheck = prepare_editor_action(p_call, preview, fingerprint);
+		if (count > 1000 || !recheck.is_empty() || fingerprint != p_fingerprint) {
+			memdelete(instance);
+			return to_godot(error_json("Loaded scene exceeds 1000 nodes or editor state changed; insertion aborted. Initialization effects are not rolled back."));
+		}
+		Node *root = editor->get_edited_scene_root();
+		Node *parent = root->get_node_or_null(NodePath(to_godot(argument_string(args, "node_path", "."))));
+		instance->set_name(to_godot(argument_string(args, "name")));
+		EditorUndoRedoManager *undo = EditorUndoRedoManager::get_singleton();
+		undo->create_action(TTR("Code Agentics: Instantiate Scene"), UndoRedo::MERGE_DISABLE, root);
+		undo->force_fixed_history();
+		record_add_node(undo->get_history_undo_redo(undo->get_history_id_for_object(root)), parent, instance, root);
+		undo->commit_action();
+		return to_godot(ok_json("Scene insertion committed to editor undo history. Initialization effects are not undone; save the scene separately."));
+	}
 	if (p_call.name == "attach_script" || p_call.name == "assign_resource") {
 		const bool resource_assignment = p_call.name == "assign_resource";
 		std::string parse_error;

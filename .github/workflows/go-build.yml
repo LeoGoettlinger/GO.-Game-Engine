@@ -142,7 +142,7 @@ jobs:
             EDITOR=bin/godot.windows.editor.x86_64.exe
           fi
           python misc/scripts/go_native_tests.py --editor "$EDITOR" --suite SceneUndo \
-            --minimum 6 --output go-scene-undo-tests.log
+            --minimum 7 --output go-scene-undo-tests.log
 
       - name: Automatic Commit overlay ownership tests
         shell: bash

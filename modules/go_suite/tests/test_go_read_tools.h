@@ -297,6 +297,7 @@ TEST_CASE("[GO.][ReadTools] Editor execution cannot bypass approval or dereferen
 				 go::GoKiloToolCall{ "test", "run_current_scene", "{}" },
 				 go::GoKiloToolCall{ "test", "stop_project", "{}" },
 				 go::GoKiloToolCall{ "test", "save_current_scene", "{}" },
+				 go::GoKiloToolCall{ "test", "instantiate_scene", R"({"path":"res://player.tscn","node_path":".","name":"Player"})" },
 				 go::GoKiloToolCall{ "test", "attach_script", R"({"script_path":"res://player.gd","node_path":"."})" },
 				 go::GoKiloToolCall{ "test", "assign_resource", R"({"path":"res://shape.tres","node_path":"Shape","property":"shape"})" },
 				 go::GoKiloToolCall{ "test", "save_scene_as", R"({"path":"res://copy.tscn"})" } }) {
