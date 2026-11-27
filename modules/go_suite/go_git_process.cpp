@@ -46,7 +46,12 @@ bool GoGitProcess::start(const go::GitCommand &p_command, uint64_t p_timeout_mse
 	failure.clear();
 	exit_code = -1;
 	truncated = false;
-	if (!p_command.valid || p_command.executable != "git" || p_timeout_msec == 0) {
+	// Only the two fixed, user-requested LFS installers may run beside Git.
+	const go::GitCommand linux_install = go::lfs_install_linux();
+	const go::GitCommand windows_install = go::lfs_install_windows();
+	const bool installer = (p_command.executable == linux_install.executable && p_command.arguments == linux_install.arguments) ||
+			(p_command.executable == windows_install.executable && p_command.arguments == windows_install.arguments);
+	if (!p_command.valid || (p_command.executable != "git" && !installer) || p_timeout_msec == 0) {
 		failure = "Invalid system Git command";
 		return false;
 	}
@@ -54,7 +59,7 @@ bool GoGitProcess::start(const go::GitCommand &p_command, uint64_t p_timeout_mse
 	for (const std::string &argument : p_command.arguments) {
 		arguments.push_back(go_suite::to_git_process_argument(argument));
 	}
-	const Dictionary process = OS::get_singleton()->execute_with_pipe("git", arguments, false);
+	const Dictionary process = OS::get_singleton()->execute_with_pipe(go_suite::to_godot_string(p_command.executable), arguments, false);
 	if (!process.has("pid") || !process.has("stdio") || !process.has("stderr")) {
 		failure = "Could not start nonblocking system Git";
 		return false;
