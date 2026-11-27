@@ -582,7 +582,8 @@ String GoAgenticsToolBridge::prepare_editor_action(const go::GoKiloToolCall &p_c
 		return TTR("A running editor is required.");
 	}
 	const bool saving = p_call.name == "save_current_scene" || p_call.name == "save_scene_as";
-	if (!saving && p_call.name != "stop_project" && !editor->get_unsaved_scenes().is_empty()) {
+	const bool attaching = p_call.name == "attach_script";
+	if (!attaching && !saving && p_call.name != "stop_project" && !editor->get_unsaved_scenes().is_empty()) {
 		return TTR("Save or discard unsaved scenes yourself before this action; the agent will not autosave them.");
 	}
 	if (p_call.name != "stop_project" && ScriptEditor::get_singleton() != nullptr && (!ScriptEditor::get_singleton()->get_unsaved_files().is_empty() || !ScriptEditor::get_singleton()->get_unsaved_scripts().is_empty())) {
@@ -595,7 +596,23 @@ String GoAgenticsToolBridge::prepare_editor_action(const go::GoKiloToolCall &p_c
 	const String project = ProjectSettings::get_singleton()->globalize_path("res://");
 	String path;
 	String source;
-	if (p_call.name == "open_scene" || p_call.name == "save_scene_as") {
+	Node *attachment_target = nullptr;
+	if (attaching) {
+		std::string parse_error;
+		const auto args = go::parse_json(p_call.arguments, parse_error);
+		path = to_godot(argument_string(args, "script_path"));
+		const String node_path = to_godot(argument_string(args, "node_path", "."));
+		if (root == nullptr || root->get_scene_inherited_state().is_valid() || node_path.is_empty() || node_path.begins_with("/") || node_path.contains("..") || node_path.contains(":")) {
+			return TTR("A local target inside the current non-inherited scene is required.");
+		}
+		attachment_target = root->get_node_or_null(NodePath(node_path));
+		if (attachment_target == nullptr || !attachment_target->get_script().is_null() || (attachment_target != root && (attachment_target->get_owner() != root || !attachment_target->get_scene_file_path().is_empty()))) {
+			return TTR("Attach Script requires a locally owned node without an existing script; existing script state is never replaced.");
+		}
+		if (EditorUndoRedoManager::get_singleton() == nullptr) {
+			return TTR("Editor undo history is required for script attachment.");
+		}
+	} else if (p_call.name == "open_scene" || p_call.name == "save_scene_as") {
 		std::string error;
 		const auto args = go::parse_json(p_call.arguments, error);
 		path = to_godot(argument_string(args, "path"));
@@ -627,8 +644,8 @@ String GoAgenticsToolBridge::prepare_editor_action(const go::GoKiloToolCall &p_c
 			path = ResourceUID::get_singleton()->get_id_path(uid);
 		}
 		const auto checked = go::validate_res_path(to_std(path), saving ? go::PathOperation::WRITE : go::PathOperation::READ);
-		if (!checked.ok || path.get_extension().to_lower() != "tscn") {
-			return TTR("A saved res:// text scene is required for this action.");
+		if (!checked.ok || path.get_extension().to_lower() != (attaching ? "gd" : "tscn")) {
+			return TTR("A saved res:// .tscn scene or .gd attachment script is required for this action.");
 		}
 		path = to_godot(checked.normalized);
 		if (has_link_component(path) || !DirAccess::dir_exists_absolute(path.get_base_dir()) || DirAccess::dir_exists_absolute(path)) {
@@ -642,13 +659,14 @@ String GoAgenticsToolBridge::prepare_editor_action(const go::GoKiloToolCall &p_c
 			if (!read_project_text(path, source, error, &original_bytes)) {
 				return to_godot(error);
 			}
-			if (!source.strip_edges().begins_with("[gd_scene ")) {
+			if (!attaching && !source.strip_edges().begins_with("[gd_scene ")) {
 				return TTR("Target does not have a text-scene header.");
 			}
 		}
 	}
 	String state = project + "\n" + to_godot(p_call.name) + "\n" + to_godot(p_call.arguments) + "\n" + path + "\n" + source.sha256_text() + "\n" + String::hex_encode_buffer(original_bytes.ptr(), original_bytes.size()) + "\n" + (!path.is_empty() && FileAccess::exists(path) ? "existing" : "missing");
 	state += "\n" + itos(root != nullptr ? uint64_t(root->get_instance_id()) : 0);
+	state += "\n" + itos(attachment_target != nullptr ? uint64_t(attachment_target->get_instance_id()) : 0);
 	state += "\n" + editor->get_playing_scene() + "\n" + (editor->is_playing_scene() ? "playing" : "stopped");
 	if (root != nullptr && EditorUndoRedoManager::get_singleton() != nullptr) {
 		EditorUndoRedoManager *undo = EditorUndoRedoManager::get_singleton();
@@ -656,6 +674,10 @@ String GoAgenticsToolBridge::prepare_editor_action(const go::GoKiloToolCall &p_c
 	}
 	r_fingerprint = state.sha256_text();
 	r_preview = to_godot(p_call.name) + "\n" + project + "\n" + path + "\n\n";
+	if (attaching) {
+		r_preview += TTR("Load and attach this script to the approved local node. Loading may execute static initialization and tool scripts with your user permissions; this is NOT a sandbox. Only the script assignment has Undo/Redo, not arbitrary script side effects. Existing scripts are never replaced.");
+		return String();
+	}
 	if (saving) {
 		r_preview += TTR("Save the current scene using the editor. Existing scene bytes are backed up locally. Normal save callbacks and external-resource side effects may occur. This is not an Undo/Redo action. Check the editor for save errors.");
 		return String();
@@ -672,6 +694,32 @@ String GoAgenticsToolBridge::execute_editor_action(const go::GoKiloToolCall &p_c
 		return to_godot(error_json(error.is_empty() ? "Project, scene or run state changed after approval; request a fresh action" : to_std(error)));
 	}
 	EditorInterface *editor = EditorInterface::get_singleton();
+	if (p_call.name == "attach_script") {
+		std::string parse_error;
+		const auto args = go::parse_json(p_call.arguments, parse_error);
+		const auto checked = go::validate_res_path(argument_string(args, "script_path"), go::PathOperation::READ);
+		Ref<Script> script = ResourceLoader::load(to_godot(checked.normalized), "Script", ResourceFormatLoader::CACHE_MODE_IGNORE);
+		if (script.is_null() || !script->is_valid()) {
+			return to_godot(error_json("Script did not load/validate; no attachment was made. Check editor diagnostics."));
+		}
+		// Loading an explicitly approved script can itself run code. Re-resolve
+		// everything afterwards instead of retaining possibly freed Node pointers.
+		const String recheck = prepare_editor_action(p_call, preview, fingerprint);
+		if (!recheck.is_empty() || fingerprint != p_fingerprint) {
+			return to_godot(error_json("Script was loaded, but editor/project state changed; attachment was aborted"));
+		}
+		Node *root = editor->get_edited_scene_root();
+		Node *target = root->get_node_or_null(NodePath(to_godot(argument_string(args, "node_path", "."))));
+		if (!target->is_class(script->get_instance_base_type())) {
+			return to_godot(error_json("Script base type does not match the target node"));
+		}
+		EditorUndoRedoManager *undo = EditorUndoRedoManager::get_singleton();
+		undo->create_action(TTR("Code Agentics: Attach Script"), UndoRedo::MERGE_DISABLE, root);
+		undo->force_fixed_history();
+		record_set_property(undo->get_history_undo_redo(undo->get_history_id_for_object(root)), target, SNAME("script"), script);
+		undo->commit_action();
+		return to_godot(ok_json("Script assignment committed to editor undo history. Script initialization/runtime effects are not undone; inspect editor errors and save the scene separately."));
+	}
 	if (p_call.name == "save_current_scene" || p_call.name == "save_scene_as") {
 		String target = editor->get_edited_scene_root()->get_scene_file_path();
 		if (p_call.name == "save_scene_as") {
@@ -1123,23 +1171,6 @@ String GoAgenticsToolBridge::execute(const go::GoKiloToolCall &p_call) const {
 			record_set_property(undo->get_history_undo_redo(undo->get_history_id_for_object(root)), node, property, value);
 			undo->commit_action();
 			return to_godot(ok_json("property changed (undo available)"));
-		}
-		if (tool == "attach_script") {
-			const std::string script_path = argument_string(arguments, "script_path");
-			if (script_path.empty()) {
-				return to_godot(error_json("attach_script requires script_path"));
-			}
-			const go::PathValidationResult script_result = go::validate_res_path(script_path, go::PathOperation::READ);
-			if (!script_result.ok || has_link_component(to_godot(script_result.normalized))) {
-				return to_godot(error_json(script_result.error));
-			}
-			Ref<Resource> resource = ResourceLoader::load(to_godot(script_result.normalized), "Script", ResourceFormatLoader::CACHE_MODE_IGNORE);
-			Ref<Script> script = Object::cast_to<Script>(resource.ptr());
-			if (script.is_null()) {
-				return to_godot(error_json("script_path did not load as a Script"));
-			}
-			node->set_script(Variant(script));
-			return to_godot(ok_json("attached script " + script_path));
 		}
 	}
 

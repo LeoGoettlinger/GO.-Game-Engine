@@ -43,6 +43,8 @@
 #include "scene/main/window.h"
 #include "tests/test_macros.h"
 
+#include "modules/gdscript/gdscript.h"
+
 #include <limits>
 
 namespace TestGoSceneUndo {
@@ -186,5 +188,28 @@ TEST_CASE("[GO.][SceneUndo][SceneTree] Player physics node creation uses the pro
 	undo->clear_history();
 	memdelete(undo);
 	memdelete(root);
+}
+} // namespace TestGoSceneUndo
+
+namespace TestGoSceneUndo {
+TEST_CASE("[GO.][SceneUndo][SceneTree] Script assignment retains its resource across undo and redo") {
+	Ref<GDScript> script;
+	script.instantiate();
+	script->set_source_code("extends Node\nvar speed = 100\n");
+	REQUIRE(script->reload() == OK);
+	REQUIRE(script->is_valid());
+	Node *node = memnew(Node);
+	UndoRedo *undo = memnew(UndoRedo);
+	undo->create_action("Attach script");
+	GoAgenticsToolBridge::record_set_property(undo, node, SNAME("script"), script);
+	undo->commit_action();
+	CHECK(Ref<Script>(node->get_script()) == script);
+	CHECK(undo->undo());
+	CHECK(node->get_script().is_null());
+	CHECK(undo->redo());
+	CHECK(Ref<Script>(node->get_script()) == script);
+	undo->clear_history();
+	memdelete(undo);
+	memdelete(node);
 }
 } // namespace TestGoSceneUndo

@@ -525,3 +525,18 @@ Godot's save_scene_as API returns no final save error, so the result deliberatel
 says save requested and directs the user to inspect editor errors. No success
 claim is inferred from file existence. Native bypass/missing-editor tests now
 cover both save actions; actual save UI/round-trip acceptance remains pending.
+
+### Script attachment through explicit execution approval
+
+`attach_script` is enabled (28 tools), with required `script_path` (.gd) and
+optional scene-relative `node_path` (default root). It accepts only local nodes in
+non-inherited scenes that do not already have a script, so existing script state
+is not discarded. Unsaved script buffers, foreign targets and stale approvals
+are refused. Approval explicitly warns that resource loading can execute static
+initialization/tool scripts; there is no sandbox or rollback of those effects.
+
+After approved loading, the bridge revalidates and re-resolves the target, checks
+script validity and native base compatibility, and records assignment through the
+editor undo history. The old direct set_script draft was removed. A native test
+checks resource retention across assignment/undo/redo; denial tests cover missing
+editor/approval. Full actual-editor attachment acceptance is still pending.

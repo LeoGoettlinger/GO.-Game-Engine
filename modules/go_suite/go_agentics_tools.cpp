@@ -188,7 +188,7 @@ bool GoAgenticsTools::is_write_tool(const std::string &p_name) {
 }
 
 bool GoAgenticsTools::is_editor_action(const std::string &p_name) {
-	return p_name == "open_scene" || p_name == "run_project" || p_name == "run_current_scene" || p_name == "stop_project" || p_name == "save_current_scene" || p_name == "save_scene_as";
+	return p_name == "open_scene" || p_name == "run_project" || p_name == "run_current_scene" || p_name == "stop_project" || p_name == "save_current_scene" || p_name == "save_scene_as" || p_name == "attach_script";
 }
 
 bool GoAgenticsTools::is_file_mutation(const std::string &p_name) {
