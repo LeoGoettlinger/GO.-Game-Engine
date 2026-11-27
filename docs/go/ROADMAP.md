@@ -4,6 +4,42 @@ Legend: `[x]` implemented and locally verifiable, `[~]` implemented but not yet 
 compiled editor/CI, `[ ]` open. A user-facing feature comparison lives in
 [`Features.md`](../../Features.md).
 
+## Current completion checkpoint (code 8dd3159e)
+
+This summary supersedes the historical checklists below. Implemented does not
+mean visually or end-to-end accepted.
+
+- Earlier complete Windows/Linux build: **b21eef10**, Actions **43511344381**,
+  success rechecked through the GitHub API. This is not proof for newer code.
+- Current code: 37 guarded agent tools, actual JSON fallback execution, offline
+  plugin management, eight vendored GDScript addons, four checksum-pinned native
+  release bundles, independent startup gates and editor/player capture tooling.
+- Extension archive verification: **46042242506**, Linux and Windows passed.
+- Local current checks: 32 module/adapter C++ files and eight native-test headers
+  pass production/test syntax checking; standalone guardrails, mocked gateway,
+  local bare-Git flow, native-report validator, export-harness, archive-safety,
+  plugin-startup orchestration and live-probe safety tests pass. These are not
+  substitutes for running the new compiled editor.
+- Current full build **46045792091**: Windows editor compilation started; Linux
+  and several validation jobs are still waiting for hosted runners. No current
+  full pass or screenshot is claimed.
+- Synthetic live gateway probe **46045515518**: queued, no live result yet.
+  It does not execute editor actions or send repository/user content.
+- Full release blockers: current native test results after fixes, actual-editor
+  creation/export gates, per-plugin startup/compatibility, user-clicked dialogs,
+  screenshots, live AI/editor integration and clean-machine release acceptance.
+  Plugin defaults remain disabled until their acceptance is established.
+- Old-run cancellation from the sandbox returned HTTP 403. Per-ref concurrency
+  now supersedes future obsolete validations; the restricted Actions maintenance
+  job is also queued. No credentials are needed or requested from the user.
+
+## Historical implementation checklist
+
+The sections below preserve earlier checkpoints and their evidence; unchecked
+items can have later implementations recorded further down. Use the current
+summary above for present status rather than interpreting old unchecked boxes
+as an up-to-date inventory.
+
 ## Foundation
 
 - [x] Stable Godot 4.7.2 base and documented upstream remote.

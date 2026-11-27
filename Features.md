@@ -1,14 +1,27 @@
 # GO. Game Engine – Features
 
-**Stand: 28.10.2026 – Entwicklung, kein fertiges Release.**
+**Aktueller Entwicklungsstand – noch keine vollständige Release-Freigabe.**
 
 **GO. Game Engine** ist ein Fork von Godot `4.7.2-stable`. Ziel ist nicht, Godot zu ersetzen,
 sondern den Editor um zwei fest eingebaute Suites, ein eigenes Branding, ein Offline-Plugin-Paket
 und einen automatisierten Commit-Ablauf zu erweitern. Alle Godot-Funktionen bleiben erhalten.
 
-> **Ehrlicher Status:** Viele Bausteine sind als Quelltext, Guardrail-Logik und CI-Checks
-> vorhanden. Ein vollständig kompilierter GO.-Editor mit Screenshots ist noch nicht gebaut.
-> Details stehen in [`docs/go/ROADMAP.md`](docs/go/ROADMAP.md).
+> **Aktueller Status (Code-Stand `8dd3159e`):** Frühere Windows-/Linux-Editor-
+> und Template-Builds sind nachweislich grün (`b21eef10`, Actions `43511344381`).
+> Die neueren Funktionen sind noch nicht vollständig laufzeit- oder visuell abgenommen.
+> Die folgenden älteren Entwicklungsabschnitte sind ein Änderungsverlauf; bei
+> abweichenden Angaben gilt diese Übersicht und der aktuelle Abschnitt der ROADMAP.
+
+| Bereich | Implementiert | Nachweis / offene Abnahme |
+| --- | --- | --- |
+| Agentenwerkzeuge | 37 Werkzeuge; native Calls und ausführbarer JSON-Fallback; 20-Aktionen-Limit; Freigaben | Syntax und eigenständige Tests grün; neue native Dock-Tests und Live-Ablauf offen |
+| Plugin-Verwaltung | Offline-Katalog, geschütztes Kopieren, Aktivieren/Deaktivieren; native-only Installation | UI-Laufzeit- und visuelle Abnahme offen; native-only Bibliotheken werden nicht entladen |
+| Plugin-Paket | 8 GDScript-Addons einschließlich Dialogic; 4 gepinnte GDExtension-Releasepakete | Windows-/Linux-Archivprüfung grün (`46042242506`); Plugin-Starttests blockieren Release bei Fehlern |
+| Player/Export | Echter Editor-Werkzeugaufbau, Ressourcen, Script, Undo/Redo; Bewegungsprüfung; beide Exporttypen | Aktueller vollständiger CI-Lauf offen; Editor-/Spiel-Screenshots sind vorbereitet, noch nicht geprüft |
+| Kilo live | Anonymer, free-only Live-Planungstest mit festem synthetischem Prompt | Actions wartet; keine Projektdateien werden verschickt; kein Ersatz für einen Live-Editor-Agentenlauf |
+| Git / Automatic Commit | System-Git, LFS-Modi, asynchrone Aktionen, Lebenszyklusdialoge, Commit-Overlay | Vorhandene automatische Tests; aktuelle vollständige Benutzer-/UI-Abnahme weiterhin offen |
+
+Details und Grenzen stehen in [`docs/go/ROADMAP.md`](docs/go/ROADMAP.md).
 
 ## Legende
 
