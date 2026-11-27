@@ -56,6 +56,41 @@ bool go_agentics_acceptance_requested() {
 	return requested && String(ProjectSettings::get_singleton()->get_setting("application/config/name", String())) == "GO. Agent Acceptance" && FileAccess::exists("res://.go_agent_acceptance");
 }
 
+bool go_ui_acceptance_requested() {
+	bool requested = false;
+	for (const String &argument : OS::get_singleton()->get_cmdline_user_args()) {
+		requested |= argument == "--go-ui-acceptance";
+	}
+	return requested && String(ProjectSettings::get_singleton()->get_setting("application/config/name", String())) == "GO. Agent Acceptance" && FileAccess::exists("res://.go_agent_acceptance");
+}
+
+void go_ui_acceptance_tick() {
+	static bool opened = false;
+	static bool announced = false;
+	static int settled_frames = 0;
+	EditorFileSystem *filesystem = EditorFileSystem::get_singleton();
+	EditorInterface *editor = EditorInterface::get_singleton();
+	if (announced || filesystem == nullptr || editor == nullptr || filesystem->is_scanning() || filesystem->is_importing()) {
+		return;
+	}
+	if (!opened) {
+		opened = true;
+		editor->open_scene_from_path("res://player.tscn");
+		return;
+	}
+	Node *root = editor->get_edited_scene_root();
+	if (root == nullptr || root->get_scene_file_path() != "res://player.tscn") {
+		return;
+	}
+	if (settled_frames++ == 0) {
+		editor->set_main_screen_editor("2D");
+	}
+	if (settled_frames >= 60) {
+		announced = true;
+		print_line("GO_EDITOR_UI_READY: player scene loaded and 2D workspace settled");
+	}
+}
+
 void go_agentics_acceptance_tick(GoAgenticsToolBridge &p_bridge) {
 	static int step = 0;
 	static int frames = 0;

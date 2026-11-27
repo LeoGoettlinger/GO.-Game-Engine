@@ -22,6 +22,7 @@ def main() -> int:
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.unlink(missing_ok=True)
     log_path = args.output.with_suffix(".log")
+    wait_for_scene = not args.player and (args.project / ".go_agent_acceptance").is_file()
     with log_path.open("w", encoding="utf-8") as log:
         process = subprocess.Popen(
             [
@@ -33,7 +34,8 @@ def main() -> int:
                 "x11",
                 "--rendering-method",
                 "gl_compatibility",
-                *([] if args.player else ["res://player.tscn"]),
+                *([] if args.player else ["--resolution", "1560x960", "--position", "20,20", "res://player.tscn"]),
+                *(["--", "--go-ui-acceptance"] if wait_for_scene else []),
             ],
             stdout=log,
             stderr=subprocess.STDOUT,
@@ -48,8 +50,18 @@ def main() -> int:
             )
             if not window.stdout.strip():
                 raise RuntimeError("No visible editor window")
-            # Allow the first imported scene and a few rendered frames to settle.
-            time.sleep(5)
+            if wait_for_scene:
+                deadline = time.monotonic() + 60
+                while "GO_EDITOR_UI_READY:" not in log_path.read_text(encoding="utf-8", errors="replace"):
+                    if process.poll() is not None or time.monotonic() >= deadline:
+                        raise RuntimeError("Editor did not confirm the loaded 2D player scene")
+                    time.sleep(0.1)
+            if not args.player:
+                window_id = window.stdout.splitlines()[0]
+                subprocess.run(["xdotool", "windowsize", "--sync", window_id, "1560", "960"], timeout=15, check=True)
+                subprocess.run(["xdotool", "windowmove", "--sync", window_id, "20", "20"], timeout=15, check=True)
+            # Render the final geometry, not the initial small splash window.
+            time.sleep(3)
             if process.poll() is not None:
                 raise RuntimeError("Editor exited before screenshot capture")
             subprocess.run(["scrot", str(args.output.resolve())], timeout=30, check=True)

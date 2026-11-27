@@ -862,3 +862,13 @@ Actual editor/player screenshots from 551a0fa2 are now preserved with checksums 
 `docs/go/evidence/551a0fa2/`. Review confirms the visible gradient player. The
 editor capture is clipped/incomplete and is not a satisfactory full UI acceptance;
 capture sizing/readiness is being corrected rather than marking it approved.
+
+### UI capture readiness correction
+
+The archived player image is visually usable; the archived editor image was
+clipped and showed the 3D workspace before the 2D scene settled. Editor capture
+now requests/sets a 1560x960 X11 window and waits for a tests-only readiness
+marker after opening the existing player scene and selecting 2D. The hook requires
+the named disposable fixture, marker file and explicit CLI flag; it is absent
+from non-test builds. Mocked sequencing tests reject missing readiness and check
+resize/capture ordering. A fresh real screenshot must still be reviewed.

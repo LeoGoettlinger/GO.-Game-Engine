@@ -355,6 +355,10 @@ void GoAgenticsDock::_discard_pending() {
 void GoAgenticsDock::_notification(int p_what) {
 	if (p_what == NOTIFICATION_PROCESS) {
 #ifdef GO_SUITE_TESTS_ENABLED
+		if (go_ui_acceptance_requested()) {
+			go_ui_acceptance_tick();
+			return;
+		}
 		if (go_agentics_acceptance_requested()) {
 			go_agentics_acceptance_tick(tool_bridge);
 			return;
@@ -816,7 +820,7 @@ GoAgenticsDock::GoAgenticsDock() {
 	_update_busy_state();
 	_append_message(TTR("System"), TTR("Code Agentics is ready. No request is sent until you press Send or Refresh Models."));
 #ifdef GO_SUITE_TESTS_ENABLED
-	if (go_agentics_acceptance_requested()) {
+	if (go_agentics_acceptance_requested() || go_ui_acceptance_requested()) {
 		set_process(true);
 	}
 #endif

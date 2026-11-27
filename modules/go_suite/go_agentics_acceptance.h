@@ -36,5 +36,7 @@
 #ifdef GO_SUITE_TESTS_ENABLED
 class GoAgenticsToolBridge;
 bool go_agentics_acceptance_requested();
+bool go_ui_acceptance_requested();
+void go_ui_acceptance_tick();
 void go_agentics_acceptance_tick(GoAgenticsToolBridge &p_bridge);
 #endif
