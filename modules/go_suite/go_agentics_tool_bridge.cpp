@@ -54,6 +54,7 @@
 #include "core/variant/variant.h"
 #include "editor/editor_data.h"
 #include "editor/editor_interface.h"
+#include "editor/editor_log.h"
 #include "editor/editor_node.h"
 #include "editor/editor_undo_redo_manager.h"
 #include "editor/file_system/editor_file_system.h"
@@ -596,6 +597,7 @@ String GoAgenticsToolBridge::prepare_editor_action(const go::GoKiloToolCall &p_c
 	if (EditorNode::get_singleton() == nullptr || editor == nullptr) {
 		return TTR("A running editor is required.");
 	}
+	const bool reading_log = p_call.name == "get_editor_log";
 	const bool selection = p_call.name == "select_node";
 	const bool scanning = p_call.name == "scan_filesystem";
 	const bool committing = p_call.name == "auto_commit";
@@ -606,13 +608,13 @@ String GoAgenticsToolBridge::prepare_editor_action(const go::GoKiloToolCall &p_c
 	const bool instantiating = p_call.name == "instantiate_scene";
 	const bool resource_assignment = p_call.name == "assign_resource";
 	const bool attaching = p_call.name == "attach_script" || resource_assignment || instantiating;
-	if (!selection && !attaching && !saving && p_call.name != "stop_project" && !editor->get_unsaved_scenes().is_empty()) {
+	if (!reading_log && !selection && !attaching && !saving && p_call.name != "stop_project" && !editor->get_unsaved_scenes().is_empty()) {
 		return TTR("Save or discard unsaved scenes yourself before this action; the agent will not autosave them.");
 	}
-	if (p_call.name != "stop_project" && ScriptEditor::get_singleton() != nullptr && (!ScriptEditor::get_singleton()->get_unsaved_files().is_empty() || !ScriptEditor::get_singleton()->get_unsaved_scripts().is_empty())) {
+	if (!reading_log && p_call.name != "stop_project" && ScriptEditor::get_singleton() != nullptr && (!ScriptEditor::get_singleton()->get_unsaved_files().is_empty() || !ScriptEditor::get_singleton()->get_unsaved_scripts().is_empty())) {
 		return TTR("Save or discard unsaved script/text buffers yourself before this action.");
 	}
-	if (p_call.name != "stop_project" && editor->is_playing_scene()) {
+	if (!reading_log && p_call.name != "stop_project" && editor->is_playing_scene()) {
 		return TTR("Stop the running project before opening or starting another scene.");
 	}
 	Node *root = editor->get_edited_scene_root();
@@ -681,7 +683,7 @@ String GoAgenticsToolBridge::prepare_editor_action(const go::GoKiloToolCall &p_c
 		}
 	}
 	Vector<uint8_t> original_bytes;
-	if (!selection && !scanning && !committing && p_call.name != "stop_project") {
+	if (!reading_log && !selection && !scanning && !committing && p_call.name != "stop_project") {
 		if (path.begins_with("uid://")) {
 			const ResourceUID::ID uid = ResourceUID::get_singleton()->text_to_id(path);
 			if (!ResourceUID::get_singleton()->has_id(uid)) {
@@ -713,6 +715,15 @@ String GoAgenticsToolBridge::prepare_editor_action(const go::GoKiloToolCall &p_c
 			}
 		}
 	}
+	if (reading_log) {
+		EditorLog *log = EditorNode::get_log();
+		if (log == nullptr || !log->get_bounded_messages(source)) {
+			return TTR("Editor log is unavailable or exceeds 48000 bytes. Inspect/clear it manually before requesting a new snapshot.");
+		}
+		if (go::looks_like_secret_content(to_std(source))) {
+			return TTR("Editor log contains possible credentials and will not be shared. Inspect it manually.");
+		}
+	}
 	String state = project + "\n" + to_godot(p_call.name) + "\n" + to_godot(p_call.arguments) + "\n" + path + "\n" + source.sha256_text() + "\n" + String::hex_encode_buffer(original_bytes.ptr(), original_bytes.size()) + "\n" + (!path.is_empty() && FileAccess::exists(path) ? "existing" : "missing");
 	state += "\n" + itos(root != nullptr ? uint64_t(root->get_instance_id()) : 0);
 	state += "\n" + itos(attachment_target != nullptr ? uint64_t(attachment_target->get_instance_id()) : 0);
@@ -729,6 +740,10 @@ String GoAgenticsToolBridge::prepare_editor_action(const go::GoKiloToolCall &p_c
 	}
 	r_fingerprint = state.sha256_text();
 	r_preview = to_godot(p_call.name) + "\n" + project + "\n" + path + "\n\n";
+	if (reading_log) {
+		r_preview += TTR("Share exactly the following bounded editor output with the selected model? Logs can contain private paths/data. Automatic secret screening is imperfect; review every line before approving. Older evicted output and separately stored debugger data are not included.") + "\n\n" + source;
+		return String();
+	}
 	if (committing) {
 		r_preview += TTR("Automatic Commit stages current project changes, commits and pushes to origin when configured. A bounded privacy-filtered diff is sent anonymously to the free Kilo Gateway, which may log prompts. Filtering cannot guarantee removal of secrets; review current changes first. A fallback message is used on gateway failure. This cannot be undone with scene Undo/Redo.");
 		return String();
@@ -765,6 +780,13 @@ String GoAgenticsToolBridge::execute_editor_action(const go::GoKiloToolCall &p_c
 		return to_godot(error_json(error.is_empty() ? "Project, scene or run state changed after approval; request a fresh action" : to_std(error)));
 	}
 	EditorInterface *editor = EditorInterface::get_singleton();
+	if (p_call.name == "get_editor_log") {
+		String output;
+		if (!EditorNode::get_log()->get_bounded_messages(output) || go::looks_like_secret_content(to_std(output))) {
+			return to_godot(error_json("Editor log is no longer safe to share"));
+		}
+		return to_godot(ok_json("Current bounded editor output (older evicted/debugger-only data excluded):\n" + to_std(output)));
+	}
 	if (p_call.name == "auto_commit") {
 		return to_godot(GoSuiteRegistry::request_auto_commit() ? ok_json("Automatic Commit requested through the shared locked controller; check Git Suite for the final result") : error_json("Automatic Commit could not start"));
 	}
@@ -1329,10 +1351,6 @@ String GoAgenticsToolBridge::execute(const go::GoKiloToolCall &p_call) const {
 
 	if (tool == "git_status") {
 		return to_godot(error_json("Git status must use the dock's nonblocking process route"));
-	}
-
-	if (tool == "get_editor_log") {
-		return to_godot(error_json("editor log access is best-effort and not available in this build"));
 	}
 
 	return to_godot(error_json("tool is whitelisted but not implemented in this build: " + tool));

@@ -195,7 +195,7 @@ bool GoAgenticsTools::is_write_tool(const std::string &p_name) {
 }
 
 bool GoAgenticsTools::is_editor_action(const std::string &p_name) {
-	return p_name == "open_scene" || p_name == "run_project" || p_name == "run_current_scene" || p_name == "stop_project" || p_name == "save_current_scene" || p_name == "save_scene_as" || p_name == "attach_script" || p_name == "assign_resource" || p_name == "instantiate_scene" || p_name == "scan_filesystem" || p_name == "select_node" || p_name == "auto_commit" || p_name == "get_scene_tree";
+	return p_name == "open_scene" || p_name == "run_project" || p_name == "run_current_scene" || p_name == "stop_project" || p_name == "save_current_scene" || p_name == "save_scene_as" || p_name == "attach_script" || p_name == "assign_resource" || p_name == "instantiate_scene" || p_name == "scan_filesystem" || p_name == "select_node" || p_name == "auto_commit" || p_name == "get_scene_tree" || p_name == "get_editor_log";
 }
 
 bool GoAgenticsTools::is_file_mutation(const std::string &p_name) {

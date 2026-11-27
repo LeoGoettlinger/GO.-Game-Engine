@@ -46,3 +46,14 @@ intact. GO.'s own MIT-notice files are additive.
   a modal status check and a scoped bypass, preserving upstream save/discard choices
   rather than reopening an endless unsaved-scene prompt. No editor header changes.
   Preserve placement after upstream save/discard handling when merging upstream.
+
+## Bounded diagnostic sharing
+
+- `editor/editor_log.h` and `editor/editor_log.cpp`: add the C++-only const
+  `get_bounded_messages(String &)` adapter. It returns the current plain-text
+  message buffer only when it fits 48000 UTF-8 bytes; otherwise it clears the
+  output and refuses. It changes no filters/settings, exposes no GDScript binding,
+  and avoids partial tails. The GO. bridge separately screens possible secrets
+  and requires explicit approval of the exact snapshot before sharing it.
+  Preserve the getter across upstream log-storage refactors. The adapter is
+  included in the production/test syntax check and actual-editor acceptance path.

@@ -42,6 +42,8 @@
 #include "core/io/file_access.h"
 #include "core/os/os.h"
 #include "editor/editor_interface.h"
+#include "editor/editor_log.h"
+#include "editor/editor_node.h"
 #include "editor/editor_undo_redo_manager.h"
 #include "editor/file_system/editor_file_system.h"
 #include "scene/main/scene_tree.h"
@@ -112,6 +114,7 @@ func _physics_process(_delta: float) -> void:
 		{ "fixture", "attach_script", R"({"node_path":".","script_path":"res://player.gd"})" },
 		{ "fixture", "save_current_scene", "{}" },
 		{ "fixture", "set_main_scene", R"({"path":"res://player.tscn"})" },
+		{ "fixture", "get_editor_log", "{}" },
 	};
 	if (step == int(calls.size())) {
 		if (!editor->get_unsaved_scenes().is_empty()) {
@@ -123,6 +126,28 @@ func _physics_process(_delta: float) -> void:
 			fail("Final editor tree, persisted scene or main-scene setting is incomplete.");
 			return;
 		}
+		EditorLog *log = EditorNode::get_log();
+		String original_log;
+		if (!log->get_bounded_messages(original_log)) {
+			fail("Editor output unexpectedly exceeded the acceptance bound.");
+			return;
+		}
+		log->add_message("var api_key = \"fixture_only\"");
+		String preview;
+		String fingerprint;
+		if (p_bridge.prepare_editor_action({ "fixture", "get_editor_log", "{}" }, preview, fingerprint).is_empty() || !fingerprint.is_empty()) {
+			fail("Sensitive editor output was not refused.");
+			return;
+		}
+		log->clear();
+		log->add_message(String("x").repeat(48001));
+		String oversized;
+		if (log->get_bounded_messages(oversized) || !oversized.is_empty()) {
+			fail("Oversized editor output was not refused as a whole.");
+			return;
+		}
+		log->clear();
+		log->add_message(original_log);
 		finished = true;
 		print_line("GO_AGENT_SCENE_OK");
 		SceneTree::get_singleton()->quit();

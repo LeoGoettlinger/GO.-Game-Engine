@@ -53,6 +53,12 @@ def main() -> int:
     if "`editor/editor_node.cpp`" not in register or "Automatic Commit" not in register:
         errors.append("UPSTREAM_PATCHES.md must document the editor_node.cpp lock patch")
 
+    for relative in ("editor/editor_log.h", "editor/editor_log.cpp"):
+        if "get_bounded_messages" not in (ROOT / relative).read_text(encoding="utf-8"):
+            errors.append(f"{relative} is missing the bounded read-only log snapshot adapter")
+    if "get_bounded_messages" not in register:
+        errors.append("UPSTREAM_PATCHES.md must document the bounded editor log adapter")
+
     if errors:
         print("GO. upstream patch check FAILED:", file=sys.stderr)
         for error in errors:

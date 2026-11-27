@@ -180,6 +180,8 @@ protected:
 
 public:
 	void add_message(const String &p_msg, MessageType p_type = MSG_TYPE_STD);
+	// GO. Read-only bounded snapshot for an explicitly approved diagnostic share.
+	bool get_bounded_messages(String &r_text) const;
 	void register_undo_redo(UndoRedo *p_undo_redo);
 	void deinit();
 

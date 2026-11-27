@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import importlib.util
+import json
 import subprocess
 import sys
 import tempfile
@@ -56,6 +57,22 @@ def generate_headers(stub_root: Path) -> None:
         encoding="utf-8",
     )
 
+    version = load_builder(ROOT / "version.py", "go_syntax_version")
+    version_defines = {
+        "NAME": version.name,
+        "MAJOR": version.major,
+        "MINOR": version.minor,
+        "PATCH": version.patch,
+        "STATUS": version.status,
+        "BUILD": "syntax_check",
+        "MODULE_CONFIG": "",
+    }
+    (core_dir / "version_generated.gen.h").write_text(
+        "#pragma once\n"
+        + "".join(f"#define GODOT_VERSION_{key} {json.dumps(value)}\n" for key, value in version_defines.items()),
+        encoding="utf-8",
+    )
+
     interface = load_builder(ROOT / "core/extension/make_interface_header.py", "go_make_interface_header")
     interface.run(
         [Target(extension_dir / "gdextension_interface.gen.h")],
@@ -76,7 +93,7 @@ def main() -> int:
     args = parser.parse_args()
 
     sys.path.insert(0, str(ROOT))
-    sources = sorted(MODULE.glob("*.cpp"))
+    sources = sorted(MODULE.glob("*.cpp")) + [ROOT / "editor/editor_log.cpp"]
     if not sources:
         print("no GO. suite C++ sources found", file=sys.stderr)
         return 1
@@ -128,7 +145,7 @@ def main() -> int:
             return 1
 
     print(
-        f"OK: {len(sources)} GO. suite C++ files and {len(test_headers)} native test headers pass production/test syntax checks"
+        f"OK: {len(sources)} GO. module/adapter C++ files and {len(test_headers)} native test headers pass production/test syntax checks"
     )
     return 0
 

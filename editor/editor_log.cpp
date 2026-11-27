@@ -279,6 +279,27 @@ void EditorLog::_process_message(const String &p_msg, MessageType p_type, bool p
 	type_filter_map[p_type]->set_message_count(type_filter_map[p_type]->get_message_count() + 1);
 }
 
+// GO. Keep the entire current buffer or refuse it, rather than silently sharing
+// a truncated tail that may have lost a sensitive-data header. No UI filters or
+// formatting are evaluated, and no messages/settings are changed by this getter.
+bool EditorLog::get_bounded_messages(String &r_text) const {
+	r_text = String();
+	int bytes = 0;
+	for (const LogMessage &message : messages) {
+		if (message.text.length() > 48000) {
+			r_text = String();
+			return false;
+		}
+		bytes += message.text.utf8().length() + 1;
+		if (bytes > 48000) {
+			r_text = String();
+			return false;
+		}
+		r_text += message.text + "\n";
+	}
+	return true;
+}
+
 void EditorLog::add_message(const String &p_msg, MessageType p_type) {
 	// Make text split by new lines their own message.
 	// See #41321 for reasoning. At time of writing, multiple print()'s in running projects

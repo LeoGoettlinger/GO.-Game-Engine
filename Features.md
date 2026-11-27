@@ -614,3 +614,19 @@ dock test covers actual local Git, completion, privacy and cancellation ownershi
 New editor-action denial tests and setting allowlist checks are added. Runtime
 acceptance remains pending. The UI capture script executable-bit style failure
 from dc8e0d90 is corrected in this checkpoint.
+
+### Explicitly reviewed editor diagnostics
+
+`get_editor_log` completes the current 37-tool whitelist. A small registered
+upstream C++ adapter exposes the entire retained editor-output buffer only when
+it fits 48000 UTF-8 bytes. Larger buffers are refused, not partially tailed. The
+bridge screens the snapshot for possible credentials and then requires explicit
+approval showing exactly that text before sharing it with the selected model.
+The snapshot hash is rechecked at execution. Automatic screening is imperfect;
+private paths/data may remain, so review is mandatory. Evicted history, separate
+debugger state and repetition counts are not reconstructed.
+
+The actual-editor acceptance fixture now exercises the log tool, then verifies
+whole-buffer size rejection and a known secret-marker rejection. The upstream
+adapter is documented in UPSTREAM_PATCHES.md and included in real-header syntax
+checks for production/test layouts. Runtime and visual confirmation are pending.
