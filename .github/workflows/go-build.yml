@@ -19,7 +19,7 @@ on:
 
 concurrency:
   group: go-full-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 permissions:
   contents: write
@@ -97,6 +97,7 @@ jobs:
             go-${{ matrix.platform }}-
 
       - name: Build editor
+        id: compile-editor
         shell: bash
         run: |
           set +e
@@ -112,10 +113,11 @@ jobs:
           fi
 
       - name: Preserve editor cache before runtime gates
+        if: always() && steps.scons-cache.outcome == 'success'
         uses: actions/cache/save@v4
         with:
           path: .scons_cache
-          key: go-${{ matrix.platform }}-editor-${{ github.sha }}
+          key: go-${{ matrix.platform }}-editor-${{ github.sha }}-${{ github.run_id }}
 
       - name: Preserve compiled editor for diagnostics
         uses: actions/upload-artifact@v4
