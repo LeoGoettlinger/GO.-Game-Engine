@@ -460,3 +460,20 @@ close reminder includes the same warning. Registry availability and close-flow
 fixtures now exercise production activation instead of injecting a callback.
 These activation/UI changes still require their own runtime/visual acceptance;
 prior green results do not prove the new confirmation dialog visually correct.
+
+### Guarded main-scene selection
+
+`set_main_scene` is now the 25th experimental tool. Its required `path` must point
+to a bounded readable res:// .tscn file. It serializes current ProjectSettings
+with that main-scene override into a temporary local preview, without changing
+project.godot or the in-memory main scene during preparation. The preview shows
+all configuration differences, including other pending settings, and explicitly
+warns that approving it saves those differences too.
+
+The existing mandatory file confirmation, byte backup and replacement path apply.
+The fingerprint also binds the target scene bytes and previous in-memory main
+scene. A changed target, project configuration or pending settings invalidates
+approval. The in-memory main scene is updated only after successful replacement.
+It does not load/instantiate the scene or claim its dependencies are valid. Native
+regressions cover no pre-approval mutation, stale target rejection, successful
+configuration update and missing targets; runtime CI is pending.

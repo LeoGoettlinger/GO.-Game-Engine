@@ -183,7 +183,7 @@ void test_agentics_tools() {
 	CHECK(GoAgenticsTools::is_tool_allowed("read_file"));
 	const auto scene_definitions = parse_json(GoAgenticsTools::tool_definitions_json(true), parse_error);
 	CHECK(parse_error.empty());
-	CHECK_EQ(scene_definitions.array_value.size(), size_t(24));
+	CHECK_EQ(scene_definitions.array_value.size(), size_t(25));
 	CHECK(GoAgenticsTools::is_enabled_tool("read_file"));
 	CHECK(GoAgenticsTools::is_enabled_tool("list_files"));
 	CHECK(GoAgenticsTools::is_enabled_tool("search_text"));

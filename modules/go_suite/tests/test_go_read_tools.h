@@ -310,3 +310,40 @@ TEST_CASE("[GO.][ReadTools] Editor execution cannot bypass approval or dereferen
 	CHECK_FALSE(bridge.prepare_editor_action({ "test", "open_scene", R"({"path":"res://../outside.tscn"})" }, preview, fingerprint).is_empty());
 }
 } // namespace TestGoEditorActions
+
+namespace TestGoMainScene {
+TEST_CASE("[GO.][ReadTools] Main scene settings require a preview and reject a stale scene file") {
+	TestGoReadTools::Fixture fixture;
+	ProjectSettings *settings = ProjectSettings::get_singleton();
+	const String key = "application/run/main_scene";
+	const bool existed = settings->has_setting(key);
+	const Variant previous = settings->get_setting(key, Variant());
+	struct Restore {
+		String key;
+		Variant value;
+		~Restore() { ProjectSettings::get_singleton()->set_setting(key, value); }
+	} restore{ key, existed ? previous : Variant() };
+	settings->set_setting(key, "res://old.tscn");
+	fixture.write("project.godot", "config_version=5\n\n[application]\nrun/main_scene=\"res://old.tscn\"\n");
+	fixture.write("player.tscn", "[gd_scene format=3]\n[node name=\"Player\" type=\"Node2D\"]\n");
+	GoAgenticsToolBridge bridge;
+	go::GoKiloToolCall call = { "test", "set_main_scene", R"({"path":"res://player.tscn"})" };
+	String preview;
+	String fingerprint;
+	CHECK(bridge.execute(call).contains("\"ok\":false"));
+	REQUIRE(bridge.prepare_file_change(call, preview, fingerprint).is_empty());
+	CHECK(preview.contains("res://old.tscn"));
+	CHECK(preview.contains("res://player.tscn"));
+	CHECK(String(settings->get_setting(key)) == "res://old.tscn");
+	CHECK(FileAccess::get_file_as_string("res://project.godot").contains("res://old.tscn"));
+	fixture.write("player.tscn", "[gd_scene format=3]\n[node name=\"Changed\" type=\"Node2D\"]\n");
+	CHECK(bridge.execute_file_change(call, fingerprint).contains("\"ok\":false"));
+	CHECK(String(settings->get_setting(key)) == "res://old.tscn");
+	REQUIRE(bridge.prepare_file_change(call, preview, fingerprint).is_empty());
+	CHECK(bridge.execute_file_change(call, fingerprint).contains("\"ok\":true"));
+	CHECK(String(settings->get_setting(key)) == "res://player.tscn");
+	CHECK(FileAccess::get_file_as_string("res://project.godot").contains("res://player.tscn"));
+	CHECK(DirAccess::dir_exists_absolute("res://.godot/go_agent_backups"));
+	CHECK_FALSE(bridge.prepare_file_change({ "test", "set_main_scene", R"({"path":"res://missing.tscn"})" }, preview, fingerprint).is_empty());
+}
+} // namespace TestGoMainScene

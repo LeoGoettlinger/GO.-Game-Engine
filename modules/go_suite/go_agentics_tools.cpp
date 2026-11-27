@@ -192,7 +192,7 @@ bool GoAgenticsTools::is_editor_action(const std::string &p_name) {
 }
 
 bool GoAgenticsTools::is_file_mutation(const std::string &p_name) {
-	return p_name == "write_file" || p_name == "edit_file" || p_name == "create_script" || p_name == "create_folder" || p_name == "delete_file" || p_name == "create_scene" || p_name == "create_resource";
+	return p_name == "write_file" || p_name == "edit_file" || p_name == "create_script" || p_name == "create_folder" || p_name == "delete_file" || p_name == "create_scene" || p_name == "create_resource" || p_name == "set_main_scene";
 }
 
 bool GoAgenticsTools::is_enabled_tool(const std::string &p_name) {
