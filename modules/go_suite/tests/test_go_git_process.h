@@ -97,6 +97,23 @@ TEST_CASE("[GO.][GitProcess] Waiting on stdin can be cancelled or timed out") {
 TEST_CASE("[GO.][GitProcess] Reject invalid commands without launching") {
 	GoGitProcess process;
 	CHECK_FALSE(process.start(go::GitCommand()));
+	// The runner permits only Git and the exact fixed LFS installers, never a
+	// general package-manager or shell invocation. These must not launch.
+	for (auto command : { go::lfs_install_linux(), go::lfs_install_windows() }) {
+		command.arguments.push_back("--go-unapproved-extra-argument");
+		CHECK_FALSE(process.start(command));
+		CHECK(process.has_process_error());
+		CHECK_FALSE(process.is_running());
+	}
+	auto shell = go::lfs_install_linux();
+	shell.executable = "sh";
+	CHECK_FALSE(process.start(shell));
+	CHECK_FALSE(process.start(go::git(".", { "--version" }), 0));
+	GoGitSnapshotJob snapshot;
+	CHECK_FALSE(snapshot.start(""));
+	CHECK(snapshot.poll());
+	CHECK_FALSE(snapshot.get_result().is_repo);
+	CHECK_FALSE(snapshot.get_result().error.empty());
 	CHECK_FALSE(process.is_running());
 	CHECK_FALSE(process.succeeded());
 }
