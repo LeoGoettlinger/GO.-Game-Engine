@@ -6,7 +6,7 @@
 sondern den Editor um zwei fest eingebaute Suites, ein eigenes Branding, ein Offline-Plugin-Paket
 und einen automatisierten Commit-Ablauf zu erweitern. Alle Godot-Funktionen bleiben erhalten.
 
-> **Aktueller Status (Code-Stand `b72b11d6`):** Frühere Windows-/Linux-Editor-
+> **Aktueller Status (Code-Stand `cb91136e`):** Frühere Windows-/Linux-Editor-
 > und Template-Builds sind nachweislich grün (`b21eef10`, Actions `43511344381`).
 > Die neueren Funktionen sind noch nicht vollständig laufzeit- oder visuell abgenommen.
 > Die folgenden älteren Entwicklungsabschnitte sind ein Änderungsverlauf; bei

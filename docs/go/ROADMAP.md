@@ -4,12 +4,12 @@ Legend: `[x]` implemented and locally verifiable, `[~]` implemented but not yet 
 compiled editor/CI, `[ ]` open. A user-facing feature comparison lives in
 [`Features.md`](../../Features.md).
 
-## Current completion checkpoint (code b72b11d6)
+## Current completion checkpoint (code cb91136e)
 
 This summary supersedes the historical checklists below. Implemented does not
 mean visually or end-to-end accepted.
 
-- **Not release-ready.** Full run **46068717379** tests the corrected source on
+- **Not release-ready.** Full run **46071744551** tests the corrected source on
   Linux and Windows. Its result is pending; no current green release is claimed.
 - Full **46048025646** at 551a0fa2 passed editor/templates, native tests and
   actual-editor player creation/movement/independent exports on both platforms,
@@ -902,3 +902,22 @@ and its build cache are now preserved immediately after compilation, before any
 runtime gate can fail. The corrected runtime result is still pending. Local
 production/test syntax checks pass (33 C++ units, eight native-test headers), as
 do all 22 discovered Python harness tests. These do not replace native execution.
+
+### Build continuity and automatic acceptance follow-ups
+
+Full run 46068717379 was cancelled before producing candidates, so it provides
+no native acceptance result. Full-build concurrency now keeps the active run
+instead of superseding it, and partial content-addressed compiler caches are
+saved even after a failed compile. The next source revision cb91136e additionally
+tests rejection of modified installer commands and empty snapshot projects.
+Its full run is **46071744551**. Quick Checks **46068717167** already passed at
+b72b11d6, including real local Git LFS transport and all eight addon parses.
+
+The sandbox integration returns HTTP 403 for workflow dispatch. Push-based
+follow-ups therefore wait for this explicit full-run ID with finite deadlines:
+**46071806079** checks both platforms' compiled addon startups as soon as their
+editor candidates exist; **46071806026** preserves the real Linux screenshots
+after the source run completes. Neither waiting nor starting these jobs is a
+passing result. They verify source-run provenance and refuse missing candidates
+or captures. The evidence job may add a same-branch bot commit; fetch it before
+continuing local edits. No release or visual approval is claimed yet.

@@ -159,3 +159,12 @@ Run both naming conventions for Python harness tests:
 python3 -m unittest discover -s misc/scripts -p 'go_*_test.py'
 python3 -m unittest discover -s misc/scripts -p 'go_test_*.py'
 ```
+
+If the repository integration rejects `workflow_dispatch` with HTTP 403, no
+credentials are needed in chat. The evidence/candidate workflows also have
+path-scoped push triggers with an explicit source-run fallback ID. Update that
+ID to the intended real full run and push only those workflow files; the full
+build ignores those paths. The follow-up verifies the source and waits with a
+finite deadline. Full builds now use `cancel-in-progress: false` so additional
+work does not automatically discard an active compile. Do not treat a waiting
+follow-up as acceptance, and do not enable plugins based only on archive checks.
