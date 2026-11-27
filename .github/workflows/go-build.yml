@@ -255,6 +255,25 @@ jobs:
         shell: bash
         run: python misc/scripts/go_bundle_extensions.py --platform ${{ matrix.platform }} --output .cache/go-extensions
 
+      - name: Independent plugin startup acceptance
+        shell: bash
+        run: |
+          if [ "${{ matrix.platform }}" = "linux" ]; then
+            EDITOR=bin/godot.linuxbsd.editor.x86_64
+          else
+            EDITOR=bin/godot.windows.editor.x86_64.exe
+          fi
+          python misc/scripts/go_plugin_startup_smoke.py --editor "$EDITOR" \
+            --extensions-dir .cache/go-extensions --output go-validation/plugins
+
+      - name: Preserve plugin acceptance logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: go-plugin-validation-${{ matrix.platform }}
+          path: go-validation/plugins/*.log
+          if-no-files-found: ignore
+
       - name: Package GO. release
         shell: bash
         run: |

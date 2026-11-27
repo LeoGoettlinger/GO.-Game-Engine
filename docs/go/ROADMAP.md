@@ -681,3 +681,18 @@ extensions without an EditorPlugin switch cannot be disabled/unloaded from this
 dialog; no unsafe file deletion or unload is attempted. For addons with both,
 disabling the editor plugin does not unload the native library. Native startup
 acceptance and the actual UI interaction remain pending.
+
+### Archive CI result and plugin startup gate
+
+The corrected pinned-extension workflow for 76dd5a12 has passed Linux and Windows
+archive verification and artifact upload (run 46042242506). The Git addon uses
+upstream's `addons/godot-git-plugin` directory, not the earlier underscored guess.
+This proves checksum/layout/library presence, not ABI or editor compatibility.
+
+The full build now starts every bundled addon separately in a disposable project
+using the compiled GO. editor, first importing, then enabling its EditorPlugin
+where present. Native-only extensions load during import. Errors, timeout and
+nonzero exits block release packaging; per-plugin logs are preserved. This new
+startup gate has not completed yet. Defaults remain disabled until startup and
+visual/interaction checks pass. An editor starting successfully does not by
+itself prove every plugin feature or exported-project behavior.
