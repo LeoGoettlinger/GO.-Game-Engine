@@ -1,6 +1,9 @@
 # Preserve real synthetic-fixture captures only, never execute downloaded artifacts.
 name: GO. Preserve UI Evidence
 on:
+  push:
+    branches: [arena/a15e5657-go-game-engine]
+    paths: ['.github/workflows/go-publish-ui-evidence.yml']
   workflow_dispatch:
     inputs:
       run_id:
@@ -17,32 +20,43 @@ jobs:
   preserve:
     if: github.ref == 'refs/heads/arena/a15e5657-go-game-engine'
     runs-on: ubuntu-22.04
-    timeout-minutes: 10
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
         with:
           ref: arena/a15e5657-go-game-engine
       - name: Verify run provenance before downloading
+        id: source
         env:
           GH_TOKEN: ${{ github.token }}
-          RUN_ID: ${{ inputs.run_id }}
+          RUN_ID: ${{ inputs.run_id || '46071744551' }}
         run: |
           python - <<'PY'
           import json
           import os
           import subprocess
+          import time
           from pathlib import Path
           run_id = os.environ['RUN_ID']
           if not run_id.isascii() or not run_id.isdecimal():
               raise SystemExit('Expected a numeric workflow run ID')
-          run = json.loads(subprocess.check_output([
-              'gh', 'api', f'repos/{os.environ["GITHUB_REPOSITORY"]}/actions/runs/{run_id}'
-          ]))
+          deadline = time.monotonic() + 150 * 60
+          while time.monotonic() < deadline:
+              run = json.loads(subprocess.check_output([
+                  'gh', 'api', f'repos/{os.environ["GITHUB_REPOSITORY"]}/actions/runs/{run_id}'
+              ]))
+              if run['status'] == 'completed':
+                  break
+              time.sleep(60)
+          else:
+              raise SystemExit('Full build did not finish before evidence deadline')
           if (run['status'] != 'completed'
                   or run['head_branch'] != 'arena/a15e5657-go-game-engine'
                   or run['head_repository']['full_name'] != os.environ['GITHUB_REPOSITORY']
                   or run['path'] != '.github/workflows/go-build.yml'):
               raise SystemExit('Only completed full builds from this repository and active branch are allowed')
+          with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as output:
+              output.write('run_id=' + run_id + '\n')
           Path('.cache').mkdir(exist_ok=True)
           Path('.cache/ui-source-run.json').write_text(json.dumps(run), encoding='utf-8')
           PY
@@ -50,8 +64,8 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           github-token: ${{ github.token }}
-          run-id: ${{ inputs.run_id }}
-          name: GO-validation-linux-${{ inputs.run_id }}
+          run-id: ${{ steps.source.outputs.run_id }}
+          name: GO-validation-linux-${{ steps.source.outputs.run_id }}
           path: .cache/ui-evidence
       - name: Preserve only synthetic screenshot evidence with provenance
         run: |

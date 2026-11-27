@@ -13,15 +13,20 @@ on:
         description: Candidate platform
         required: true
         type: choice
-        options: [linux, windows]
+        options: [linux, windows, both]
+        default: both
 permissions:
   contents: read
   actions: read
 jobs:
   acceptance:
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/arena/a15e5657-go-game-engine'
-    runs-on: ${{ inputs.platform == 'windows' && 'windows-2022' || 'ubuntu-22.04' }}
-    timeout-minutes: 45
+    if: github.ref == 'refs/heads/arena/a15e5657-go-game-engine'
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: ${{ fromJSON(inputs.platform == 'linux' && '["linux"]' || inputs.platform == 'windows' && '["windows"]' || '["linux","windows"]') }}
+    runs-on: ${{ matrix.platform == 'windows' && 'windows-2022' || 'ubuntu-22.04' }}
+    timeout-minutes: 150
     steps:
       - uses: actions/setup-python@v5
         with:
@@ -31,13 +36,15 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-          RUN_ID: ${{ inputs.run_id }}
+          RUN_ID: ${{ inputs.run_id || '46071744551' }}
+          PLATFORM: ${{ matrix.platform }}
         run: |
           python - <<'PY'
           import json
           import os
           import re
           import subprocess
+          import time
           run_id = os.environ['RUN_ID']
           if not re.fullmatch(r'[0-9]+', run_id):
               raise SystemExit('Invalid run ID')
@@ -51,6 +58,23 @@ jobs:
               raise SystemExit('Candidate is not a full build from the active repository branch')
           with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as output:
               output.write('sha=' + run['head_sha'] + '\n')
+              output.write('run_id=' + run_id + '\n')
+          deadline = time.monotonic() + 90 * 60
+          while time.monotonic() < deadline:
+              artifacts = json.loads(subprocess.check_output([
+                  'gh', 'api', f'repos/{os.environ["GITHUB_REPOSITORY"]}/actions/runs/{run_id}/artifacts'
+              ]))['artifacts']
+              expected = 'go-editor-candidate-' + os.environ['PLATFORM']
+              if any(a['name'] == expected and not a['expired'] for a in artifacts):
+                  break
+              state = json.loads(subprocess.check_output([
+                  'gh', 'api', f'repos/{os.environ["GITHUB_REPOSITORY"]}/actions/runs/{run_id}'
+              ]))
+              if state['status'] == 'completed':
+                  raise SystemExit('Full build ended without the required editor candidate')
+              time.sleep(60)
+          else:
+              raise SystemExit('Timed out waiting for compiled editor candidate')
           PY
       - uses: actions/checkout@v4
         with:
@@ -58,29 +82,29 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           github-token: ${{ github.token }}
-          run-id: ${{ inputs.run_id }}
-          name: go-editor-candidate-${{ inputs.platform }}
+          run-id: ${{ steps.source.outputs.run_id }}
+          name: go-editor-candidate-${{ matrix.platform }}
           path: bin
       - name: Record provenance and prepare executable
         shell: bash
         env:
           SOURCE_SHA: ${{ steps.source.outputs.sha }}
-          SOURCE_RUN: ${{ inputs.run_id }}
+          SOURCE_RUN: ${{ steps.source.outputs.run_id }}
         run: |
           mkdir -p go-plugin-validation
           printf 'source=%s\nrun=%s\n' "$SOURCE_SHA" "$SOURCE_RUN" > go-plugin-validation/provenance.txt
-          if [ "${{ inputs.platform }}" = "linux" ]; then
+          if [ "${{ matrix.platform }}" = "linux" ]; then
             chmod +x bin/godot.linuxbsd.editor.x86_64
           fi
       - name: Validate manifest and fetch checksum-pinned native addons
         shell: bash
         run: |
           python misc/scripts/go_validate_plugins.py
-          python misc/scripts/go_bundle_extensions.py --platform ${{ inputs.platform }} --output .cache/go-extensions
+          python misc/scripts/go_bundle_extensions.py --platform ${{ matrix.platform }} --output .cache/go-extensions
       - name: Test each addon in the compiled candidate
         shell: bash
         run: |
-          if [ "${{ inputs.platform }}" = "linux" ]; then
+          if [ "${{ matrix.platform }}" = "linux" ]; then
             EDITOR=bin/godot.linuxbsd.editor.x86_64
           else
             EDITOR=bin/godot.windows.editor.x86_64.exe
@@ -90,6 +114,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: go-plugin-candidate-${{ inputs.platform }}-${{ github.run_id }}
+          name: go-plugin-candidate-${{ matrix.platform }}-${{ github.run_id }}
           path: go-plugin-validation/
           if-no-files-found: warn
