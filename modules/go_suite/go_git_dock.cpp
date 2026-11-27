@@ -154,6 +154,11 @@ void GoGitDock::_poll_git() {
 }
 
 void GoGitDock::_on_cancel_git_pressed() {
+	if (owns_snapshot_job) {
+		snapshot_job.cancel();
+		_poll_snapshot();
+		return;
+	}
 	if (git_action == GitAction::NONE) {
 		return;
 	}
@@ -165,11 +170,14 @@ void GoGitDock::_on_cancel_git_pressed() {
 void GoGitDock::_notification(int p_what) {
 	if (p_what == NOTIFICATION_PROCESS) {
 		_poll_git();
+		_poll_snapshot();
 	} else if (p_what == NOTIFICATION_EXIT_TREE) {
-		if (git_action != GitAction::NONE) {
+		if (git_action != GitAction::NONE || owns_snapshot_job) {
 			GoSuiteRegistry::set_git_job_busy(false);
 		}
 		git_process.cancel();
+		snapshot_job.cancel();
+		owns_snapshot_job = false;
 		git_action = GitAction::NONE;
 		set_process(false);
 	}
@@ -268,11 +276,40 @@ void GoGitDock::set_host_text(const String &p_text) {
 }
 
 void GoGitDock::refresh_status() {
-	if (git_action != GitAction::NONE || (GoSuiteRegistry::is_git_job_busy() || GoSuiteRegistry::is_quit_pending())) {
+	if (git_action != GitAction::NONE || owns_snapshot_job || GoSuiteRegistry::is_git_job_busy() || GoSuiteRegistry::is_quit_pending()) {
 		return;
 	}
-	std::string error;
-	const go_suite::GoGitSnapshot snapshot = controller.snapshot(error);
+	snapshot_project = ProjectSettings::get_singleton()->get_resource_path();
+	controller.set_project(snapshot_project);
+	owns_snapshot_job = true;
+	_set_git_busy(true);
+	if (!snapshot_job.start(controller.get_project_path())) {
+		owns_snapshot_job = false;
+		_set_git_busy(false);
+		_apply_snapshot(snapshot_job.get_result(), snapshot_job.get_result().error);
+		return;
+	}
+	state_label->set_text(TTR("Reading Git status asynchronously…"));
+}
+
+void GoGitDock::_poll_snapshot() {
+	if (!owns_snapshot_job || !snapshot_job.poll()) {
+		return;
+	}
+	owns_snapshot_job = false;
+	_set_git_busy(false);
+	if (snapshot_project != ProjectSettings::get_singleton()->get_resource_path()) {
+		_apply_snapshot(go_suite::GoGitSnapshot(), "Project changed while reading Git status");
+		return;
+	}
+	auto snapshot = snapshot_job.get_result();
+	if (snapshot.is_repo) {
+		controller.decorate_snapshot(snapshot);
+	}
+	_apply_snapshot(snapshot, snapshot.error);
+}
+
+void GoGitDock::_apply_snapshot(const go_suite::GoGitSnapshot &snapshot, const std::string &error) {
 	if (output != nullptr) {
 		output->set_text("");
 	}

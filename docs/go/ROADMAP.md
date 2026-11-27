@@ -844,3 +844,21 @@ Plugin error annotations now retain actual errors rather than only import progre
 Successful compiled candidates and the SCons cache are now preserved before the
 late acceptance gates, enabling targeted follow-up tests without losing an hour
 of compilation on a plugin failure. The fixes require a new runtime result.
+
+### Nonblocking Git dock refresh
+
+The Git dock's rich Refresh operation now uses a polled process pipeline instead
+of `controller.snapshot()` on the UI thread. Repository/status/branch/remote,
+identity, LFS metadata and recent-log commands run individually with bounded
+output, 30-second command timeouts and a 60-second overall deadline. Status is
+parsed as NUL-delimited records. Cancellation/exit terminates the owned process
+and releases only its reservation; failure cannot be displayed as a clean tree.
+Local size/policy decoration still runs after completion, without Git commands.
+Native coverage includes real indexed-deletion status, reuse, overlap rejection
+and cancellation. New runtime confirmation is pending. Ancillary LFS/configuration
+buttons still have synchronous paths and are not claimed fully migrated.
+
+Actual editor/player screenshots from 551a0fa2 are now preserved with checksums in
+`docs/go/evidence/551a0fa2/`. Review confirms the visible gradient player. The
+editor capture is clipped/incomplete and is not a satisfactory full UI acceptance;
+capture sizing/readiness is being corrected rather than marking it approved.

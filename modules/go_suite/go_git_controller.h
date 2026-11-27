@@ -78,6 +78,7 @@ public:
 
 	bool is_repo(std::string &r_error) const;
 	GoGitSnapshot snapshot(std::string &r_error) const;
+	void decorate_snapshot(GoGitSnapshot &snapshot) const; // Local file/config reads only.
 
 	bool set_remote(const std::string &p_url, std::string &r_error) const;
 	bool fetch(std::string &r_output, std::string &r_error) const;

@@ -35,6 +35,7 @@
 
 #include "../go_git_controller.h"
 #include "../go_git_process.h"
+#include "../go_git_snapshot_job.h"
 #include "../go_suite_core.h"
 #include "../go_system_git_runner.h"
 
@@ -169,6 +170,24 @@ TEST_CASE("[GO.][GitProcess] Snapshot handles deleted indexed files without quer
 	CHECK(snapshot.is_repo);
 	CHECK(snapshot.status.entries.size() == 1);
 	CHECK(snapshot.large_file_warnings.empty());
+	GoGitSnapshotJob job;
+	REQUIRE(job.start(project));
+	CHECK_FALSE(job.start(project));
+	const uint64_t start = OS::get_singleton()->get_ticks_msec();
+	while (!job.poll() && OS::get_singleton()->get_ticks_msec() - start < 10000) {
+		OS::get_singleton()->delay_usec(1000);
+	}
+	CHECK_FALSE(job.is_running());
+	CHECK(job.get_result().is_repo);
+	CHECK(job.get_result().error.empty());
+	REQUIRE(job.get_result().status.entries.size() == 1);
+	CHECK(job.get_result().status.entries[0].path == "removed.txt");
+	REQUIRE(job.start(project));
+	job.cancel();
+	CHECK(job.poll());
+	CHECK_FALSE(job.is_running());
+	CHECK_FALSE(job.get_result().is_repo);
+	CHECK_FALSE(job.get_result().error.empty());
 }
 
 } // namespace TestGoGitProcess

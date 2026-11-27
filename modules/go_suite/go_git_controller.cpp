@@ -212,6 +212,14 @@ GoGitSnapshot GoGitController::snapshot(std::string &r_error) const {
 		snapshot.recent_log = go::parse_log(output);
 	}
 
+	decorate_snapshot(snapshot);
+
+	snapshot.error.clear();
+	r_error.clear();
+	return snapshot;
+}
+
+void GoGitController::decorate_snapshot(GoGitSnapshot &snapshot) const {
 	std::vector<std::pair<std::string, uint64_t>> sized_files;
 	for (const go::GitStatusEntry &entry : snapshot.status.entries) {
 		const String path = to_godot_string(full_path(project_path, entry.path));
@@ -241,10 +249,6 @@ GoGitSnapshot GoGitController::snapshot(std::string &r_error) const {
 	if (!summary.empty()) {
 		snapshot.large_file_warnings = go::split(summary, '\n');
 	}
-
-	snapshot.error.clear();
-	r_error.clear();
-	return snapshot;
 }
 
 bool GoGitController::set_remote(const std::string &p_url, std::string &r_error) const {

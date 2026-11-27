@@ -35,6 +35,7 @@
 
 #include "go_git_controller.h"
 #include "go_git_process.h"
+#include "go_git_snapshot_job.h"
 
 #include "scene/gui/box_container.h"
 
@@ -54,6 +55,11 @@ class GoGitDock : public VBoxContainer {
 
 	go_suite::GoGitController controller;
 	GoGitProcess git_process;
+	GoGitSnapshotJob snapshot_job;
+	bool owns_snapshot_job = false;
+	String snapshot_project;
+	void _poll_snapshot();
+	void _apply_snapshot(const go_suite::GoGitSnapshot &p_snapshot, const std::string &p_error);
 	enum class GitAction { NONE,
 		FETCH,
 		PULL,
