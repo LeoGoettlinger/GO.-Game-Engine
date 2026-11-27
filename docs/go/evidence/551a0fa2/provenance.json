@@ -1,0 +1,9 @@
+{
+  "run_id": 46048025646,
+  "commit": "551a0fa299b6f817c0d7326e7827447702b5c81a",
+  "scope": "Actual Linux X11 captures of the synthetic editor-created player fixture; not generated artwork. Full run later failed plugin startup.",
+  "files": {
+    "editor-ui.png": "931d240a94572b32c485ecd04a703a5daa3a31b4576ef793a27676d69345dc5f",
+    "player-ui.png": "e345d2b0c6bf80a36c27ff2fee578982023529edfe934ddb7eed03f5b0cfeeb4"
+  }
+}
