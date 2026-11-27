@@ -1,4 +1,5 @@
 # GO. full editor + export-template build. Intentionally separate from the PR checks.
+# Changing this workflow also starts source-matched candidate/evidence follow-ups.
 name: GO. Build and Release
 
 on:

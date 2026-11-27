@@ -9,8 +9,8 @@ compiled editor/CI, `[ ]` open. A user-facing feature comparison lives in
 This summary supersedes the historical checklists below. Implemented does not
 mean visually or end-to-end accepted.
 
-- **Not release-ready.** Full run **46071744551** tests the corrected source on
-  Linux and Windows. Its result is pending; no current green release is claimed.
+- **Not release-ready.** The next push tests the corrected source on Linux and Windows, with
+  automatically source-matched follow-ups. No current green release is claimed.
 - Full **46048025646** at 551a0fa2 passed editor/templates, native tests and
   actual-editor player creation/movement/independent exports on both platforms,
   then failed independent plugin startup. The fixture isolation fix is awaiting
@@ -921,3 +921,19 @@ after the source run completes. Neither waiting nor starting these jobs is a
 passing result. They verify source-run provenance and refuse missing candidates
 or captures. The evidence job may add a same-branch bot commit; fetch it before
 continuing local edits. No release or visual approval is claimed yet.
+
+### Cancellation correction and source-matched follow-ups
+
+Run 46071744551 was also cancelled shortly after a subsequent push, despite
+`cancel-in-progress: false`; no native result can be attributed to it. The
+follow-ups 46071806079/46071806026 therefore have no usable candidate/captures.
+Do not use the earlier “active” wording as evidence of completion.
+
+All three workflows now start from the same final workflow change. On push,
+the follow-ups discover the full build with the **exact same source SHA** via
+the Actions API, rather than needing another push to insert its future run ID.
+They wait for verified candidates/captures with finite deadlines. No further
+push should be made while this full build runs: the cancellation behavior was
+not prevented by the workflow's own concurrency setting. Manual dispatch from
+the sandbox still returns HTTP 403. This is an execution limitation, not a test
+pass, and the last startup fix remains pending actual runtime confirmation.

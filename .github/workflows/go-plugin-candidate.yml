@@ -2,7 +2,7 @@ name: GO. Compiled Plugin Acceptance
 on:
   push:
     branches: [arena/a15e5657-go-game-engine]
-    paths: ['.github/workflows/go-plugin-candidate.yml']
+    paths: ['.github/workflows/go-plugin-candidate.yml', '.github/workflows/go-build.yml']
   workflow_dispatch:
     inputs:
       run_id:
@@ -36,7 +36,8 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-          RUN_ID: ${{ inputs.run_id || '46071744551' }}
+          RUN_ID: ${{ inputs.run_id }}
+          SOURCE_SHA: ${{ github.sha }}
           PLATFORM: ${{ matrix.platform }}
         run: |
           python - <<'PY'
@@ -46,6 +47,21 @@ jobs:
           import subprocess
           import time
           run_id = os.environ['RUN_ID']
+          if not run_id:
+              for attempt in range(60):
+                  runs = json.loads(subprocess.check_output([
+                      'gh', 'api', '-X', 'GET',
+                      f'repos/{os.environ["GITHUB_REPOSITORY"]}/actions/workflows/go-build.yml/runs',
+                      '-f', 'head_sha=' + os.environ['SOURCE_SHA'],
+                      '-f', 'branch=arena/a15e5657-go-game-engine', '-f', 'event=push'
+                  ]))['workflow_runs']
+                  matches = [r for r in runs if r['head_sha'] == os.environ['SOURCE_SHA']]
+                  if matches:
+                      run_id = str(matches[0]['id'])
+                      break
+                  time.sleep(10)
+              else:
+                  raise SystemExit('No full build found for this exact source revision')
           if not re.fullmatch(r'[0-9]+', run_id):
               raise SystemExit('Invalid run ID')
           run = json.loads(subprocess.check_output([
