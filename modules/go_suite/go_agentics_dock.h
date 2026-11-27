@@ -94,6 +94,7 @@ class GoAgenticsDock : public VBoxContainer {
 	size_t next_call = 0;
 	bool waiting_approval = false;
 	bool native_tools_requested = false;
+	bool project_tools_requested = false;
 	ObjectID approval_scene;
 	ObjectID approval_target;
 	ObjectID approval_destination;
@@ -116,7 +117,7 @@ class GoAgenticsDock : public VBoxContainer {
 	void _append_message(const String &p_role, const String &p_text);
 	void _update_busy_state();
 	void _send_agent_request();
-	bool _process_tool_calls(const String &p_tool_calls_json);
+	bool _process_tool_calls(const String &p_tool_calls_json, bool p_json_fallback = false);
 	void _on_send_pressed();
 	void _on_stop_pressed();
 	void _on_new_conversation_pressed();

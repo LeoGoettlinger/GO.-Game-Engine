@@ -175,7 +175,12 @@ void GoKiloClient::request_conversation(const String &p_model, const std::vector
 		}
 	}
 	std::string error;
-	const std::string body = go::build_conversation_request_json(model, p_messages, p_tools_enabled, go_suite::to_std_string(p_tool_definitions_json), error);
+	const auto messages = p_tools_enabled ? p_messages : go::json_tool_conversation(p_messages, error);
+	if (!error.empty()) {
+		_fail(TTR("Invalid chat conversation: ") + go_suite::to_godot_string(error));
+		return;
+	}
+	const std::string body = go::build_conversation_request_json(model, messages, p_tools_enabled, go_suite::to_std_string(p_tool_definitions_json), error);
 	if (!error.empty()) {
 		_fail(TTR("Invalid chat conversation: ") + go_suite::to_godot_string(error));
 		return;

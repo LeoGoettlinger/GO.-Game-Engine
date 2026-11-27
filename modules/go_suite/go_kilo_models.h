@@ -106,6 +106,9 @@ struct GoKiloMessage {
 	std::string tool_call_id;
 };
 
+// Convert a validated canonical tool transcript for models without native roles.
+std::vector<GoKiloMessage> json_tool_conversation(const std::vector<GoKiloMessage> &p_messages, std::string &r_error);
+
 // Fail closed on incomplete or mismatched native tool rounds.
 std::string build_conversation_request_json(const std::string &p_model,
 		const std::vector<GoKiloMessage> &p_messages, bool p_tools_enabled,

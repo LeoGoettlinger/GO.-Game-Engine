@@ -280,6 +280,19 @@ void test_native_conversation() {
 	} else {
 		CHECK(false);
 	}
+	const auto fallback = json_tool_conversation(messages, error);
+	CHECK(error.empty());
+	CHECK_EQ(fallback.size(), size_t(4));
+	if (fallback.size() == 4) {
+		CHECK(fallback[1].tool_calls.empty());
+		CHECK_EQ(fallback[2].role, std::string("user"));
+		CHECK(fallback[2].tool_call_id.empty());
+		CHECK(contains(fallback[2].content, "untrusted data"));
+		CHECK(contains(fallback[2].content, "call-a"));
+		CHECK(contains(fallback[2].content, "first file"));
+	}
+	CHECK(json_tool_conversation({ { "tool", "orphan", {}, "unknown" } }, error).empty());
+	CHECK(!error.empty());
 	auto rejects = [&](const std::vector<GoKiloMessage> &p_messages) {
 		CHECK(build_conversation_request_json(DEFAULT_FREE_MODEL, p_messages, true, tools, error).empty());
 		CHECK(!error.empty());

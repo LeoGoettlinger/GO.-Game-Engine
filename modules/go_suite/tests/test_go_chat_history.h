@@ -65,6 +65,37 @@ struct GoChatHistoryDockTest {
 			DirAccess::remove_absolute(directory);
 		}
 	}
+	void check_json_fallback() {
+		GoAgenticsDock *dock = memnew(GoAgenticsDock);
+		SceneTree::get_singleton()->get_root()->add_child(dock);
+		const String calls = R"([{"id":"json-fallback-0","name":"write_file","arguments":{"path":"res://fallback.txt","content":"proposed"}}])";
+		dock->agent_loop_active = true;
+		dock->_on_chat_completed("Proposal", calls, true);
+		CHECK(dock->pending_calls.empty()); // Chat-only must never gain tool permission.
+		dock->project_tools_requested = true;
+		dock->native_tools_requested = false;
+		dock->agent_loop_active = true;
+		dock->_on_chat_completed("Proposal", calls, true);
+		REQUIRE(dock->pending_calls.size() == 1);
+		const std::string first_id = dock->pending_calls[0].id;
+		dock->_advance_tools();
+		CHECK(dock->waiting_approval);
+		CHECK_FALSE(FileAccess::exists(directory.path_join("fallback.txt")));
+		dock->approval->hide();
+		dock->_on_tool_rejected();
+		CHECK(dock->agent_loop_steps == 1);
+		CHECK_FALSE(FileAccess::exists(directory.path_join("fallback.txt")));
+		dock->_on_chat_completed("Second proposal", calls, true);
+		REQUIRE(dock->pending_calls.size() == 1);
+		CHECK(dock->pending_calls[0].id != first_id);
+		dock->_on_stop_pressed();
+		dock->agent_loop_steps = 20;
+		dock->agent_loop_active = true;
+		dock->_on_chat_completed("Over budget", calls, true);
+		CHECK(dock->pending_calls.empty());
+		CHECK_FALSE(FileAccess::exists(directory.path_join("fallback.txt")));
+		memdelete(dock);
+	}
 	void check_async_status() {
 		go_suite::GoSystemGitRunner runner;
 		std::string output;
@@ -208,4 +239,9 @@ TEST_CASE("[GO.][ChatHistory][Editor] File approval cannot be bypassed by scene 
 TEST_CASE("[GO.][ChatHistory][Editor] Agent Git status is nonblocking private and cancels only its own job") {
 	GoChatHistoryDockTest fixture;
 	fixture.check_async_status();
+}
+
+TEST_CASE("[GO.][ChatHistory][Editor] JSON fallback requires opt-in approval and enforces action budget") {
+	GoChatHistoryDockTest fixture;
+	fixture.check_json_fallback();
 }

@@ -457,3 +457,19 @@ The actual-editor acceptance fixture now exercises the log tool, then verifies
 whole-buffer size rejection and a known secret-marker rejection. The upstream
 adapter is documented in UPSTREAM_PATCHES.md and included in real-header syntax
 checks for production/test layouts. Runtime and visual confirmation are pending.
+
+### Guarded JSON fallback execution
+
+The previously preview-only JSON fallback now runs through the same project-tool
+permission snapshot, 20-action budget, argument/path checks and mandatory write/
+execution approval pipeline as native calls. Chat-only requests still cannot
+execute actions. Models without native support receive the enabled schemas and
+single-object JSON instructions; the internal validated transcript is converted
+to ordinary assistant/user messages with explicitly untrusted tool-result data,
+not unsupported native tool roles. Synthetic call IDs are unique across rounds.
+
+Standalone tests cover transcript conversion and orphan-result rejection. A
+native dock regression checks opt-in, unapproved writes, denial, unique IDs and
+the action cap. Local syntax and standalone checks pass; new native/live runtime
+results remain pending. This supersedes earlier statements that fallback actions
+are never executed.

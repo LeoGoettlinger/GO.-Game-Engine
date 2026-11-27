@@ -190,7 +190,7 @@ jobs:
             EDITOR=bin/godot.windows.editor.x86_64.exe
           fi
           python misc/scripts/go_native_tests.py --editor "$EDITOR" --suite ChatHistory \
-            --minimum 3 --output go-chat-history-tests.log
+            --minimum 4 --output go-chat-history-tests.log
 
       - name: Bounded project file read tests
         shell: bash
