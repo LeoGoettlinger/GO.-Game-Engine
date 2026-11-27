@@ -160,8 +160,28 @@ void GoAgenticsDock::_record_tool_result(const String &p_result) {
 	++agent_loop_steps;
 }
 
+void GoAgenticsDock::_poll_agent_git() {
+	if (!owns_agent_git_job || !agent_git_process.poll()) {
+		return;
+	}
+	owns_agent_git_job = false;
+	GoSuiteRegistry::set_git_job_busy(false);
+	if (ProjectSettings::get_singleton()->globalize_path("res://") != agent_git_project || !agent_git_process.succeeded() || agent_git_process.is_output_truncated()) {
+		_record_tool_result("{\"ok\":false,\"error\":\"Git status failed, timed out or exceeded the output limit; inspect Git Suite\"}");
+		return;
+	}
+	std::string error;
+	const auto status = go::parse_status_porcelain_z(agent_git_process.get_stdout_bytes(), error);
+	if (!error.empty()) {
+		_record_tool_result("{\"ok\":false,\"error\":\"Invalid Git status response\"}");
+		return;
+	}
+	const std::string summary = "Changed paths: " + std::to_string(status.entries.size()) + ". Filenames/content omitted for privacy. This is local working-tree/index status, not a remote fetch or LFS transfer check.";
+	_record_tool_result(go_suite::to_godot_string("{\"ok\":true,\"result\":" + go::escape_json_string(summary) + "}"));
+}
+
 void GoAgenticsDock::_advance_tools() {
-	if (!agent_loop_active || waiting_approval) {
+	if (!agent_loop_active || waiting_approval || owns_agent_git_job) {
 		return;
 	}
 	if (next_call >= pending_calls.size()) {
@@ -182,6 +202,21 @@ void GoAgenticsDock::_advance_tools() {
 	const std::string error = go::GoAgenticsTools::validate_arguments(call.name, call.arguments);
 	if (!go::GoAgenticsTools::is_enabled_tool(call.name) || !error.empty()) {
 		_record_tool_result(go_suite::to_godot_string("{\"ok\":false,\"error\":" + go::escape_json_string(error.empty() ? "Tool not enabled in project-tool mode" : error) + "}"));
+		return;
+	}
+	if (call.name == "git_status") {
+		if (GoSuiteRegistry::is_git_job_busy() || GoSuiteRegistry::is_quit_pending() || GoSuiteRegistry::is_editor_input_locked()) {
+			_record_tool_result("{\"ok\":false,\"error\":\"Git/close job is already active\"}");
+			return;
+		}
+		agent_git_project = ProjectSettings::get_singleton()->globalize_path("res://");
+		const auto command = go::git(go_suite::to_std_string(agent_git_project), { "--no-optional-locks", "status", "--porcelain=v1", "-z", "--untracked-files=normal" });
+		if (!agent_git_process.start(command, 30000)) {
+			_record_tool_result("{\"ok\":false,\"error\":\"Could not start Git status\"}");
+			return;
+		}
+		owns_agent_git_job = true;
+		GoSuiteRegistry::set_git_job_busy(true);
 		return;
 	}
 	if (go::GoAgenticsTools::is_file_mutation(call.name) || go::GoAgenticsTools::is_editor_action(call.name)) {
@@ -287,6 +322,11 @@ void GoAgenticsDock::_on_approval_action(const String &p_action) {
 }
 
 void GoAgenticsDock::_discard_pending() {
+	if (owns_agent_git_job) {
+		agent_git_process.cancel();
+		owns_agent_git_job = false;
+		GoSuiteRegistry::set_git_job_busy(false);
+	}
 	waiting_approval = false;
 	file_fingerprint = String();
 	if (file_preview != nullptr) {
@@ -314,7 +354,11 @@ void GoAgenticsDock::_notification(int p_what) {
 			_on_stop_pressed();
 			return;
 		}
-		_advance_tools();
+		if (owns_agent_git_job) {
+			_poll_agent_git();
+		} else {
+			_advance_tools();
+		}
 	} else if (p_what == NOTIFICATION_EXIT_TREE) {
 		agent_loop_active = false;
 		_discard_pending();

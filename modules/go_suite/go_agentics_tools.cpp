@@ -56,6 +56,8 @@ const std::vector<std::string> TOOL_NAMES = {
 	"create_script",
 	"validate_script",
 	"get_project_setting",
+	"set_project_setting",
+	"get_scene_tree",
 	"attach_script",
 	"assign_resource",
 	"create_scene",
@@ -94,10 +96,10 @@ std::vector<ToolArgument> tool_arguments(const std::string &p_name) {
 	std::vector<ToolArgument> arguments;
 	if (p_name == "list_files" || p_name == "search_text") {
 		arguments.push_back({ "path", false, false });
-	} else if (p_name == "read_file" || p_name == "write_file" || p_name == "edit_file" || p_name == "create_folder" || p_name == "delete_file" || p_name == "create_script" || p_name == "validate_script" || p_name == "create_scene" || p_name == "instantiate_scene" || p_name == "create_resource" || p_name == "assign_resource" || p_name == "open_scene" || p_name == "save_scene_as" || p_name == "set_main_scene") {
+	} else if (p_name == "read_file" || p_name == "write_file" || p_name == "edit_file" || p_name == "create_folder" || p_name == "delete_file" || p_name == "create_script" || p_name == "validate_script" || p_name == "create_scene" || p_name == "instantiate_scene" || p_name == "create_resource" || p_name == "assign_resource" || p_name == "get_scene_tree" || p_name == "open_scene" || p_name == "save_scene_as" || p_name == "set_main_scene") {
 		arguments.push_back({ "path", true, false });
 	}
-	if (p_name == "get_project_setting") {
+	if (p_name == "get_project_setting" || p_name == "set_project_setting") {
 		arguments.push_back({ "name", true, false });
 	}
 	if (p_name == "write_file" || p_name == "create_script") {
@@ -130,7 +132,7 @@ std::vector<ToolArgument> tool_arguments(const std::string &p_name) {
 	if (p_name == "set_node_property" || p_name == "get_node_property" || p_name == "assign_resource") {
 		arguments.push_back({ "property", true, false });
 	}
-	if (p_name == "set_node_property") {
+	if (p_name == "set_node_property" || p_name == "set_project_setting") {
 		arguments.push_back({ "value", true, true });
 	}
 	if (p_name == "attach_script") {
@@ -154,6 +156,7 @@ bool is_write_tool_name(const std::string &p_name) {
 		"save_current_scene",
 		"save_scene_as",
 		"set_main_scene",
+		"set_project_setting",
 		"add_node",
 		"remove_node",
 		"move_node",
@@ -192,15 +195,15 @@ bool GoAgenticsTools::is_write_tool(const std::string &p_name) {
 }
 
 bool GoAgenticsTools::is_editor_action(const std::string &p_name) {
-	return p_name == "open_scene" || p_name == "run_project" || p_name == "run_current_scene" || p_name == "stop_project" || p_name == "save_current_scene" || p_name == "save_scene_as" || p_name == "attach_script" || p_name == "assign_resource" || p_name == "instantiate_scene";
+	return p_name == "open_scene" || p_name == "run_project" || p_name == "run_current_scene" || p_name == "stop_project" || p_name == "save_current_scene" || p_name == "save_scene_as" || p_name == "attach_script" || p_name == "assign_resource" || p_name == "instantiate_scene" || p_name == "scan_filesystem" || p_name == "select_node" || p_name == "auto_commit" || p_name == "get_scene_tree";
 }
 
 bool GoAgenticsTools::is_file_mutation(const std::string &p_name) {
-	return p_name == "write_file" || p_name == "edit_file" || p_name == "create_script" || p_name == "create_folder" || p_name == "delete_file" || p_name == "create_scene" || p_name == "create_resource" || p_name == "set_main_scene";
+	return p_name == "write_file" || p_name == "edit_file" || p_name == "create_script" || p_name == "create_folder" || p_name == "delete_file" || p_name == "create_scene" || p_name == "create_resource" || p_name == "set_main_scene" || p_name == "set_project_setting";
 }
 
 bool GoAgenticsTools::is_enabled_tool(const std::string &p_name) {
-	return is_editor_action(p_name) || is_file_mutation(p_name) || is_scene_tool(p_name) || p_name == "list_files" || p_name == "read_file" || p_name == "search_text" || p_name == "validate_script" || p_name == "get_project_setting";
+	return is_editor_action(p_name) || is_file_mutation(p_name) || is_scene_tool(p_name) || p_name == "list_files" || p_name == "read_file" || p_name == "search_text" || p_name == "validate_script" || p_name == "get_project_setting" || p_name == "git_status";
 }
 
 bool GoAgenticsTools::is_scene_tool(const std::string &p_name) {

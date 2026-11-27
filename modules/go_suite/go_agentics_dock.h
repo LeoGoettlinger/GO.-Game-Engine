@@ -35,6 +35,7 @@
 
 #include "go_agentics_tool_bridge.h"
 #include "go_chat_history.h"
+#include "go_git_process.h"
 
 #include "core/input/input_event.h"
 #include "core/string/ustring.h"
@@ -68,6 +69,10 @@ class GoAgenticsDock : public VBoxContainer {
 	Label *model_status = nullptr;
 	GoKiloClient *kilo_client = nullptr;
 	GoAgenticsToolBridge tool_bridge;
+	GoGitProcess agent_git_process;
+	bool owns_agent_git_job = false;
+	String agent_git_project;
+	void _poll_agent_git();
 	go::ChatHistory history;
 	bool history_writable = true;
 	String history_error;

@@ -252,6 +252,7 @@ struct FileChangePlan {
 	String after;
 	String fingerprint;
 	Vector<uint8_t> original;
+	Variant normalized_features;
 	bool existed = false;
 };
 
@@ -342,7 +343,13 @@ std::string plan_main_scene(const go::JsonValue &p_args, FileChangePlan &r_plan)
 	}
 	ProjectSettings::CustomMap custom;
 	custom["application/run/main_scene"] = scene;
-	const Error saved = ProjectSettings::get_singleton()->save_custom(temporary, custom);
+	ProjectSettings *settings = ProjectSettings::get_singleton();
+	const Variant original_features = settings->get_setting("application/config/features");
+	// save_custom normalizes this setting even when saving elsewhere. Restore
+	// it during preparation; apply the normalized value only after approval.
+	const Error saved = settings->save_custom(temporary, custom);
+	r_plan.normalized_features = settings->get_setting("application/config/features");
+	settings->set_setting("application/config/features", original_features);
 	const bool read = saved == OK && read_project_text(temporary, r_plan.after, error);
 	if (FileAccess::exists(temporary)) {
 		DirAccess::remove_absolute(temporary);
@@ -351,7 +358,7 @@ std::string plan_main_scene(const go::JsonValue &p_args, FileChangePlan &r_plan)
 		return error.empty() ? "Could not serialize settings preview" : error;
 	}
 	const String old_main = ProjectSettings::get_singleton()->get_setting("application/run/main_scene", String());
-	r_plan.fingerprint = (ProjectSettings::get_singleton()->globalize_path("res://") + "\nset_main_scene\n" + scene + "\n" + scene_text.sha256_text() + "\n" + old_main + "\n" + String::hex_encode_buffer(r_plan.original.ptr(), r_plan.original.size()) + "\n" + r_plan.after).sha256_text();
+	r_plan.fingerprint = (ProjectSettings::get_singleton()->globalize_path("res://") + "\nset_main_scene\n" + scene + "\n" + scene_text.sha256_text() + "\n" + old_main + "\n" + String(original_features) + "\n" + String::hex_encode_buffer(r_plan.original.ptr(), r_plan.original.size()) + "\n" + r_plan.after).sha256_text();
 	return "";
 }
 
@@ -364,6 +371,14 @@ std::string plan_file_change(const go::GoKiloToolCall &p_call, FileChangePlan &r
 		return error;
 	}
 	const auto args = go::parse_json(p_call.arguments, error);
+	if (p_call.name == "set_project_setting") {
+		const auto *value = args.get("value");
+		if (argument_string(args, "name") != "application/run/main_scene" || value == nullptr || value->type != go::JsonValue::Type::STRING) {
+			return "Writable project setting allowlist currently contains only application/run/main_scene with a res:// scene string";
+		}
+		const auto translated = go::parse_json("{\"path\":" + go::escape_json_string(value->as_string()) + "}", error);
+		return plan_main_scene(translated, r_plan);
+	}
 	if (p_call.name == "set_main_scene") {
 		return plan_main_scene(args, r_plan);
 	}
@@ -581,11 +596,17 @@ String GoAgenticsToolBridge::prepare_editor_action(const go::GoKiloToolCall &p_c
 	if (EditorNode::get_singleton() == nullptr || editor == nullptr) {
 		return TTR("A running editor is required.");
 	}
+	const bool selection = p_call.name == "select_node";
+	const bool scanning = p_call.name == "scan_filesystem";
+	const bool committing = p_call.name == "auto_commit";
+	if (committing && !GoSuiteRegistry::is_auto_commit_available()) {
+		return TTR("Automatic Commit is not available in this editor.");
+	}
 	const bool saving = p_call.name == "save_current_scene" || p_call.name == "save_scene_as";
 	const bool instantiating = p_call.name == "instantiate_scene";
 	const bool resource_assignment = p_call.name == "assign_resource";
 	const bool attaching = p_call.name == "attach_script" || resource_assignment || instantiating;
-	if (!attaching && !saving && p_call.name != "stop_project" && !editor->get_unsaved_scenes().is_empty()) {
+	if (!selection && !attaching && !saving && p_call.name != "stop_project" && !editor->get_unsaved_scenes().is_empty()) {
 		return TTR("Save or discard unsaved scenes yourself before this action; the agent will not autosave them.");
 	}
 	if (p_call.name != "stop_project" && ScriptEditor::get_singleton() != nullptr && (!ScriptEditor::get_singleton()->get_unsaved_files().is_empty() || !ScriptEditor::get_singleton()->get_unsaved_scripts().is_empty())) {
@@ -599,7 +620,18 @@ String GoAgenticsToolBridge::prepare_editor_action(const go::GoKiloToolCall &p_c
 	String path;
 	String source;
 	Node *attachment_target = nullptr;
-	if (attaching) {
+	if (selection) {
+		std::string error;
+		const auto args = go::parse_json(p_call.arguments, error);
+		const String node_path = to_godot(argument_string(args, "node_path", "."));
+		if (root == nullptr || node_path.is_empty() || node_path.begins_with("/") || node_path.contains("..") || node_path.contains(":")) {
+			return TTR("Selection must stay inside the current scene.");
+		}
+		attachment_target = root->get_node_or_null(NodePath(node_path));
+		if (attachment_target == nullptr) {
+			return TTR("Selection target no longer exists.");
+		}
+	} else if (attaching) {
 		std::string parse_error;
 		const auto args = go::parse_json(p_call.arguments, parse_error);
 		path = to_godot(argument_string(args, (resource_assignment || instantiating) ? "path" : "script_path"));
@@ -626,7 +658,7 @@ String GoAgenticsToolBridge::prepare_editor_action(const go::GoKiloToolCall &p_c
 		if (EditorUndoRedoManager::get_singleton() == nullptr) {
 			return TTR("Editor undo history is required for script attachment.");
 		}
-	} else if (p_call.name == "open_scene" || p_call.name == "save_scene_as") {
+	} else if (p_call.name == "open_scene" || p_call.name == "get_scene_tree" || p_call.name == "save_scene_as") {
 		std::string error;
 		const auto args = go::parse_json(p_call.arguments, error);
 		path = to_godot(argument_string(args, "path"));
@@ -649,7 +681,7 @@ String GoAgenticsToolBridge::prepare_editor_action(const go::GoKiloToolCall &p_c
 		}
 	}
 	Vector<uint8_t> original_bytes;
-	if (p_call.name != "stop_project") {
+	if (!selection && !scanning && !committing && p_call.name != "stop_project") {
 		if (path.begins_with("uid://")) {
 			const ResourceUID::ID uid = ResourceUID::get_singleton()->text_to_id(path);
 			if (!ResourceUID::get_singleton()->has_id(uid)) {
@@ -697,6 +729,14 @@ String GoAgenticsToolBridge::prepare_editor_action(const go::GoKiloToolCall &p_c
 	}
 	r_fingerprint = state.sha256_text();
 	r_preview = to_godot(p_call.name) + "\n" + project + "\n" + path + "\n\n";
+	if (committing) {
+		r_preview += TTR("Automatic Commit stages current project changes, commits and pushes to origin when configured. A bounded privacy-filtered diff is sent anonymously to the free Kilo Gateway, which may log prompts. Filtering cannot guarantee removal of secrets; review current changes first. A fallback message is used on gateway failure. This cannot be undone with scene Undo/Redo.");
+		return String();
+	}
+	if (selection || scanning || p_call.name == "get_scene_tree") {
+		r_preview += TTR("Selection, filesystem import or scene-resource inspection may invoke editor/tool-script callbacks. This is NOT a sandbox. No scene Undo/Redo action is recorded; review and trust the project first.");
+		return String();
+	}
 	if (instantiating) {
 		r_preview += TTR("Load and instantiate this scene as a child of the approved local node. Scene loading/initialization may execute scripts with your user permissions; this is NOT a sandbox. Only insertion has Undo/Redo, not arbitrary script effects.");
 		return String();
@@ -725,6 +765,50 @@ String GoAgenticsToolBridge::execute_editor_action(const go::GoKiloToolCall &p_c
 		return to_godot(error_json(error.is_empty() ? "Project, scene or run state changed after approval; request a fresh action" : to_std(error)));
 	}
 	EditorInterface *editor = EditorInterface::get_singleton();
+	if (p_call.name == "auto_commit") {
+		return to_godot(GoSuiteRegistry::request_auto_commit() ? ok_json("Automatic Commit requested through the shared locked controller; check Git Suite for the final result") : error_json("Automatic Commit could not start"));
+	}
+	if (p_call.name == "scan_filesystem") {
+		EditorFileSystem::get_singleton()->scan();
+		return to_godot(ok_json("Filesystem scan requested; imports and their errors are asynchronous"));
+	}
+	if (p_call.name == "select_node") {
+		std::string error;
+		const auto args = go::parse_json(p_call.arguments, error);
+		Node *target = editor->get_edited_scene_root()->get_node_or_null(NodePath(to_godot(argument_string(args, "node_path", "."))));
+		editor->get_selection()->clear();
+		const String recheck = prepare_editor_action(p_call, preview, fingerprint);
+		if (!recheck.is_empty() || fingerprint != p_fingerprint) {
+			return to_godot(error_json("Selection was cleared but the target changed; selection action aborted"));
+		}
+		target = editor->get_edited_scene_root()->get_node_or_null(NodePath(to_godot(argument_string(args, "node_path", "."))));
+		editor->get_selection()->add_node(target);
+		editor->get_selection()->update();
+		return to_godot(ok_json("Selection updated"));
+	}
+	if (p_call.name == "get_scene_tree") {
+		std::string error;
+		const auto args = go::parse_json(p_call.arguments, error);
+		const auto checked = go::validate_res_path(argument_string(args, "path"), go::PathOperation::READ);
+		Ref<PackedScene> scene = ResourceLoader::load(to_godot(checked.normalized), "PackedScene", ResourceFormatLoader::CACHE_MODE_IGNORE);
+		if (scene.is_null()) {
+			return to_godot(error_json("Scene resource could not be loaded"));
+		}
+		const String recheck = prepare_editor_action(p_call, preview, fingerprint);
+		if (!recheck.is_empty() || fingerprint != p_fingerprint) {
+			return to_godot(error_json("Scene/project state changed while loading; inspection aborted"));
+		}
+		Ref<SceneState> state = scene->get_state();
+		std::string output = "Saved scene node declarations (instances/inheritance are not expanded):\n";
+		for (int i = 0; i < MIN(state->get_node_count(), 1000); ++i) {
+			const std::string line = to_std(String(state->get_node_path(i))) + " [" + to_std(String(state->get_node_type(i))) + "]\n";
+			if (output.size() + line.size() > 48000) {
+				break;
+			}
+			output += line;
+		}
+		return to_godot(ok_json(output + "[Bounded to 1000 nodes and 48000 bytes; not instantiated.]"));
+	}
 	if (p_call.name == "instantiate_scene") {
 		std::string parse_error;
 		const auto args = go::parse_json(p_call.arguments, parse_error);
@@ -852,7 +936,7 @@ String GoAgenticsToolBridge::prepare_file_change(const go::GoKiloToolCall &p_cal
 	}
 	r_fingerprint = plan.fingerprint;
 	r_preview = to_godot(p_call.name) + " " + plan.path + "\n\n--- BEFORE ---\n" + plan.before + "\n\n--- AFTER ---\n" + (p_call.name == "delete_file" ? TTR("File will be deleted; a byte-for-byte backup is retained in .godot/go_agent_backups.") : plan.after);
-	if (p_call.name == "set_main_scene") {
+	if (p_call.name == "set_main_scene" || p_call.name == "set_project_setting") {
 		r_preview = TTR("This saves the current in-memory project settings, including all other differences shown below. The original configuration is backed up before replacement.") + "\n\n" + r_preview;
 	}
 	return String();
@@ -905,11 +989,12 @@ String GoAgenticsToolBridge::execute_file_change(const go::GoKiloToolCall &p_cal
 			return to_godot(error_json("File operation failed; inspect the original and recovery files. Backup: " + to_std(backup) + "; replacement: " + to_std(temporary)));
 		}
 	}
-	if (p_call.name == "set_main_scene") {
+	if (p_call.name == "set_main_scene" || p_call.name == "set_project_setting") {
 		std::string parse_error;
 		const auto args = go::parse_json(p_call.arguments, parse_error);
-		const auto checked = go::validate_res_path(argument_string(args, "path"), go::PathOperation::READ);
+		const auto checked = go::validate_res_path(argument_string(args, p_call.name == "set_project_setting" ? "value" : "path"), go::PathOperation::READ);
 		ProjectSettings::get_singleton()->set_setting("application/run/main_scene", to_godot(checked.normalized));
+		ProjectSettings::get_singleton()->set_setting("application/config/features", plan.normalized_features);
 	}
 	if (EditorFileSystem::get_singleton() != nullptr) {
 		EditorFileSystem::get_singleton()->scan();
@@ -1092,14 +1177,6 @@ String GoAgenticsToolBridge::execute(const go::GoKiloToolCall &p_call) const {
 		return to_godot(error_json("the Godot editor is not available for this tool"));
 	}
 
-	if (tool == "scan_filesystem") {
-		if (EditorFileSystem *filesystem = editor->get_resource_filesystem()) {
-			filesystem->scan();
-			return to_godot(ok_json("editor filesystem scan requested"));
-		}
-		return to_godot(error_json("editor filesystem is not available"));
-	}
-
 	if (tool == "get_current_scene_tree" || tool == "get_editor_selection" || tool == "select_node" || tool == "add_node" || tool == "move_node" || tool == "remove_node" || tool == "rename_node" || tool == "set_node_property" || tool == "get_node_property" || tool == "attach_script") {
 		Node *root = editor->get_edited_scene_root();
 		if (tool == "get_current_scene_tree") {
@@ -1128,12 +1205,7 @@ String GoAgenticsToolBridge::execute(const go::GoKiloToolCall &p_call) const {
 		if (node == nullptr) {
 			return to_godot(error_json("node not found: " + node_path));
 		}
-		if (tool == "select_node") {
-			editor->get_selection()->clear();
-			editor->get_selection()->add_node(node);
-			editor->get_selection()->update();
-			return to_godot(ok_json("selected " + to_std(String(node->get_path()))));
-		}
+
 		if (tool == "remove_node" || tool == "move_node" || tool == "set_node_property" || tool == "get_node_property") {
 			if (root->get_scene_inherited_state().is_valid() || !editable_subtree(node, root)) {
 				return to_godot(error_json("Only bounded, locally owned, non-scripted, non-instanced subtrees may be changed"));
@@ -1256,21 +1328,7 @@ String GoAgenticsToolBridge::execute(const go::GoKiloToolCall &p_call) const {
 	}
 
 	if (tool == "git_status") {
-		go_suite::GoGitController controller;
-		controller.set_project(ProjectSettings::get_singleton()->globalize_path("res://"));
-		std::string error;
-		const go_suite::GoGitSnapshot snapshot = controller.snapshot(error);
-		if (!snapshot.is_repo) {
-			return to_godot(error_json("this project is not a Git repository"));
-		}
-		std::ostringstream out;
-		out << "branch=" << snapshot.branch << " ahead=" << snapshot.status.ahead << " behind=" << snapshot.status.behind
-			<< " changes=" << snapshot.status.entries.size() << " lfs_files=" << snapshot.lfs.files.size();
-		return to_godot(ok_json(out.str()));
-	}
-
-	if (tool == "auto_commit") {
-		return to_godot(GoSuiteRegistry::request_auto_commit() ? ok_json("Automatic Commit was requested in the Git Suite") : error_json("Automatic Commit is not ready or is already running"));
+		return to_godot(error_json("Git status must use the dock's nonblocking process route"));
 	}
 
 	if (tool == "get_editor_log") {

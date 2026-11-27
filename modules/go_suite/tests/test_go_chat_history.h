@@ -34,6 +34,7 @@
 // SPDX-License-Identifier: MIT
 
 #include "../go_agentics_dock.h"
+#include "../go_suite_registry.h"
 #include "../go_system_git_runner.h"
 
 #include "core/config/project_settings.h"
@@ -63,6 +64,49 @@ struct GoChatHistoryDockTest {
 			access->erase_contents_recursive();
 			DirAccess::remove_absolute(directory);
 		}
+	}
+	void check_async_status() {
+		go_suite::GoSystemGitRunner runner;
+		std::string output;
+		int exit = -1;
+		REQUIRE(runner.run(go::git(go_suite::to_std_string(directory), { "init" }), output, exit));
+		REQUIRE(exit == 0);
+		{
+			Ref<FileAccess> file = FileAccess::open(directory.path_join("private-notes.txt"), FileAccess::WRITE);
+			REQUIRE(file.is_valid());
+			file->store_string("Private fixture contents");
+		}
+		GoAgenticsDock *dock = memnew(GoAgenticsDock);
+		SceneTree::get_singleton()->get_root()->add_child(dock);
+		dock->agent_loop_active = true;
+		dock->pending_calls = { { "status-test", "git_status", "{}" } };
+		dock->next_call = 0;
+		dock->_advance_tools();
+		CHECK(dock->owns_agent_git_job);
+		CHECK(GoSuiteRegistry::is_git_job_busy());
+		const uint64_t start = OS::get_singleton()->get_ticks_msec();
+		while (dock->owns_agent_git_job && OS::get_singleton()->get_ticks_msec() - start < 10000) {
+			dock->_poll_agent_git();
+			OS::get_singleton()->delay_usec(1000);
+		}
+		CHECK_FALSE(dock->owns_agent_git_job);
+		CHECK_FALSE(GoSuiteRegistry::is_git_job_busy());
+		CHECK(dock->next_call == 1);
+		if (!dock->conversation.empty()) {
+			CHECK(dock->conversation.back().content.find("Changed paths:") != std::string::npos);
+			CHECK(dock->conversation.back().content.find("private-notes") == std::string::npos);
+		}
+		dock->next_call = 0;
+		dock->_advance_tools();
+		CHECK(dock->owns_agent_git_job);
+		dock->_on_stop_pressed();
+		CHECK_FALSE(dock->owns_agent_git_job);
+		CHECK_FALSE(GoSuiteRegistry::is_git_job_busy());
+		GoSuiteRegistry::set_git_job_busy(true); // A different operation owns the reservation.
+		dock->_on_stop_pressed();
+		CHECK(GoSuiteRegistry::is_git_job_busy());
+		GoSuiteRegistry::set_git_job_busy(false);
+		memdelete(dock);
 	}
 	void check_file_approval() {
 		GoAgenticsDock *dock = memnew(GoAgenticsDock);
@@ -159,4 +203,9 @@ TEST_CASE("[GO.][ChatHistory][Editor] History survives restart, recovers backup 
 TEST_CASE("[GO.][ChatHistory][Editor] File approval cannot be bypassed by scene auto-approval") {
 	GoChatHistoryDockTest fixture;
 	fixture.check_file_approval();
+}
+
+TEST_CASE("[GO.][ChatHistory][Editor] Agent Git status is nonblocking private and cancels only its own job") {
+	GoChatHistoryDockTest fixture;
+	fixture.check_async_status();
 }

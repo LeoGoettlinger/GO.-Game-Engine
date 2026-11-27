@@ -557,3 +557,28 @@ GO-validation artifact. Capture requires a visible X11 window but is NOT manual
 visual review. Windows graphical review and live-AI acceptance remain open.
 All these new acceptance gates are implemented but await their first full CI
 execution; mocked orchestration tests are not a substitute for that result.
+
+### Remaining project controls and asynchronous agent Git status
+
+36 tools are now enabled. `scan_filesystem`, `select_node`, `auto_commit` and
+`get_scene_tree` use mandatory editor-action approval. Selection is bounded to
+the open scene and rechecks after clearing the previous selection. Scene-tree
+inspection loads a saved .tscn resource without instantiating it, returns at most
+1000 declarations/48000 bytes, and does not expand inherited/instanced subscenes.
+Import/resource loading may execute project callbacks and is explicitly not a
+sandbox. Agent Automatic Commit uses the same registered controller and lock as
+the dock and close reminder, with an explicit gateway/privacy/stage/push warning.
+
+`set_project_setting` accepts only name=application/run/main_scene and a scene
+string value; it delegates to the backed-up full settings-preview flow. Other
+setting writes are refused. Preview serialization now restores Godot's implicit
+feature-list normalization until approval, and applies that list only after the
+configuration replacement succeeds.
+
+`git_status` runs nonblocking with a 30-second timeout and owns its reservation.
+Stop/exit cancels only its own job. The response contains a local changed-path
+count, not filenames/content, remote-fetch state or LFS-transfer claims. A native
+dock test covers actual local Git, completion, privacy and cancellation ownership.
+New editor-action denial tests and setting allowlist checks are added. Runtime
+acceptance remains pending. The UI capture script executable-bit style failure
+from dc8e0d90 is corrected in this checkpoint.
