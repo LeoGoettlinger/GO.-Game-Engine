@@ -31,15 +31,9 @@ func _ready() -> void:
 
 
 func _on_download_button_pressed() -> void:
-	# Safeguard the actual dialogue manager repo from accidentally updating itself
-	if FileAccess.file_exists("res://tests/test_basic_dialogue.gd"):
-		prints("You can't update the addon from within itself.")
-		failed.emit()
-		return
-
-	http_request.request(next_version_release.zipball_url)
+	# GO. updates ship with verified engine releases, never mutable addon downloads.
 	download_button.disabled = true
-	download_button.text = DMConstants.translate(&"update.downloading")
+	download_button.text = tr("Bundled with GO.; update through GO. releases")
 
 
 func _on_http_request_request_completed(result: int, _response_code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:

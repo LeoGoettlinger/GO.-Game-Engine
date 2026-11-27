@@ -764,3 +764,19 @@ real editor (`editor-ui.png`) and the running player (`player-ui.png`). These ar
 actual process captures, not generated mockups; their runtime and visual results
 are still pending. The mocked orchestration test checks that both captures are
 scheduled before source-independent debug/release export execution.
+
+### Offline policy audit follow-up
+
+The source audit found additional updater HTTP calls in Dialogue Manager,
+Phantom Camera and GUT. They are now disabled, including manual mutable addon
+downloads. Dialogue Manager/Phantom Camera explain that GO. releases supply
+updates; GUT preserves deferred completion notification and local/cached version
+metadata. All upstream licenses remain untouched and the changes are registered
+in PATCHES.md and each origin record. Manifest validation now rejects direct
+request/request_raw/connect_to_host call sites in vendored GDScript as a
+regression tripwire, not as a sandbox or a complete network-security proof.
+
+Separately, the live anonymous synthetic Kilo planning workflow **46045515518**
+passed using production C++ response/argument validation. It did not execute an
+editor action. Queue maintenance **46045792111** completed successfully. Current
+full runtime, UI and plugin acceptance still require completed build results.

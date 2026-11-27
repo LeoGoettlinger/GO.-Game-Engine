@@ -133,3 +133,19 @@ nonzero exits block release packaging; per-plugin logs are preserved. This new
 startup gate has not completed yet. Defaults remain disabled until startup and
 visual/interaction checks pass. An editor starting successfully does not by
 itself prove every plugin feature or exported-project behavior.
+
+### Offline policy audit follow-up
+
+The source audit found additional updater HTTP calls in Dialogue Manager,
+Phantom Camera and GUT. They are now disabled, including manual mutable addon
+downloads. Dialogue Manager/Phantom Camera explain that GO. releases supply
+updates; GUT preserves deferred completion notification and local/cached version
+metadata. All upstream licenses remain untouched and the changes are registered
+in PATCHES.md and each origin record. Manifest validation now rejects direct
+request/request_raw/connect_to_host call sites in vendored GDScript as a
+regression tripwire, not as a sandbox or a complete network-security proof.
+
+Separately, the live anonymous synthetic Kilo planning workflow **46045515518**
+passed using production C++ response/argument validation. It did not execute an
+editor action. Queue maintenance **46045792111** completed successfully. Current
+full runtime, UI and plugin acceptance still require completed build results.

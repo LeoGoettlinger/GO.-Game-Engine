@@ -51,8 +51,8 @@ func apply_theme() -> void:
 
 
 func check_for_update() -> void:
-	if DMSettings.get_user_value("check_for_updates", true):
-		http_request.request(REMOTE_RELEASES_URL)
+	# GO. offline pinned bundle: updater network access is disabled.
+	pass
 
 
 #region Signals

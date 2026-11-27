@@ -10,6 +10,7 @@ GO.-owned test code is MIT licensed. Standard library only.
 from __future__ import annotations
 
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -117,6 +118,12 @@ def main() -> int:
         for path in destination.rglob("*"):
             if path.is_symlink():
                 errors.append(f"{label}: symlink in bundle is not allowed: {path.relative_to(ROOT)}")
+            elif path.is_file() and path.suffix == ".gd":
+                # This is a regression tripwire for known updater call sites,
+                # not a sandbox or a complete network-flow analysis.
+                source = path.read_text(encoding="utf-8", errors="replace")
+                if re.search(r"\.\s*(?:request|request_raw|connect_to_host)\s*\(", source):
+                    errors.append(f"{label}: review network call in offline bundle: {path.relative_to(ROOT)}")
 
     if errors:
         print("GO. plugin manifest validation FAILED:", file=sys.stderr)

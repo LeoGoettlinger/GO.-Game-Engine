@@ -85,10 +85,9 @@ func _on_item_selected(index: int) -> void:
 
 
 func _on_download_button_pressed() -> void:
-	_download_http_request.request(next_version_release.zipball_url)
+	# GO. updates ship with verified engine releases, never mutable addon downloads.
 	_download_button.disabled = true
-	_download_label.text = "Downloading..."
-	_download_button_bg.hide()
+	_download_label.text = tr("Bundled with GO.; update through GO. releases")
 
 
 func _on_mouse_entered() -> void:

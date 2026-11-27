@@ -8,5 +8,8 @@
   "license_url": "https://github.com/ramokz/phantom-camera/blob/v0.11.0.3/LICENSE",
   "tarball_sha256": "a410435c47a5785fb466de151e8c3dd6e92a2f123196462693f4b51c0652f3eb",
   "source_subdir": "addons/phantom_camera",
-  "addon_path": "addons/phantom_camera"
+  "addon_path": "addons/phantom_camera",
+  "patches": [
+    "GO. offline policy: disable bundled addon update/download HTTP requests; GUT completes its asynchronous notification using local/cached metadata."
+  ]
 }

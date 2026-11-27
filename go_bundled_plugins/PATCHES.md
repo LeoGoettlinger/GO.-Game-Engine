@@ -29,3 +29,19 @@ This is the only source patch among the seven vendored GDScript plugins as of
   Official 4.7.2 `--check-only --script` does not initialize autoload globals;
   this was the sole parse/compile failure remaining after adding Dialogic. The
   instance-based check also respects non-global handlers. Reapply after vendoring.
+
+## Offline updater policy (Dialogue Manager, Phantom Camera, GUT)
+
+- Dialogue Manager `components/update_button.gd` and
+  `components/download_update_panel.gd`: disable automatic checks and mutable
+  download/install requests. The download button explains release-based updates.
+- Phantom Camera `scripts/panel/updater/update_button.gd` and
+  `scripts/panel/updater/download_update_panel.gd`: same policy.
+- GUT `update_detector.gd`: `fetch_remote_file` emits completion deferred and
+  returns unavailable without HTTP, preserving awaiters and shipped/cached
+  version metadata. No error is pushed just because the editor is offline.
+
+Together with the Dialogic patch, these remove all current `.request(...)`
+HTTP call sites in the eight vendored GDScript addons. Addons remain unsandboxed;
+this static policy check is not a guarantee against arbitrary third-party code.
+Reapply these patches after re-vendoring pinned upstream sources.

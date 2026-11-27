@@ -170,8 +170,7 @@ func version_to_number(version: String) -> int:
 
 
 func check_for_update() -> void:
-	if ProjectSettings.get_setting(UPDATER_CONSTANTS.setting_updater_mode) == 0:  return
-
-	http_request.request(REMOTE_RELEASE_URL)
+	# GO. offline pinned bundle: updater network access is disabled.
+	pass
 
 #endregion
