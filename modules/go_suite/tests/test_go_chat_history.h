@@ -68,7 +68,9 @@ struct GoChatHistoryDockTest {
 	void check_json_fallback() {
 		GoAgenticsDock *dock = memnew(GoAgenticsDock);
 		SceneTree::get_singleton()->get_root()->add_child(dock);
-		const String calls = R"([{"id":"json-fallback-0","name":"write_file","arguments":{"path":"res://fallback.txt","content":"proposed"}}])";
+		const String calls = go_suite::to_godot_string(go::serialise_tool_calls({
+				{ "json-fallback-0", "write_file", R"({"path":"res://fallback.txt","content":"proposed"})" },
+		}));
 		dock->agent_loop_active = true;
 		dock->_on_chat_completed("Proposal", calls, true);
 		CHECK(dock->pending_calls.empty()); // Chat-only must never gain tool permission.
