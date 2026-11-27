@@ -661,3 +661,13 @@ Dialogic's upstream automatic updater was also disabled: its check/download
 methods return unavailable/failure without HTTP requests. This additive source
 patch is recorded in PATCHES.md and its provenance; pinned bundles must not
 self-update when opened offline.
+
+### Native scene test runtime correction
+
+The full build for 821c9efd compiled both platforms but failed script-attachment
+Undo/Redo testing: native doctest startup had not initialized GDScript language
+globals ("Native class Node not found"). The fixture now scopes language
+init/finish exactly as the upstream GDScript runner does. Production attachment
+code is unchanged; rerun confirmation is pending. The extension archive job's
+first run also failed; structured error annotations are added for diagnosis in
+environments that cannot retrieve Actions log-CDN files.

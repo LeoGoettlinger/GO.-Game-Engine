@@ -196,6 +196,12 @@ TEST_CASE("[GO.][SceneUndo][SceneTree] Player physics node creation uses the pro
 
 namespace TestGoSceneUndo {
 TEST_CASE("[GO.][SceneUndo][SceneTree] Script assignment retains its resource across undo and redo") {
+	// Native doctest startup registers classes but does not initialize script
+	// language globals. Match the upstream GDScript test runner's lifetime.
+	struct LanguageScope {
+		LanguageScope() { GDScriptLanguage::get_singleton()->init(); }
+		~LanguageScope() { GDScriptLanguage::get_singleton()->finish(); }
+	} language_scope;
 	Ref<GDScript> script;
 	script.instantiate();
 	script->set_source_code("extends Node\nvar speed = 100\n");
