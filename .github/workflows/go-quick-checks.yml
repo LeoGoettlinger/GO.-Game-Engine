@@ -72,6 +72,11 @@ jobs:
       - name: Export smoke orchestration (no engine execution)
         run: python misc/scripts/go_export_smoke_test.py
 
+      - name: Plugin bundle and startup orchestration regressions
+        run: |
+          python misc/scripts/go_bundle_extensions_test.py
+          python misc/scripts/go_plugin_startup_smoke_test.py
+
       - name: Upstream patch register check
         run: python misc/scripts/go_upstream_patch_check.py
 
