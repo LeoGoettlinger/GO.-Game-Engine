@@ -1,0 +1,12 @@
+{
+  "name": "Dialogic 2",
+  "id": "dialogic",
+  "upstream_url": "https://github.com/dialogic-godot/dialogic",
+  "tag": "2.0-alpha-20",
+  "commit": "e301e1bb5e62e6de22c6b7748c4372d0570bb4a7",
+  "license": "MIT",
+  "license_url": "https://github.com/dialogic-godot/dialogic/blob/2.0-alpha-20/LICENSE",
+  "tarball_sha256": "e20dbd1786a54b202c589e3d318634a569a1e83931b648cbd629731acebbda7f",
+  "source_subdir": "addons/dialogic",
+  "addon_path": "addons/dialogic"
+}

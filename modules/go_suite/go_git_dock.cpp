@@ -38,6 +38,7 @@
 #include "go_git_lifecycle.h"
 #include "go_git_remote.h"
 #include "go_lfs_dialog.h"
+#include "go_plugins_dialog.h"
 #include "go_remote_assistant.h"
 #include "go_suite_registry.h"
 #include "go_system_git_runner.h"
@@ -253,7 +254,11 @@ void GoGitDock::_on_log_pressed() {
 }
 
 void GoGitDock::_on_plugins_pressed() {
-	_append_output(TTR("Bundled Plugins management is added in a later step."));
+	if (plugins_dialog == nullptr) {
+		plugins_dialog = memnew(GoPluginsDialog);
+		add_child(plugins_dialog);
+	}
+	plugins_dialog->open();
 }
 
 void GoGitDock::set_host_text(const String &p_text) {
@@ -441,7 +446,7 @@ GoGitDock::GoGitDock() {
 
 	plugins_button = memnew(Button);
 	plugins_button->set_text(TTR("Bundled Plugins"));
-	plugins_button->set_disabled(true);
+	plugins_button->set_disabled(false);
 	plugins_button->connect("pressed", callable_mp(this, &GoGitDock::_on_plugins_pressed));
 	toolbar_tertiary->add_child(plugins_button);
 

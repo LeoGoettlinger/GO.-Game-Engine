@@ -50,6 +50,7 @@ std::vector<std::string> GoProjectSetup::core_plugin_directories() {
 		"aseprite_wizard",
 		"beehave",
 		"dialogue_manager",
+		"dialogic",
 		"godot_state_charts",
 		"gut",
 		"phantom_camera",

@@ -197,7 +197,7 @@ jobs:
             EDITOR=bin/godot.windows.editor.x86_64.exe
           fi
           python misc/scripts/go_native_tests.py --editor "$EDITOR" --suite ReadTools \
-            --minimum 10 --output go-read-tools-tests.log
+            --minimum 11 --output go-read-tools-tests.log
 
       - name: Build release template
         shell: bash

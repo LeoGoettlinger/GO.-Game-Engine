@@ -36,15 +36,15 @@
       "license_file": "addons/dialogic/LICENSE",
       "type": "gdscript",
       "default_enabled": false,
-      "bundled": false,
+      "bundled": true,
       "category": "Dialogue",
       "mutually_exclusive_with": [
         "dialogue_manager"
       ],
-      "notes": "Alpha release; intentionally not bundled/default-enabled until a 4.7.2 editor smoke test passes. Never enable together with Dialogue Manager by default.",
+      "notes": "Pinned alpha source vendored offline; default disabled pending GO. editor startup acceptance. Mutually exclusive with Dialogue Manager.",
       "source_subdir": "addons/dialogic",
       "license_source": "LICENSE",
-      "tarball_sha256": ""
+      "tarball_sha256": "e20dbd1786a54b202c589e3d318634a569a1e83931b648cbd629731acebbda7f"
     },
     {
       "name": "Dialogue Manager",
@@ -186,7 +186,9 @@
       "category": "3D scattering",
       "notes": "Vendored GDScript addon; activation remains opt-in until editor smoke test.",
       "source_subdir": "addons/proton_scatter",
-      "exclude_prefixes": ["demos/"],
+      "exclude_prefixes": [
+        "demos/"
+      ],
       "license_source": "addons/proton_scatter/LICENSE",
       "tarball_sha256": "d7afa3e5f67d43e3ebed35e6bba8336e629987a70c4a374965bed593e7cad1b9"
     },

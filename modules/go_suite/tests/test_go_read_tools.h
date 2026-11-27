@@ -34,6 +34,7 @@
 // SPDX-License-Identifier: MIT
 
 #include "../go_agentics_tool_bridge.h"
+#include "../go_plugins_dialog.h"
 #include "../go_system_git_runner.h"
 
 #include "core/config/project_settings.h"
@@ -75,6 +76,19 @@ struct Fixture {
 		return GoAgenticsToolBridge().execute({ "read-test", p_name, p_args });
 	}
 };
+
+TEST_CASE("[GO.][ReadTools] Offline plugin copy rejects missing trees and linked paths") {
+	Fixture fixture;
+	CHECK(GoPluginsDialog::is_safe_tree(fixture.directory));
+	CHECK_FALSE(GoPluginsDialog::is_safe_tree(fixture.directory.path_join("missing")));
+	fixture.write("plugin.cfg", "[plugin]\nname=\"Test\"\n");
+	CHECK(GoPluginsDialog::is_safe_tree(fixture.directory));
+	Ref<DirAccess> access = DirAccess::open(fixture.directory);
+	if (access->create_link(fixture.directory.path_join("plugin.cfg"), fixture.directory.path_join("linked.cfg")) == OK) {
+		CHECK_FALSE(GoPluginsDialog::is_safe_tree(fixture.directory));
+		DirAccess::remove_absolute(fixture.directory.path_join("linked.cfg"));
+	}
+}
 
 TEST_CASE("[GO.][ReadTools] Bounded reads and search return only approved project text") {
 	Fixture fixture;

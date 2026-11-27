@@ -46,6 +46,7 @@ class LineEdit;
 class TextEdit;
 class GoAutoCommitController;
 class GoLfsDialog;
+class GoPluginsDialog;
 class GoRemoteAssistant;
 
 class GoGitDock : public VBoxContainer {
@@ -73,6 +74,7 @@ class GoGitDock : public VBoxContainer {
 	void _on_cancel_git_pressed();
 	GoRemoteAssistant *remote_dialog = nullptr;
 	GoLfsDialog *lfs_dialog = nullptr;
+	GoPluginsDialog *plugins_dialog = nullptr;
 	GoAutoCommitController *auto_commit_controller = nullptr;
 
 	Label *host_label = nullptr;

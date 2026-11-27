@@ -619,3 +619,21 @@ Local checkpoint checks: production/test syntax for 31 module/adapter C++ files
 and eight test headers, standalone guardrails, upstream patch registry, UI
 source guardrails, five mocked export-harness cases, plugin manifest and style
 checks. None substitutes for the outstanding runtime/release checks above.
+
+### Offline plugin management implementation checkpoint
+
+The earlier disabled-plugin-manager blocker is now replaced by an offline catalog
+in the Git Suite. Install copies to a staging folder, refuses existing addon
+folders and linked paths, and never downloads, overwrites or deletes user files.
+Enable/disable requires explicit confirmation; enabling refuses a currently
+enabled conflicting dialogue addon. Disabling retains files. Failures retain
+staging data for inspection. The manager refuses operations during Git/editor
+locks, project execution or filesystem scanning. Import and plugin activation
+execute third-party code and are not sandboxed or scene-undoable.
+
+Dialogic 2 alpha-20 is now source-vendored at the existing pinned commit with
+SHA-256 provenance and unchanged MIT license; eight GDScript addons are bundled.
+New-project copying includes Dialogic, but activation remains opt-in pending
+actual startup/compatibility checks. Native path-safety regression coverage is
+added. The dialog itself and Dialogic startup still require runtime/visual
+acceptance. Four GDExtension binary bundles remain outstanding.
