@@ -41,13 +41,14 @@ not ship Aseprite.
 
 The editor looks for `go_bundled_plugins/` next to the executable, then in the editor data
 directory, then in the source tree. Pure GDScript addons are copied to
-`res://addons/<plugin>/` at project creation. `GO. → Bundled Plugins` can perform the same
-copy/activate/deactivate action offline for an already-open project. GDExtension binaries are
-release-bundle artifacts; they are not compiled into the engine core or committed as large
-blobs here.
+`res://addons/<plugin>/` at project creation. The `Bundled Plugins` button is currently disabled; its handler is a placeholder.
+Offline copy/activate/deactivate management for an already-open project is not
+implemented yet. Use Godot’s existing plugin controls for manually installed addons. GDExtension binaries still need a pinned build/download-and-checksum release
+pipeline; they are not currently included, compiled into the engine core, or
+committed as large blobs here.
 
-The release package includes a generated `BUNDLED_PLUGINS_STATUS.txt` so a user can see which
-GDExtension binaries are present and which are still pending.
+The release package includes a generated `BUNDLED_PLUGINS_STATUS.txt` which labels the four
+GDExtension entries as pending. That status file is not proof of bundled binaries.
 
 ## Maintainer commands
 

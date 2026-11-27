@@ -630,3 +630,11 @@ The actual-editor acceptance fixture now exercises the log tool, then verifies
 whole-buffer size rejection and a known secret-marker rejection. The upstream
 adapter is documented in UPSTREAM_PATCHES.md and included in real-header syntax
 checks for production/test layouts. Runtime and visual confirmation are pending.
+
+### Offene Paket-Lücken aus dem Abschlussaudit
+
+Die 37 angeschlossenen Agentenwerkzeuge bedeuten noch keine Gesamtfreigabe.
+Die Offline-Verwaltung der Plugins im geöffneten Projekt ist noch ein deaktivierter
+Platzhalter. Sieben GDScript-Addons sind vorhanden; Dialogic und die vier
+GDExtension-Binärpakete fehlen noch. Ein getestetes Standard-Plugin-Set, aktuelle
+Windows-/Linux-Laufzeitabnahmen, Screenshots und der Live-KI-Durchlauf stehen aus.

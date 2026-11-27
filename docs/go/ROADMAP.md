@@ -598,3 +598,24 @@ The actual-editor acceptance fixture now exercises the log tool, then verifies
 whole-buffer size rejection and a known secret-marker rejection. The upstream
 adapter is documented in UPSTREAM_PATCHES.md and included in real-header syntax
 checks for production/test layouts. Runtime and visual confirmation are pending.
+
+### Remaining release blockers found during completion audit
+
+The current 37-tool checkpoint is not final project acceptance. In particular:
+
+- The Bundled Plugins button still has a disabled placeholder handler. Contrary
+  to the earlier PLUGINS.md description, existing-project offline management is
+  not implemented; that description is corrected.
+- Seven GDScript addons are vendored. Dialogic remains absent and four pinned
+  GDExtension entries still lack release binaries. No tested default plugin set
+  has been enabled. Manifest/license validation is not startup acceptance.
+- Latest full Windows/Linux editor/template builds are still in progress. The
+  new actual-editor tool chain, log rejection and graphical screenshot checks
+  have not returned runtime results yet.
+- Live free-gateway planning, user-clicked approval flow, Automatic Commit UI,
+  lifecycle reminders and plugin startup still need end-to-end/visual acceptance.
+
+Local checkpoint checks: production/test syntax for 31 module/adapter C++ files
+and eight test headers, standalone guardrails, upstream patch registry, UI
+source guardrails, five mocked export-harness cases, plugin manifest and style
+checks. None substitutes for the outstanding runtime/release checks above.
