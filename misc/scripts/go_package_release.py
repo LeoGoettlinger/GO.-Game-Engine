@@ -91,6 +91,8 @@ def plugin_status(staging: Path) -> None:
     lines = ["GO. bundled plugin status", ""]
     for plugin in manifest["plugins"]:
         state = "source-vendored" if plugin.get("bundled") else "release-bundle pending"
+        if (staging / "go_bundled_plugins" / plugin["id"] / ".release-origin.json").is_file():
+            state = "checksum-verified release bundle (startup acceptance separate)"
         default = "default-on" if plugin.get("default_enabled") else "opt-in"
         lines.append(f"- {plugin['name']} ({plugin['tag']}): {state}, {default}, {plugin['license']}")
     lines += [
@@ -126,6 +128,7 @@ def platform_layout(platform: str) -> tuple[str, dict[str, str], list[str]]:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--platform", choices=("linux", "windows"), required=True)
+    parser.add_argument("--extensions-dir", type=Path, help="Checksum-verified offline extension bundles")
     parser.add_argument("--bin-dir", default="bin", help="SCons output directory")
     parser.add_argument("--output-dir", default="dist", help="release artifact directory")
     parser.add_argument("--go-version", default=None, help="GO. release label, default from version.py")
@@ -181,6 +184,20 @@ def main() -> int:
             source = ROOT / directory
             if source.is_dir():
                 shutil.copytree(source, staging / directory, dirs_exist_ok=True)
+
+        if args.extensions_dir:
+            manifest = json.loads((ROOT / "go_bundled_plugins/plugins.json").read_text(encoding="utf-8"))
+            for plugin in manifest["plugins"]:
+                if plugin["type"] != "gdextension":
+                    continue
+                source = args.extensions_dir / plugin["id"]
+                provenance = source / ".release-origin.json"
+                if (
+                    not provenance.is_file()
+                    or json.loads(provenance.read_text(encoding="utf-8")) != plugin["release_asset"]
+                ):
+                    raise ValueError(f"Missing or mismatched release bundle: {plugin['id']}")
+                shutil.copytree(source, staging / "go_bundled_plugins" / plugin["id"], dirs_exist_ok=True)
 
         build_license_bundle(staging)
         plugin_status(staging)

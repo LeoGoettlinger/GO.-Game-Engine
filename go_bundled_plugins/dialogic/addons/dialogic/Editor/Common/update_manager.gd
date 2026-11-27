@@ -33,8 +33,8 @@ func get_current_version() -> String:
 
 
 func request_update_check() -> void:
-	if $UpdateCheckRequest.get_http_client_status() == HTTPClient.STATUS_DISCONNECTED:
-		$UpdateCheckRequest.request(REMOTE_RELEASES_URL)
+	# GO. uses pinned offline bundles; never contact an updater from the editor.
+	update_check_completed.emit(UpdateCheckResult.NO_ACCESS)
 
 
 func _on_UpdateCheck_request_completed(result:int, response_code:int, headers:PackedStringArray, body:PackedByteArray) -> void:
@@ -116,13 +116,8 @@ func get_release_tag_info(release_tag:String) -> Dictionary:
 
 
 func request_update_download() -> void:
-	# Safeguard the actual dialogue manager repo from accidentally updating itself
-	if DirAccess.dir_exists_absolute("res://test-project/"):
-		prints("[Dialogic] Looks like you are working on the addon. You can't update the addon from within itself.")
-		downdload_completed.emit(DownloadResult.FAILURE)
-		return
-
-	$DownloadRequest.request(update_info.zipball_url)
+	# GO. bundle updates are distributed with verified engine releases.
+	downdload_completed.emit(DownloadResult.FAILURE)
 
 
 func _on_DownloadRequest_completed(result:int, response_code:int, headers:PackedStringArray, body:PackedByteArray):

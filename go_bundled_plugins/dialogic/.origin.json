@@ -8,5 +8,8 @@
   "license_url": "https://github.com/dialogic-godot/dialogic/blob/2.0-alpha-20/LICENSE",
   "tarball_sha256": "e20dbd1786a54b202c589e3d318634a569a1e83931b648cbd629731acebbda7f",
   "source_subdir": "addons/dialogic",
-  "addon_path": "addons/dialogic"
+  "addon_path": "addons/dialogic",
+  "patches": [
+    "Disable editor update-check and download requests for pinned offline GO. bundles."
+  ]
 }

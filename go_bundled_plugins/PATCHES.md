@@ -15,3 +15,10 @@ the pristine upstream tree; reapply the patches below afterwards.
 
 This is the only source patch among the seven vendored GDScript plugins as of
 `4.7.2.go.0.1.0`. All other vendored files remain byte-identical to their pinned tarballs.
+
+## Dialogic 2 alpha-20
+
+- `addons/dialogic/Editor/Common/update_manager.gd`: update check and download
+  methods emit failure/unavailable without HTTP requests. This prevents automatic
+  network access and mutable self-updates of the pinned offline bundle. Upstream
+  licenses are unchanged. Reapply this patch after re-vendoring.

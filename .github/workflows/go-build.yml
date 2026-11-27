@@ -251,14 +251,17 @@ jobs:
         shell: bash
         run: python misc/scripts/go_validate_plugins.py
 
-      # GO. GDExtension binaries are release artifacts. The packaging status file records
-      # entries that are still pending instead of pretending they are source-vendored.
+      - name: Fetch checksum-pinned GDExtension bundles
+        shell: bash
+        run: python misc/scripts/go_bundle_extensions.py --platform ${{ matrix.platform }} --output .cache/go-extensions
+
       - name: Package GO. release
         shell: bash
         run: |
           python misc/scripts/go_package_release.py \
             --platform ${{ matrix.platform }} \
             --bin-dir bin \
+            --extensions-dir .cache/go-extensions \
             --output-dir dist \
             --go-version "$GO_VERSION"
 

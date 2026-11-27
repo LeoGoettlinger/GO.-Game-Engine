@@ -21,7 +21,11 @@
       "notes": "EditorVCSInterface GDExtension. Release workflow must place the Windows/Linux binaries and gdextension file here. Compatible with GO. Git Suite, which remains system-git based.",
       "source_subdir": "",
       "license_source": "",
-      "tarball_sha256": ""
+      "tarball_sha256": "",
+      "release_asset": {
+        "url": "https://github.com/godotengine/godot-git-plugin/releases/download/v3.3.0/godot-git-plugin-v3.3.0.zip",
+        "sha256": "f98b4243c9970c52b5503435f06d8e89903208a551d29ab04e01894b03f25490"
+      }
     },
     {
       "name": "Dialogic 2",
@@ -107,7 +111,11 @@
       "notes": "GDExtension built in CI; source and binary are not committed here.",
       "source_subdir": "",
       "license_source": "",
-      "tarball_sha256": ""
+      "tarball_sha256": "",
+      "release_asset": {
+        "url": "https://github.com/limbonaut/limboai/releases/download/v1.8.1/limboai%2Bv1.8.1.gdextension-4.6.zip",
+        "sha256": "0910411f8dbc0da8920f6c8bbbb6397c347cd9f2f193942468a702dfb11d5f0e"
+      }
     },
     {
       "name": "Beehave",
@@ -167,7 +175,11 @@
       "notes": "Large GDExtension; source and platform binaries are built/verified by the release workflow. Not activated in 2D projects by default.",
       "source_subdir": "",
       "license_source": "",
-      "tarball_sha256": ""
+      "tarball_sha256": "",
+      "release_asset": {
+        "url": "https://github.com/TokisanGames/Terrain3D/releases/download/v1.0.2-stable/Terrain3D_v1.0.2-stable.zip",
+        "sha256": "a071850250ec5e596aa54da61c01d75768774eb379ee997584d426a45f4884a2"
+      }
     },
     {
       "name": "ProtonScatter",
@@ -251,7 +263,11 @@
       "notes": "MIT license manually verified. GDExtension binaries are optional release artifacts; not built in the minimal CI path.",
       "source_subdir": "",
       "license_source": "",
-      "tarball_sha256": ""
+      "tarball_sha256": "",
+      "release_asset": {
+        "url": "https://github.com/DmitriySalnikov/godot_debug_draw_3d/releases/download/1.7.3/debug-draw-3d_1.7.3.zip",
+        "sha256": "e16c7e1bd7f4c30d8e503ce424caef5b9e2fd5f44094cf00be66c334aff54c70"
+      }
     }
   ]
 }

@@ -637,3 +637,27 @@ New-project copying includes Dialogic, but activation remains opt-in pending
 actual startup/compatibility checks. Native path-safety regression coverage is
 added. The dialog itself and Dialogic startup still require runtime/visual
 acceptance. Four GDExtension binary bundles remain outstanding.
+
+### Checksum-pinned extension packaging gate
+
+All four GDExtension release assets now have fixed upstream URLs and SHA-256
+values recorded from GitHub release metadata. A maintainer-only CI bundler
+verifies the digest before safe extraction, rejects traversal/links/ambiguous
+addon roots and requires a target-platform library. Upstream licenses fetched
+from the pinned source commits are included. Packaging merges only bundles with
+matching provenance and reports them separately from source-vendored addons.
+A short dedicated workflow validates Windows/Linux archive layout without an
+engine rebuild; the full release job runs the same bundler before packaging.
+
+Five offline archive tests cover checksum rejection, traversal, ambiguous roots,
+missing target binaries and no-overwrite behavior. Local real downloads are
+blocked by the sandbox's GitHub release-CDN restriction, so actual archive
+layout/download and native startup acceptance are pending CI. LimboAI uses its
+published GDExtension 4.6 artifact, not a replacement upstream editor; compatibility
+with GO. 4.7.2 must still be checked. GDExtensions without plugin.cfg are not
+currently installable through the GDScript plugin dialog. No binary is committed.
+
+Dialogic's upstream automatic updater was also disabled: its check/download
+methods return unavailable/failure without HTTP requests. This additive source
+patch is recorded in PATCHES.md and its provenance; pinned bundles must not
+self-update when opened offline.
