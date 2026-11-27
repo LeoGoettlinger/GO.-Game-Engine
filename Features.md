@@ -6,7 +6,7 @@
 sondern den Editor um zwei fest eingebaute Suites, ein eigenes Branding, ein Offline-Plugin-Paket
 und einen automatisierten Commit-Ablauf zu erweitern. Alle Godot-Funktionen bleiben erhalten.
 
-> **Aktueller Status (Code-Stand `551a0fa2`):** Frühere Windows-/Linux-Editor-
+> **Aktueller Status (Code-Stand `b72b11d6`):** Frühere Windows-/Linux-Editor-
 > und Template-Builds sind nachweislich grün (`b21eef10`, Actions `43511344381`).
 > Die neueren Funktionen sind noch nicht vollständig laufzeit- oder visuell abgenommen.
 > Die folgenden älteren Entwicklungsabschnitte sind ein Änderungsverlauf; bei
@@ -17,9 +17,9 @@ und einen automatisierten Commit-Ablauf zu erweitern. Alle Godot-Funktionen blei
 | Agentenwerkzeuge | 37 Werkzeuge; native Calls und ausführbarer JSON-Fallback; 20-Aktionen-Limit; Freigaben | Syntax und eigenständige Tests grün; neue native Dock-Tests und Live-Ablauf offen |
 | Plugin-Verwaltung | Offline-Katalog, geschütztes Kopieren, Aktivieren/Deaktivieren; native-only Installation | UI-Laufzeit- und visuelle Abnahme offen; native-only Bibliotheken werden nicht entladen |
 | Plugin-Paket | 8 GDScript-Addons einschließlich Dialogic; 4 gepinnte GDExtension-Releasepakete | Windows-/Linux-Archivprüfung grün (`46042242506`); Plugin-Starttests blockieren Release bei Fehlern |
-| Player/Export | Echter Editor-Werkzeugaufbau, Ressourcen, Script, Undo/Redo; Bewegungsprüfung; beide Exporttypen | Aktueller vollständiger CI-Lauf offen; Editor-/Spiel-Screenshots sind vorbereitet, noch nicht geprüft |
+| Player/Export | Echter Editor-Werkzeugaufbau, Ressourcen, Script, Undo/Redo; Bewegungsprüfung; beide Exporttypen | Beide Plattformen bei `551a0fa2` erfolgreich; Spielaufnahme geprüft, Editoraufnahme abgeschnitten und nicht abgenommen |
 | Kilo live | Anonymer, free-only Live-Planungstest mit festem synthetischem Prompt | Live-Planungstest grün (`46045515518`); keine Projektdateien verschickt; kein Ersatz für einen Live-Editor-Agentenlauf |
-| Git / Automatic Commit | System-Git, LFS-Modi, asynchrone Aktionen, Lebenszyklusdialoge, Commit-Overlay | Vorhandene automatische Tests; aktuelle vollständige Benutzer-/UI-Abnahme weiterhin offen |
+| Git / Automatic Commit | System-Git, LFS-Modi, asynchrone Aktionen, Lebenszyklusdialoge, Commit-Overlay | Status/LFS-Prozesse jetzt asynchron und abbrechbar; Startup-Korrektur und neue native Tests noch in CI; Benutzer-/UI-Abnahme offen |
 
 Details und Grenzen stehen in [`docs/go/ROADMAP.md`](docs/go/ROADMAP.md).
 

@@ -135,3 +135,27 @@ The fixture is authored by the test, **not** by Code Agentics. This validates th
 engine/template layer only; it does not substitute for the required live-agent
 player workflow, screenshots, project-manager creation or packaged-release testing.
 The orchestration tests use mocks and must not be reported as real exports.
+
+## Retrieving actual UI evidence
+
+The full build uploads `GO-validation-linux-<run-id>` with the real X11
+`editor-ui.png` and `player-ui.png`. If direct artifact downloads are unavailable,
+use the restricted evidence workflow on the active development branch:
+
+```sh
+gh workflow run go-publish-ui-evidence.yml --ref arena/a15e5657-go-game-engine -f run_id=<completed-full-run-id>
+```
+
+It verifies that the completed run belongs to this repository, branch and full
+build workflow, copies only the two bounded PNG files, records the source SHA,
+run conclusion and hashes, and pushes an evidence-only `[skip ci]` commit to the
+same branch. It never executes downloaded files. Fetch that commit before making
+further edits. Images do not turn a failed build into a release, nor replace
+interaction tests. Missing captures cause this workflow to fail.
+
+Run both naming conventions for Python harness tests:
+
+```sh
+python3 -m unittest discover -s misc/scripts -p 'go_*_test.py'
+python3 -m unittest discover -s misc/scripts -p 'go_test_*.py'
+```

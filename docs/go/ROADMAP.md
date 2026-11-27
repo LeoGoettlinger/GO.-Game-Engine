@@ -4,38 +4,41 @@ Legend: `[x]` implemented and locally verifiable, `[~]` implemented but not yet 
 compiled editor/CI, `[ ]` open. A user-facing feature comparison lives in
 [`Features.md`](../../Features.md).
 
-## Current completion checkpoint (code 551a0fa2)
+## Current completion checkpoint (code b72b11d6)
 
 This summary supersedes the historical checklists below. Implemented does not
 mean visually or end-to-end accepted.
 
-- Earlier complete Windows/Linux build: **b21eef10**, Actions **43511344381**,
-  success rechecked through the GitHub API. This is not proof for newer code.
-- Current code: 37 guarded agent tools, actual JSON fallback execution, offline
-  plugin management, eight vendored GDScript addons, four checksum-pinned native
-  release bundles, independent startup gates and editor/player capture tooling.
-- Extension archive verification: **46042242506**, Linux and Windows passed.
-- Local current checks: 32 module/adapter C++ files and eight native-test headers
-  pass production/test syntax checking; standalone guardrails, mocked gateway,
-  local bare-Git flow, native-report validator, export-harness, archive-safety,
-  plugin-startup orchestration and live-probe safety tests pass. These are not
-  substitutes for running the new compiled editor.
-- Official quick validation **46046844194** at c6843a70 passed, including all
-  eight vendored GDScript addons and the current Python/C++ quick suites.
-- Latest native test-only correction **551a0fa2** uses the production tool-call
-  serializer in the JSON fallback dock regression. Syntax checks pass. Full
-  build **46048025646** and quick checks **46048025548** validate that revision;
-  no completed full result or screenshot is claimed.
-- Synthetic live gateway probe **46045515518** passed, proving live anonymous
-  free-model planning and production C++ response/schema validation. It does not
-  execute editor actions or send repository/user content.
-- Full release blockers: current native test results after fixes, actual-editor
-  creation/export gates, per-plugin startup/compatibility, user-clicked dialogs,
-  screenshots, live AI/editor integration and clean-machine release acceptance.
-  Plugin defaults remain disabled until their acceptance is established.
-- Old-run cancellation from the sandbox returned HTTP 403. Per-ref concurrency
-  now supersedes future obsolete validations; the restricted Actions maintenance
-  job **46045792111** completed successfully. No credentials are needed or requested from the user.
+- **Not release-ready.** Full run **46068717379** tests the corrected source on
+  Linux and Windows. Its result is pending; no current green release is claimed.
+- Full **46048025646** at 551a0fa2 passed editor/templates, native tests and
+  actual-editor player creation/movement/independent exports on both platforms,
+  then failed independent plugin startup. The fixture isolation fix is awaiting
+  that gate again. The earlier fully green build was b21eef10 / **43511344381**.
+- Full **46065048771** built the Linux editor at ed6b1e53, but startup caught an
+  LFS-dialog signal error. b72b11d6 uses Window notifications and adds a native
+  hide/cancellation regression. Compiled editor artifacts/cache are now saved
+  before startup gates, rather than only after all template builds.
+- Git dock status and LFS reads/transfers now use cancellable process pipelines.
+  Local filesystem decoration and some ancillary configuration/log paths remain
+  synchronous. Native coverage of the new pipelines still needs runtime proof.
+- Current local checks: 33 C++ units/eight native-test headers pass syntax checks;
+  all 22 discovered Python harness tests, standalone guardrails and real local
+  bare-Git flow pass. Real LFS transport cannot run in this sandbox without
+  `git-lfs`; CI provides it. Quick Checks **46065048784** passed at ed6b1e53.
+- 37 guarded agent tools, native tool calls/JSON fallback, offline plugin
+  management, eight source addons and four checksum-pinned native bundles are
+  implemented. Archive validation **46042242506** passed on both platforms.
+  Plugin defaults remain disabled until runtime acceptance is established.
+- Real screenshots are preserved under `evidence/551a0fa2/` with checksums and
+  source provenance. The player texture is visible. The editor image was clipped
+  and is **not approved**; the capture now waits for a settled 2D scene and sets
+  window geometry. Fresh images require review.
+- Synthetic anonymous free-model planning **46045515518** passed the production
+  parser. This does **not** prove live AI/editor actions or approval clicks.
+- Remaining release gates: current native/plugin runs, full UI evidence
+  (splash/docks/reminders/overlay/approval), live AI/editor integration, defaults
+  tested together, and clean-machine/offline release validation.
 
 ## Historical implementation checklist
 
