@@ -47,6 +47,7 @@
 #include "core/string/ustring.h"
 #include "editor/themes/editor_scale.h"
 #include "scene/gui/button.h"
+#include "scene/gui/dialogs.h"
 #include "scene/gui/item_list.h"
 #include "scene/gui/label.h"
 #include "scene/gui/line_edit.h"
@@ -64,7 +65,7 @@ void GoGitDock::_on_refresh_pressed() {
 
 void GoGitDock::_set_git_busy(bool p_busy) {
 	GoSuiteRegistry::set_git_job_busy(p_busy);
-	for (Button *button : { refresh_button, commit_button, pull_button, push_button, fetch_button, remote_button, lfs_button, log_button }) {
+	for (Button *button : { refresh_button, commit_button, pull_button, push_button, fetch_button, remote_button, lfs_button, log_button, auto_commit_button }) {
 		if (button != nullptr) {
 			button->set_disabled(p_busy);
 		}
@@ -194,6 +195,13 @@ void GoGitDock::_on_push_pressed() {
 }
 
 void GoGitDock::_on_auto_commit_pressed() {
+	if (!GoSuiteRegistry::is_auto_commit_available() || GoSuiteRegistry::is_git_job_busy() || GoSuiteRegistry::is_quit_pending()) {
+		return;
+	}
+	auto_commit_confirmation->popup_centered(Size2i(640, 260));
+}
+
+void GoGitDock::_start_auto_commit() {
 	if (auto_commit_controller == nullptr || auto_commit_controller->is_running()) {
 		return;
 	}
@@ -273,7 +281,7 @@ void GoGitDock::refresh_status() {
 			changes_list->clear();
 			changes_list->add_item(TTR("Initialize Git or open a project with a repository."));
 		}
-		for (Button *button : { commit_button, pull_button, push_button, fetch_button, remote_button, lfs_button, log_button }) {
+		for (Button *button : { commit_button, pull_button, push_button, fetch_button, remote_button, lfs_button, log_button, auto_commit_button }) {
 			if (button != nullptr) {
 				button->set_disabled(true);
 			}
@@ -316,7 +324,7 @@ void GoGitDock::refresh_status() {
 		}
 	}
 
-	for (Button *button : { commit_button, pull_button, push_button, fetch_button, remote_button, lfs_button, log_button }) {
+	for (Button *button : { commit_button, pull_button, push_button, fetch_button, remote_button, lfs_button, log_button, auto_commit_button }) {
 		if (button != nullptr) {
 			button->set_disabled(false);
 		}
@@ -345,7 +353,7 @@ GoGitDock::GoGitDock() {
 	auto_commit_controller->set_git_controller(&controller);
 	auto_commit_controller->connect("finished", callable_mp(this, &GoGitDock::_on_auto_commit_finished));
 	add_child(auto_commit_controller);
-	// GO. Keep Automatic Commit disabled until worker-thread and UI-lock tests pass.
+	// Cross-platform native transaction/lock suites pass; user confirmation remains mandatory.
 
 	Label *title = memnew(Label);
 	title->set_text(TTR("GO. Git Suite"));
@@ -397,6 +405,13 @@ GoGitDock::GoGitDock() {
 	HBoxContainer *toolbar_secondary = memnew(HBoxContainer);
 	add_child(toolbar_secondary);
 
+	auto_commit_confirmation = memnew(ConfirmationDialog);
+	auto_commit_confirmation->set_title(TTR("Confirm Automatic Commit"));
+	auto_commit_confirmation->set_autowrap(true);
+	auto_commit_confirmation->set_text(TTR("Stage project changes, create a commit and push to origin if configured? A bounded, privacy-filtered diff is sent anonymously to the free Kilo Gateway to generate the message; the gateway may log prompts. Filtering cannot guarantee removal of all secrets. If the gateway fails, a local fallback message is used. Review your changes first. No history is rewritten."));
+	auto_commit_confirmation->get_ok_button()->set_text(TTR("Commit and Push"));
+	auto_commit_confirmation->connect("confirmed", callable_mp(this, &GoGitDock::_start_auto_commit));
+	add_child(auto_commit_confirmation);
 	auto_commit_button = memnew(Button);
 	auto_commit_button->set_text(TTR("Automatic Commit"));
 	auto_commit_button->set_disabled(true);

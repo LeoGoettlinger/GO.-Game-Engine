@@ -189,3 +189,17 @@ TEST_CASE("[GO.][AutoFlow][Editor] Preflight cancellation releases only its own 
 	CHECK_FALSE(GoSuiteRegistry::is_editor_input_locked());
 	CHECK_FALSE(fixture.root->is_input_disabled());
 }
+
+TEST_CASE("[GO.][AutoFlow][Editor] Registry activation follows the live controller and refuses overlapping requests") {
+	CHECK_FALSE(GoSuiteRegistry::is_auto_commit_available());
+	{
+		GoAutoCommitFlowTest fixture;
+		fixture.setup();
+		CHECK(GoSuiteRegistry::is_auto_commit_available());
+		REQUIRE(GoSuiteRegistry::request_auto_commit());
+		CHECK_FALSE(GoSuiteRegistry::request_auto_commit());
+		fixture.run(false, true); // Empty repository: preflight fails without a gateway request.
+	}
+	CHECK_FALSE(GoSuiteRegistry::is_auto_commit_available());
+	CHECK_FALSE(GoSuiteRegistry::request_auto_commit());
+}

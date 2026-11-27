@@ -447,3 +447,16 @@ native suites and was still building the debug template at inspection time.
 Remaining major tool gaps include scene save/save-as/instantiation, script/resource
 assignment, project-setting writes/main-scene selection, and agent Git/log access.
 Automatic Commit activation and full visual/end-to-end acceptance remain open.
+
+### Automatic Commit activation after cross-platform runtime success
+
+Full run 43511344381 for b21eef10 passed Windows and Linux editor, native suites,
+templates and export/player gates. Automatic Commit is now registered while its
+controller is in the scene tree and unregistered on exit/destruction. The dock
+button is enabled for repositories after Refresh and disabled during Git work.
+A separate confirmation explains staging/commit/push and anonymous Kilo diff
+transmission with possible prompt logging and imperfect secret filtering. The
+close reminder includes the same warning. Registry availability and close-flow
+fixtures now exercise production activation instead of injecting a callback.
+These activation/UI changes still require their own runtime/visual acceptance;
+prior green results do not prove the new confirmation dialog visually correct.

@@ -164,7 +164,7 @@ jobs:
             EDITOR=bin/godot.windows.editor.x86_64.exe
           fi
           python misc/scripts/go_native_tests.py --editor "$EDITOR" --suite AutoFlow \
-            --minimum 4 --output go-auto-flow-tests.log
+            --minimum 5 --output go-auto-flow-tests.log
 
       - name: Automatic Commit close continuation tests
         shell: bash

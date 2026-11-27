@@ -479,3 +479,16 @@ dass Projektcode ohne Sandbox mit den Benutzerrechten ausgeführt wird.
 Ergebnisse melden die angeforderte Aktion, keinen garantierten Laufzeiterfolg.
 Native Ablehnungs-/Bypass-Tests sind ergänzt; die tatsächliche Editor-Ausführung
 und visuelle Gesamtabnahme dieser Erweiterung stehen noch aus.
+
+### Automatic Commit activation after cross-platform runtime success
+
+Full run 43511344381 for b21eef10 passed Windows and Linux editor, native suites,
+templates and export/player gates. Automatic Commit is now registered while its
+controller is in the scene tree and unregistered on exit/destruction. The dock
+button is enabled for repositories after Refresh and disabled during Git work.
+A separate confirmation explains staging/commit/push and anonymous Kilo diff
+transmission with possible prompt logging and imperfect secret filtering. The
+close reminder includes the same warning. Registry availability and close-flow
+fixtures now exercise production activation instead of injecting a callback.
+These activation/UI changes still require their own runtime/visual acceptance;
+prior green results do not prove the new confirmation dialog visually correct.

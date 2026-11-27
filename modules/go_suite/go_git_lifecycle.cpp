@@ -136,6 +136,9 @@ void GoGitLifecycle::_show_result() {
 	dialog->get_ok_button()->set_text(closing ? TTR("Close Anyway") : TTR("Open Git Suite"));
 	dialog->get_cancel_button()->set_text(closing ? TTR("Cancel") : TTR("Later"));
 	String message = status_failed ? TTR("Git status could not be checked. Inspect the repository before closing.") : vformat(TTR("Uncommitted changes: %d\nKnown unpushed commits: %d\nCommits behind the known remote: %d\nKnown pending LFS objects: %d"), status.entries.size(), status.ahead, status.behind, pending_lfs);
+	if (closing) {
+		message += "\n\n" + TTR("Automatic Commit stages changes, commits and pushes when origin is configured. It sends a bounded privacy-filtered diff to the anonymous free Kilo Gateway, which may log prompts. Filtering is not a guarantee against secrets; review changes first. A local fallback message is used on gateway failure.");
+	}
 	if (closing && GoSuiteRegistry::is_git_job_busy()) {
 		message += "\n" + TTR("A Git operation is still running. Wait for it to finish, or cancel closing to return to the editor.");
 	}

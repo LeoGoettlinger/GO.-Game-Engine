@@ -125,6 +125,10 @@ void GoAutoCommitController::_bind_methods() {
 }
 
 void GoAutoCommitController::_notification(int p_what) {
+	if (p_what == NOTIFICATION_ENTER_TREE) {
+		singleton = this;
+		GoSuiteRegistry::set_auto_commit_callback(&GoAutoCommitController::request);
+	}
 	if (p_what == NOTIFICATION_PROCESS && running) {
 		if (preparing_files) {
 			_prepare_lfs_files();
@@ -148,6 +152,7 @@ void GoAutoCommitController::_notification(int p_what) {
 		_dispose_overlay();
 		if (singleton == this) {
 			singleton = nullptr;
+			GoSuiteRegistry::set_auto_commit_callback(nullptr);
 		}
 	}
 }
@@ -769,7 +774,6 @@ bool GoAutoCommitController::request() {
 }
 
 GoAutoCommitController::GoAutoCommitController() {
-	singleton = this;
 	_build_ui();
 	kilo_client = memnew(GoKiloClient);
 	kilo_client->connect("chat_completed", callable_mp(this, &GoAutoCommitController::_on_chat_completed));
@@ -788,5 +792,6 @@ GoAutoCommitController::~GoAutoCommitController() {
 	}
 	if (singleton == this) {
 		singleton = nullptr;
+		GoSuiteRegistry::set_auto_commit_callback(nullptr);
 	}
 }

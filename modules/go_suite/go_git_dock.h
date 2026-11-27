@@ -39,6 +39,7 @@
 #include "scene/gui/box_container.h"
 
 class Button;
+class ConfirmationDialog;
 class ItemList;
 class Label;
 class LineEdit;
@@ -84,6 +85,7 @@ class GoGitDock : public VBoxContainer {
 	Button *pull_button = nullptr;
 	Button *push_button = nullptr;
 	Button *auto_commit_button = nullptr;
+	ConfirmationDialog *auto_commit_confirmation = nullptr;
 	Button *remote_button = nullptr;
 	Button *lfs_button = nullptr;
 	Button *log_button = nullptr;
@@ -95,6 +97,7 @@ class GoGitDock : public VBoxContainer {
 	void _on_pull_pressed();
 	void _on_push_pressed();
 	void _on_auto_commit_pressed();
+	void _start_auto_commit();
 	void _on_auto_commit_finished(bool p_success, const String &p_message);
 	void _on_remote_pressed();
 	void _on_lfs_pressed();

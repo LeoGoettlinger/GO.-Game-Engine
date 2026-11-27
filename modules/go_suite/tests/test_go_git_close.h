@@ -57,8 +57,7 @@ struct GoGitCloseTest : public Node {
 		lifecycle->set_process(false);
 		lifecycle->closing = true;
 		lifecycle->resume_quit = callable_mp(this, &GoGitCloseTest::resume);
-		CHECK_FALSE(GoSuiteRegistry::is_auto_commit_available());
-		GoSuiteRegistry::set_auto_commit_callback(&GoAutoCommitController::request);
+		CHECK(GoSuiteRegistry::is_auto_commit_available());
 		GoSuiteRegistry::set_quit_pending(true);
 		CHECK_FALSE(fixture.controller->start()); // Ordinary requests cannot bypass a pending quit.
 		lifecycle->_custom_action("auto_commit");
@@ -86,7 +85,6 @@ struct GoGitCloseTest : public Node {
 		}
 		lifecycle->_automatic_finished(true, "stale duplicate completion");
 		CHECK(resumed == (p_change || p_close_anyway ? 1 : 0));
-		GoSuiteRegistry::set_auto_commit_callback(nullptr);
 		memdelete(lifecycle);
 	}
 };
