@@ -9,6 +9,11 @@ on:
       - arena/a15e5657-go-game-engine
     tags:
       - 'go-v*'
+    paths-ignore:
+      - 'docs/**'
+      - 'Features.md'
+      - '.github/workflows/go-plugin-candidate.yml'
+      - '.github/workflows/go-publish-ui-evidence.yml'
   pull_request:
     types: [opened, labeled, synchronize, reopened]
 
