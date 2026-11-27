@@ -146,6 +146,8 @@ def main() -> int:
             print(f"GDScript parse check FAILED: {len(failures)}/{len(scripts)} scripts", file=sys.stderr)
             for script, output in failures[:20]:
                 print(f"\n--- res://{script} ---\n{output}", file=sys.stderr)
+                message = (script + "\n" + output).replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+                print(f"::error title=Vendored GDScript parse::{message}")
             return 1
         print(f"OK: {len(scripts)} vendored GDScript files parsed with {godot.name}")
         return 0
