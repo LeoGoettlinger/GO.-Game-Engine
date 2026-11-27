@@ -82,6 +82,7 @@ jobs:
         run: python -m pip install "scons==${SCONS_VERSION}"
 
       - name: Restore SCons cache
+        id: scons-cache
         uses: actions/cache@v4
         with:
           path: .scons_cache
@@ -135,7 +136,7 @@ jobs:
             EDITOR=bin/godot.windows.editor.x86_64.exe
           fi
           python misc/scripts/go_native_tests.py --editor "$EDITOR" --suite GitProcess \
-            --minimum 4 --output go-git-process-tests.log
+            --minimum 5 --output go-git-process-tests.log
 
       - name: Native scene undo and redo tests
         shell: bash
@@ -216,6 +217,27 @@ jobs:
           python -m SCons platform=${{ matrix.scons_platform }} target=template_debug arch=x86_64 \
             module_mono_enabled=no production=yes tests=no ${{ matrix.extra_flags }} \
             cache_path="$SCONS_CACHE_PATH" cache_limit=2 -j${{ matrix.jobs }}
+
+      # Keep successful compilation usable even if a later acceptance gate fails.
+      - name: Preserve compiled SCons cache before acceptance
+        uses: actions/cache/save@v4
+        with:
+          path: .scons_cache
+          key: ${{ steps.scons-cache.outputs.cache-primary-key }}
+
+      - name: Record compiled candidate revision
+        shell: bash
+        run: git rev-parse HEAD > go-build-revision.txt
+
+      - name: Preserve compiled candidates for targeted acceptance reruns
+        uses: actions/upload-artifact@v4
+        with:
+          name: go-compiled-candidate-${{ matrix.platform }}
+          path: |
+            bin/godot.*.x86_64*
+            go-build-revision.txt
+          retention-days: 3
+          if-no-files-found: error
 
       - name: Offline agent-created scene and debug/release export/player test
         shell: bash

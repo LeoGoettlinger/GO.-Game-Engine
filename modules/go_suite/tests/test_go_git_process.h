@@ -33,6 +33,7 @@
 // GO. Game Engine — Copyright (c) 2026 SampleCraft / GO. contributors
 // SPDX-License-Identifier: MIT
 
+#include "../go_git_controller.h"
 #include "../go_git_process.h"
 #include "../go_suite_core.h"
 #include "../go_system_git_runner.h"
@@ -131,6 +132,43 @@ TEST_CASE("[GO.][GitProcess] Empty config arguments survive synchronous and asyn
 		CHECK(exit == 0);
 		CHECK(go::trim(output).empty());
 	}
+}
+
+TEST_CASE("[GO.][GitProcess] Snapshot handles deleted indexed files without querying missing file sizes") {
+	const String directory = TestUtils::get_temp_path("go-deleted-status-" + itos(OS::get_singleton()->get_ticks_usec()));
+	REQUIRE(DirAccess::make_dir_recursive_absolute(directory) == OK);
+	struct Cleanup {
+		String path;
+		~Cleanup() {
+			Ref<DirAccess> dir = DirAccess::open(path);
+			if (dir.is_valid()) {
+				dir->erase_contents_recursive();
+			}
+			DirAccess::remove_absolute(path);
+		}
+	} cleanup{ directory };
+	go_suite::GoSystemGitRunner runner;
+	const std::string project = go_suite::to_std_string(directory);
+	std::string output;
+	int exit = -1;
+	REQUIRE(runner.run(go::git(project, { "init" }), output, exit));
+	REQUIRE(exit == 0);
+	{
+		Ref<FileAccess> file = FileAccess::open(directory.path_join("removed.txt"), FileAccess::WRITE);
+		REQUIRE(file.is_valid());
+		file->store_string("deleted fixture");
+	}
+	REQUIRE(runner.run(go::git(project, { "add", "--", "removed.txt" }), output, exit));
+	REQUIRE(exit == 0);
+	REQUIRE(DirAccess::remove_absolute(directory.path_join("removed.txt")) == OK);
+	go_suite::GoGitController controller;
+	controller.set_project(directory);
+	std::string error;
+	const auto snapshot = controller.snapshot(error);
+	CHECK(error.empty());
+	CHECK(snapshot.is_repo);
+	CHECK(snapshot.status.entries.size() == 1);
+	CHECK(snapshot.large_file_warnings.empty());
 }
 
 } // namespace TestGoGitProcess

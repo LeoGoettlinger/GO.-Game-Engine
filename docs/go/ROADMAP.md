@@ -824,3 +824,23 @@ controller snapshot, and several ancillary LFS/configuration reads retain the
 synchronous runner. Full nonblocking coverage of every Git-related read is not
 claimed; large repositories can still expose UI stalls on those paths. This is
 an implementation limitation in addition to the outstanding runtime/UI checks.
+
+### Full runtime checkpoint and isolated plugin fixtures
+
+Full run **46048025646** (551a0fa2) passed Windows/Linux editor and both template
+builds, native Git/Undo/Redo/Automatic Commit/history/read-tool tests, actual-editor
+player creation, movement and source-independent debug/release exports. Linux
+editor/player capture also passed. The run failed at independent plugin startup,
+so it is NOT a successful release build and screenshots still require review.
+
+The fixture projects were incorrectly located inside the engine Git checkout.
+GO. then discovered its ancestor repository and attempted file-size reads against
+repo-relative paths in the nested fixture. Fixtures now live in a system temporary
+directory outside the checkout, with isolated HOME/config paths. Production Git
+snapshot sizing also skips nonexistent files (including legitimate deletions).
+A native deletion regression and fixture-location/ANSI-diagnostic tests are added.
+Plugin error annotations now retain actual errors rather than only import progress.
+
+Successful compiled candidates and the SCons cache are now preserved before the
+late acceptance gates, enabling targeted follow-up tests without losing an hour
+of compilation on a plugin failure. The fixes require a new runtime result.

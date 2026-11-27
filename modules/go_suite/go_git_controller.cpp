@@ -214,7 +214,13 @@ GoGitSnapshot GoGitController::snapshot(std::string &r_error) const {
 
 	std::vector<std::pair<std::string, uint64_t>> sized_files;
 	for (const go::GitStatusEntry &entry : snapshot.status.entries) {
-		const int64_t size = FileAccess::get_size(to_godot_string(full_path(project_path, entry.path)));
+		const String path = to_godot_string(full_path(project_path, entry.path));
+		// Deleted files are legitimate status entries, not filesystem errors.
+		// An ancestor repository can also report paths outside this project.
+		if (!FileAccess::exists(path)) {
+			continue;
+		}
+		const int64_t size = FileAccess::get_size(path);
 		if (size > 0) {
 			sized_files.push_back({ entry.path, static_cast<uint64_t>(size) });
 		}
