@@ -1,0 +1,92 @@
+name: GO. Compiled Plugin Acceptance
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Full-build run that already uploaded the editor candidate
+        required: true
+        type: string
+      platform:
+        description: Candidate platform
+        required: true
+        type: choice
+        options: [linux, windows]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  acceptance:
+    if: github.ref == 'refs/heads/arena/a15e5657-go-game-engine'
+    runs-on: ${{ inputs.platform == 'windows' && 'windows-2022' || 'ubuntu-22.04' }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Verify candidate source
+        id: source
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ inputs.run_id }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import re
+          import subprocess
+          run_id = os.environ['RUN_ID']
+          if not re.fullmatch(r'[0-9]+', run_id):
+              raise SystemExit('Invalid run ID')
+          run = json.loads(subprocess.check_output([
+              'gh', 'api', f'repos/{os.environ["GITHUB_REPOSITORY"]}/actions/runs/{run_id}'
+          ]))
+          if (run['head_branch'] != 'arena/a15e5657-go-game-engine'
+                  or run['head_repository']['full_name'] != os.environ['GITHUB_REPOSITORY']
+                  or run['path'] != '.github/workflows/go-build.yml'
+                  or not re.fullmatch(r'[0-9a-f]{40}', run['head_sha'])):
+              raise SystemExit('Candidate is not a full build from the active repository branch')
+          with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as output:
+              output.write('sha=' + run['head_sha'] + '\n')
+          PY
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.source.outputs.sha }}
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.run_id }}
+          name: go-editor-candidate-${{ inputs.platform }}
+          path: bin
+      - name: Record provenance and prepare executable
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ steps.source.outputs.sha }}
+          SOURCE_RUN: ${{ inputs.run_id }}
+        run: |
+          mkdir -p go-plugin-validation
+          printf 'source=%s\nrun=%s\n' "$SOURCE_SHA" "$SOURCE_RUN" > go-plugin-validation/provenance.txt
+          if [ "${{ inputs.platform }}" = "linux" ]; then
+            chmod +x bin/godot.linuxbsd.editor.x86_64
+          fi
+      - name: Validate manifest and fetch checksum-pinned native addons
+        shell: bash
+        run: |
+          python misc/scripts/go_validate_plugins.py
+          python misc/scripts/go_bundle_extensions.py --platform ${{ inputs.platform }} --output .cache/go-extensions
+      - name: Test each addon in the compiled candidate
+        shell: bash
+        run: |
+          if [ "${{ inputs.platform }}" = "linux" ]; then
+            EDITOR=bin/godot.linuxbsd.editor.x86_64
+          else
+            EDITOR=bin/godot.windows.editor.x86_64.exe
+          fi
+          python misc/scripts/go_plugin_startup_smoke.py --editor "$EDITOR" \
+            --extensions-dir .cache/go-extensions --output go-plugin-validation
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: go-plugin-candidate-${{ inputs.platform }}-${{ github.run_id }}
+          path: go-plugin-validation/
+          if-no-files-found: warn
