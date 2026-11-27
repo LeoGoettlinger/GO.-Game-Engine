@@ -25,6 +25,10 @@ MARKER = "GO_PLAYER_SMOKE_OK"
 PLAYER = """extends CharacterBody2D
 
 var smoke_frames: int = 0
+var smoke_start_x: float = 320.0
+
+func _ready() -> void:
+    position = Vector2(smoke_start_x, 180.0)
 
 func _physics_process(_delta: float) -> void:
     var smoke: bool = "--go-smoke-test" in OS.get_cmdline_user_args()
@@ -33,6 +37,14 @@ func _physics_process(_delta: float) -> void:
     if smoke:
         smoke_frames += 1
         if smoke_frames == 3:
+            if position.x <= smoke_start_x:
+                push_error("Player did not move during physics frames")
+                get_tree().quit(4)
+                return
+            if $Sprite2D.texture == null or $CollisionShape2D.shape == null:
+                push_error("Player is missing its texture or collision shape")
+                get_tree().quit(5)
+                return
             if not ($Sprite2D is Sprite2D) or not ($CollisionShape2D is CollisionShape2D):
                 push_error("Player fixture lost its child types")
                 get_tree().quit(2)
@@ -190,6 +202,28 @@ def main() -> int:
                     env,
                     logs,
                     "GO_EDITOR_UI_CAPTURED",
+                )
+                run_step(
+                    "player-ui",
+                    [
+                        "xvfb-run",
+                        "-a",
+                        "-s",
+                        "-screen 0 1600x1000x24",
+                        sys.executable,
+                        str(Path(__file__).with_name("go_ui_smoke.py").resolve()),
+                        "--editor",
+                        str(editor),
+                        "--project",
+                        str(project),
+                        "--player",
+                        "--output",
+                        str(logs / "player-ui.png"),
+                    ],
+                    project,
+                    env,
+                    logs,
+                    "GO_PLAYER_UI_CAPTURED",
                 )
             run_step(
                 "editor-player",

@@ -64,7 +64,7 @@ class ExportSmokeTests(unittest.TestCase):
                     self.assertEqual(marker, "GO_AGENT_SCENE_OK")
                     for filename in ("player.tscn", "player.gd", "shape.tres", "texture.tres"):
                         (cwd / filename).write_text("mock-created file", encoding="utf-8")
-                elif name == "editor-ui":
+                elif name in ("editor-ui", "player-ui"):
                     self.assertEqual(command[0], "xvfb-run")
                 elif name.startswith("export-"):
                     Path(command[-1]).write_bytes(b"fake exported binary")
@@ -79,6 +79,7 @@ class ExportSmokeTests(unittest.TestCase):
                 [
                     "agent-creation",
                     "editor-ui",
+                    "player-ui",
                     "editor-player",
                     "export-debug",
                     "player-debug",

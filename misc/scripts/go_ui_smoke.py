@@ -17,6 +17,7 @@ def main() -> int:
     parser.add_argument("--editor", type=Path, required=True)
     parser.add_argument("--project", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--player", action="store_true", help="Capture the running project, not the editor")
     args = parser.parse_args()
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.unlink(missing_ok=True)
@@ -25,14 +26,14 @@ def main() -> int:
         process = subprocess.Popen(
             [
                 str(args.editor.resolve()),
-                "--editor",
+                *([] if args.player else ["--editor"]),
                 "--path",
                 str(args.project.resolve()),
                 "--display-driver",
                 "x11",
                 "--rendering-method",
                 "gl_compatibility",
-                "res://player.tscn",
+                *([] if args.player else ["res://player.tscn"]),
             ],
             stdout=log,
             stderr=subprocess.STDOUT,
@@ -54,7 +55,10 @@ def main() -> int:
             subprocess.run(["scrot", str(args.output.resolve())], timeout=30, check=True)
             if not args.output.is_file() or args.output.stat().st_size < 1024:
                 raise RuntimeError("Missing or empty editor screenshot")
-            print("GO_EDITOR_UI_CAPTURED: actual X11 editor window; manual visual review remains required")
+            print(
+                ("GO_PLAYER_UI_CAPTURED" if args.player else "GO_EDITOR_UI_CAPTURED")
+                + ": actual X11 window; manual visual review remains required"
+            )
         except (OSError, RuntimeError, subprocess.SubprocessError):
             log.flush()
             diagnostic = log_path.read_text(encoding="utf-8", errors="replace")[-12000:]

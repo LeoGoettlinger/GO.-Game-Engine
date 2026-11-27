@@ -739,3 +739,15 @@ planning, refusal to send chat for a paid/missing default model, and rejection o
 an unexpected action. Those pass locally. Live result and full live-agent editor
 acceptance remain separate and pending; this probe does not claim user-clicked
 approvals, player creation or screenshot acceptance.
+
+### Visible player and movement acceptance
+
+`GradientTexture2D` creation now supplies a visible 32x32 gradient rather than an
+empty resource without a gradient. The exact resource text remains in the file
+approval preview. Both player fixtures start inside the viewport and now fail
+unless physics frames actually increase the x position and both texture and
+collision shape remain assigned. Linux graphical acceptance captures both the
+real editor (`editor-ui.png`) and the running player (`player-ui.png`). These are
+actual process captures, not generated mockups; their runtime and visual results
+are still pending. The mocked orchestration test checks that both captures are
+scheduled before source-independent debug/release export execution.

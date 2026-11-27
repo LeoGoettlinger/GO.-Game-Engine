@@ -441,6 +441,9 @@ std::string plan_file_change(const go::GoKiloToolCall &p_call, FileChangePlan &r
 					return "Resource type is outside the supported built-in allowlist";
 				}
 				r_plan.after = "[gd_resource type=\"" + type + "\" format=3]\n\n[resource]\n";
+				if (type == "GradientTexture2D") {
+					r_plan.after = "[gd_resource type=\"GradientTexture2D\" load_steps=2 format=3]\n\n[sub_resource type=\"Gradient\" id=\"Gradient\"]\ncolors = PackedColorArray(0.1, 0.8, 0.5, 1, 0.2, 0.4, 0.9, 1)\n\n[resource]\ngradient = SubResource(\"Gradient\")\nwidth = 32\nheight = 32\n";
+				}
 			}
 			if (!ClassDB::can_instantiate(type)) {
 				return "Requested built-in type is unavailable in this build";

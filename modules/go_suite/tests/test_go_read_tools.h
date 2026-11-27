@@ -284,6 +284,10 @@ TEST_CASE("[GO.][ReadTools][SceneTree] New scenes and resources require approval
 	CHECK(root->is_class("CharacterBody2D"));
 	CHECK(root->get_name() == StringName("Player"));
 	memdelete(root);
+	go::GoKiloToolCall texture = { "test", "create_resource", R"({"path":"res://texture.tres","type":"GradientTexture2D"})" };
+	CHECK(bridge.prepare_file_change(texture, preview, fingerprint).is_empty());
+	CHECK(preview.contains("SubResource"));
+	CHECK(preview.contains("width = 32"));
 	go::GoKiloToolCall resource = { "test", "create_resource", R"({"path":"res://shape.tres","type":"RectangleShape2D"})" };
 	REQUIRE(bridge.prepare_file_change(resource, preview, fingerprint).is_empty());
 	CHECK(bridge.execute_file_change(resource, fingerprint).contains("\"ok\":true"));

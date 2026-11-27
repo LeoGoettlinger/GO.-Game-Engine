@@ -82,6 +82,10 @@ void go_agentics_acceptance_tick(GoAgenticsToolBridge &p_bridge) {
 	}
 	const std::string player = R"GDSCRIPT(extends CharacterBody2D
 var smoke_frames: int = 0
+var smoke_start_x: float = 320.0
+
+func _ready() -> void:
+    position = Vector2(smoke_start_x, 180.0)
 func _physics_process(_delta: float) -> void:
     var smoke: bool = "--go-smoke-test" in OS.get_cmdline_user_args()
     velocity.x = 120.0 if smoke else Input.get_axis("ui_left", "ui_right") * 120.0
@@ -89,6 +93,14 @@ func _physics_process(_delta: float) -> void:
     if smoke:
         smoke_frames += 1
         if smoke_frames == 3:
+            if position.x <= smoke_start_x:
+                push_error("Player did not move during physics frames")
+                get_tree().quit(4)
+                return
+            if $Sprite2D.texture == null or $CollisionShape2D.shape == null:
+                push_error("Player is missing its texture or collision shape")
+                get_tree().quit(5)
+                return
             if not ($Sprite2D is Sprite2D) or not ($CollisionShape2D is CollisionShape2D):
                 push_error("Generated player lost its child types")
                 get_tree().quit(2)
