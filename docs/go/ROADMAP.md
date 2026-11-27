@@ -533,3 +533,27 @@ rejected after creation; this is not a pre-allocation sandbox. Loading and scrip
 initialization effects are not undone. Nested scene ownership is preserved by the
 shared insertion path and covered by a new native undo/redo fixture. Real-editor
 instantiation acceptance still needs the new full CI run.
+
+### Actual-editor tool-chain and graphical evidence gate
+
+The full build now creates its export fixture through production tool-bridge
+calls inside a running editor, rather than writing a prebuilt player scene.
+The test creates/opens a CharacterBody2D scene, adds sprite/collision nodes,
+checks real editor Undo/Redo, creates/assigns resources, writes/validates/attaches
+movement code, saves the scene and sets it as main. It waits for import/save
+completion and checks persisted output before emitting GO_AGENT_SCENE_OK.
+Both debug and release exports then run independently of the source project and
+must emit GO_PLAYER_SMOKE_OK without editor classes.
+
+The deterministic test hook is compiled only with GO_SUITE_TESTS_ENABLED and
+requires --go-agent-acceptance, the exact fixture project name and a marker file.
+Existing player/shape/texture files abort the test; no live gateway request is
+made. Test approval deliberately invokes the prepared bridge API: it is NOT a
+human-clicked dialog test and NOT proof of live AI tool planning.
+
+On Linux, a subsequent Xvfb run opens the actual editor/player scene and captures
+editor-ui.png plus its log. Generated project files and logs are retained in the
+GO-validation artifact. Capture requires a visible X11 window but is NOT manual
+visual review. Windows graphical review and live-AI acceptance remain open.
+All these new acceptance gates are implemented but await their first full CI
+execution; mocked orchestration tests are not a substitute for that result.

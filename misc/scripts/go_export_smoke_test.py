@@ -35,6 +35,59 @@ class ExportSmokeTests(unittest.TestCase):
                     self.assertIn(f'type="{node_type}"', scene)
                 self.assertIn("ClassDB.class_exists", (project / "player.gd").read_text(encoding="utf-8"))
 
+    def test_agent_fixture_starts_without_a_player_or_main_scene(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            project = root / "project"
+            smoke.prepare_project(project, "linux", root / "debug", root / "release", agent_created=True)
+            settings = (project / "project.godot").read_text(encoding="utf-8")
+            self.assertIn('config/name="GO. Agent Acceptance"', settings)
+            self.assertNotIn("run/main_scene", settings)
+            self.assertTrue((project / ".go_agent_acceptance").is_file())
+            self.assertFalse((project / "player.gd").exists())
+            self.assertFalse((project / "player.tscn").exists())
+
+    def test_agent_and_ui_orchestration_reaches_both_exports(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            binary = root / "fake binary"
+            binary.write_bytes(b"fixture")
+            logs = root / "logs"
+            calls: list[str] = []
+
+            def step(
+                name: str, command: list[str], cwd: Path, env: dict[str, str], output: Path, marker: str = ""
+            ) -> None:
+                calls.append(name)
+                if name == "agent-creation":
+                    self.assertIn("--go-agent-acceptance", command)
+                    self.assertEqual(marker, "GO_AGENT_SCENE_OK")
+                    for filename in ("player.tscn", "player.gd", "shape.tres", "texture.tres"):
+                        (cwd / filename).write_text("mock-created file", encoding="utf-8")
+                elif name == "editor-ui":
+                    self.assertEqual(command[0], "xvfb-run")
+                elif name.startswith("export-"):
+                    Path(command[-1]).write_bytes(b"fake exported binary")
+
+            arguments = ["smoke", "--platform", "linux", "--agent-created", "--capture-ui", "--output-dir", str(logs)]
+            for flag in ("--editor", "--debug-template", "--release-template"):
+                arguments += [flag, str(binary)]
+            with patch("sys.argv", arguments), patch.object(smoke, "run_step", side_effect=step):
+                self.assertEqual(smoke.main(), 0)
+            self.assertEqual(
+                calls,
+                [
+                    "agent-creation",
+                    "editor-ui",
+                    "editor-player",
+                    "export-debug",
+                    "player-debug",
+                    "export-release",
+                    "player-release",
+                ],
+            )
+            self.assertTrue((logs / "created-project" / "player.gd").is_file())
+
     def test_exit_zero_is_not_a_player_success(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

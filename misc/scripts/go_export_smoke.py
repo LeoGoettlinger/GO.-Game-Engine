@@ -15,6 +15,7 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
@@ -70,16 +71,20 @@ shape = SubResource("Shape")
 """
 
 
-def prepare_project(project: Path, platform: str, debug: Path, release: Path) -> None:
+def prepare_project(project: Path, platform: str, debug: Path, release: Path, agent_created: bool = False) -> None:
     project.mkdir()
     (project / "project.godot").write_text(
-        'config_version=5\n\n[application]\nconfig/name="GO. Export Smoke"\n'
-        'run/main_scene="res://player.tscn"\n\n[rendering]\n'
-        'renderer/rendering_method="gl_compatibility"\n',
+        "config_version=5\n\n[application]\nconfig/name="
+        + json.dumps("GO. Agent Acceptance" if agent_created else "GO. Export Smoke")
+        + ("\n" if agent_created else '\nrun/main_scene="res://player.tscn"\n')
+        + '\n[rendering]\nrenderer/rendering_method="gl_compatibility"\n',
         encoding="utf-8",
     )
-    (project / "player.gd").write_text(PLAYER, encoding="utf-8")
-    (project / "player.tscn").write_text(SCENE, encoding="utf-8")
+    if agent_created:
+        (project / ".go_agent_acceptance").write_text("Explicit offline acceptance fixture\n", encoding="utf-8")
+    else:
+        (project / "player.gd").write_text(PLAYER, encoding="utf-8")
+        (project / "player.tscn").write_text(SCENE, encoding="utf-8")
     target = "Windows Desktop" if platform == "windows" else "Linux"
     (project / "export_presets.cfg").write_text(
         '[preset.0]\nname="GO Smoke"\nplatform='
@@ -105,7 +110,8 @@ def run_step(name: str, command: list[str], cwd: Path, env: dict[str, str], logs
         raise RuntimeError(f"{name}: timeout") from error
     output = result.stdout + result.stderr
     (logs / f"{name}.log").write_text(output, encoding="utf-8")
-    print(f"{name}: exit={result.returncode}\n{output[-6000:]}")
+    console_output = output[-6000:].encode("ascii", errors="backslashreplace").decode("ascii")
+    print(f"{name}: exit={result.returncode}\n{console_output}")
     if result.returncode != 0 or "ERROR:" in output or (marker and marker not in output):
         summary, _ = summarize(output)
         raise RuntimeError(f"{name}: exit={result.returncode}; failed or required success marker missing\n{summary}")
@@ -118,13 +124,19 @@ def main() -> int:
     parser.add_argument("--release-template", type=Path, required=True)
     parser.add_argument("--platform", choices=("linux", "windows"), required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
+    parser.add_argument(
+        "--agent-created", action="store_true", help="Create the fixture through actual editor tool calls"
+    )
+    parser.add_argument("--capture-ui", action="store_true", help="Capture the actual Linux editor under Xvfb")
     args = parser.parse_args()
     logs = args.output_dir.resolve()
     logs.mkdir(parents=True, exist_ok=True)
     report: dict[str, object] = {
         "platform": args.platform,
         "passed": False,
-        "scope": "offline import/export/player only",
+        "scope": "offline editor tool creation/export/player"
+        if args.agent_created
+        else "offline import/export/player only",
     }
     try:
         editor, debug, release = (path.resolve() for path in (args.editor, args.debug_template, args.release_template))
@@ -134,13 +146,51 @@ def main() -> int:
         with tempfile.TemporaryDirectory(prefix="go-export-smoke-") as temporary:
             root = Path(temporary)
             project = root / "project"
-            prepare_project(project, args.platform, debug, release)
+            prepare_project(project, args.platform, debug, release, args.agent_created)
             env = os.environ.copy()
             for key in ("HOME", "APPDATA", "LOCALAPPDATA", "XDG_DATA_HOME", "XDG_CONFIG_HOME", "XDG_CACHE_HOME"):
                 directory = root / key.lower()
                 directory.mkdir()
                 env[key] = str(directory)
-            run_step("import", [str(editor), "--headless", "--path", str(project), "--import"], project, env, logs)
+            if args.agent_created:
+                run_step(
+                    "agent-creation",
+                    [str(editor), "--headless", "--editor", "--path", str(project), "--", "--go-agent-acceptance"],
+                    project,
+                    env,
+                    logs,
+                    "GO_AGENT_SCENE_OK",
+                )
+                evidence = logs / "created-project"
+                evidence.mkdir(exist_ok=True)
+                for name in ("project.godot", "player.tscn", "player.gd", "shape.tres", "texture.tres"):
+                    shutil.copy2(project / name, evidence / name)
+            else:
+                run_step("import", [str(editor), "--headless", "--path", str(project), "--import"], project, env, logs)
+            if args.capture_ui:
+                if args.platform != "linux":
+                    raise RuntimeError("Automated UI capture currently supports Linux only")
+                run_step(
+                    "editor-ui",
+                    [
+                        "xvfb-run",
+                        "-a",
+                        "-s",
+                        "-screen 0 1600x1000x24",
+                        sys.executable,
+                        str(Path(__file__).with_name("go_ui_smoke.py").resolve()),
+                        "--editor",
+                        str(editor),
+                        "--project",
+                        str(project),
+                        "--output",
+                        str(logs / "editor-ui.png"),
+                    ],
+                    project,
+                    env,
+                    logs,
+                    "GO_EDITOR_UI_CAPTURED",
+                )
             run_step(
                 "editor-player",
                 [str(editor), "--headless", "--path", str(project), "--", "--go-smoke-test"],

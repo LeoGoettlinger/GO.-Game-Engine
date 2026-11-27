@@ -33,6 +33,7 @@
 
 #include "go_agentics_dock.h"
 
+#include "go_agentics_acceptance.h"
 #include "go_agentics_tools.h"
 #include "go_kilo_client.h"
 #include "go_kilo_models.h"
@@ -303,6 +304,12 @@ void GoAgenticsDock::_discard_pending() {
 
 void GoAgenticsDock::_notification(int p_what) {
 	if (p_what == NOTIFICATION_PROCESS) {
+#ifdef GO_SUITE_TESTS_ENABLED
+		if (go_agentics_acceptance_requested()) {
+			go_agentics_acceptance_tick(tool_bridge);
+			return;
+		}
+#endif
 		if ((GoSuiteRegistry::is_quit_pending() || GoSuiteRegistry::is_editor_input_locked())) {
 			_on_stop_pressed();
 			return;
@@ -757,4 +764,9 @@ GoAgenticsDock::GoAgenticsDock() {
 
 	_update_busy_state();
 	_append_message(TTR("System"), TTR("Code Agentics is ready. No request is sent until you press Send or Refresh Models."));
+#ifdef GO_SUITE_TESTS_ENABLED
+	if (go_agentics_acceptance_requested()) {
+		set_process(true);
+	}
+#endif
 }

@@ -65,7 +65,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y git-lfs build-essential pkg-config libx11-dev libxcursor-dev \
             libxinerama-dev libgl1-mesa-dev libglu1-mesa-dev libasound2-dev libpulse-dev \
-            libudev-dev libxi-dev libxrandr-dev libwayland-dev libxkbcommon-dev
+            libudev-dev libxi-dev libxrandr-dev libwayland-dev libxkbcommon-dev xvfb xauth xdotool scrot
 
       - name: Setup MSVC developer environment
         if: matrix.platform == 'windows'
@@ -213,7 +213,7 @@ jobs:
             module_mono_enabled=no production=yes tests=no ${{ matrix.extra_flags }} \
             cache_path="$SCONS_CACHE_PATH" cache_limit=2 -j${{ matrix.jobs }}
 
-      - name: Offline debug and release export/player test
+      - name: Offline agent-created scene and debug/release export/player test
         shell: bash
         run: |
           if [ "${{ matrix.platform }}" = "linux" ]; then
@@ -223,7 +223,11 @@ jobs:
             PLATFORM=windows
             SUFFIX=.exe
           fi
-          python misc/scripts/go_export_smoke.py \
+          UI_ARGS=()
+          if [ "${{ matrix.platform }}" = "linux" ]; then
+            UI_ARGS=(--capture-ui)
+          fi
+          python misc/scripts/go_export_smoke.py --agent-created "${UI_ARGS[@]}" \
             --platform "${{ matrix.platform }}" \
             --editor "bin/godot.$PLATFORM.editor.x86_64$SUFFIX" \
             --debug-template "bin/godot.$PLATFORM.template_debug.x86_64$SUFFIX" \
