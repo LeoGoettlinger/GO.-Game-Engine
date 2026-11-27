@@ -276,6 +276,38 @@ bool file_is_open(const String &p_path) {
 	return false;
 }
 
+std::string backup_project_bytes(const String &p_path, const Vector<uint8_t> &p_original, String &r_backup) {
+	const String folder = "res://.godot/go_agent_backups";
+	if (has_link_component(folder) || DirAccess::make_dir_recursive_absolute(folder) != OK) {
+		return "Cannot create a safe local backup directory";
+	}
+	Ref<DirAccess> directory = DirAccess::open(folder);
+	if (directory.is_null() || directory->list_dir_begin() != OK) {
+		return "Cannot inspect local backups";
+	}
+	int count = 0;
+	while (!directory->get_next().is_empty() && count < 200) {
+		++count;
+	}
+	directory->list_dir_end();
+	if (count >= 200) {
+		return "Backup limit reached; review .godot/go_agent_backups before more file changes";
+	}
+	r_backup = folder.path_join(itos(OS::get_singleton()->get_ticks_usec()) + "-" + p_path.get_file() + ".bak");
+	if (has_link_component(r_backup) || FileAccess::exists(r_backup)) {
+		return "Backup collision; no source file changed";
+	}
+	Ref<FileAccess> file = FileAccess::open(r_backup, FileAccess::WRITE);
+	if (file.is_null() || !file->store_buffer(p_original)) {
+		return "Could not write backup; no source file changed";
+	}
+	file->flush();
+	if (file->get_error() != OK) {
+		return "Could not flush backup; no source file changed";
+	}
+	return "";
+}
+
 std::string plan_main_scene(const go::JsonValue &p_args, FileChangePlan &r_plan) {
 	const auto checked = go::validate_res_path(argument_string(p_args, "path"), go::PathOperation::READ);
 	if (!checked.ok) {
@@ -549,7 +581,8 @@ String GoAgenticsToolBridge::prepare_editor_action(const go::GoKiloToolCall &p_c
 	if (EditorNode::get_singleton() == nullptr || editor == nullptr) {
 		return TTR("A running editor is required.");
 	}
-	if (p_call.name != "stop_project" && !editor->get_unsaved_scenes().is_empty()) {
+	const bool saving = p_call.name == "save_current_scene" || p_call.name == "save_scene_as";
+	if (!saving && p_call.name != "stop_project" && !editor->get_unsaved_scenes().is_empty()) {
 		return TTR("Save or discard unsaved scenes yourself before this action; the agent will not autosave them.");
 	}
 	if (p_call.name != "stop_project" && ScriptEditor::get_singleton() != nullptr && (!ScriptEditor::get_singleton()->get_unsaved_files().is_empty() || !ScriptEditor::get_singleton()->get_unsaved_scripts().is_empty())) {
@@ -562,11 +595,11 @@ String GoAgenticsToolBridge::prepare_editor_action(const go::GoKiloToolCall &p_c
 	const String project = ProjectSettings::get_singleton()->globalize_path("res://");
 	String path;
 	String source;
-	if (p_call.name == "open_scene") {
+	if (p_call.name == "open_scene" || p_call.name == "save_scene_as") {
 		std::string error;
 		const auto args = go::parse_json(p_call.arguments, error);
 		path = to_godot(argument_string(args, "path"));
-	} else if (p_call.name == "run_current_scene") {
+	} else if (p_call.name == "run_current_scene" || p_call.name == "save_current_scene") {
 		if (root == nullptr) {
 			return TTR("No current scene is open.");
 		}
@@ -574,6 +607,17 @@ String GoAgenticsToolBridge::prepare_editor_action(const go::GoKiloToolCall &p_c
 	} else if (p_call.name == "run_project") {
 		path = ProjectSettings::get_singleton()->get_setting("application/run/main_scene", String());
 	}
+	if (saving) {
+		if (root == nullptr) {
+			return TTR("No scene is open to save.");
+		}
+		for (const String &unsaved : editor->get_unsaved_scenes()) {
+			if (unsaved != root->get_scene_file_path()) {
+				return TTR("Save or discard other unsaved scenes before requesting this save.");
+			}
+		}
+	}
+	Vector<uint8_t> original_bytes;
 	if (p_call.name != "stop_project") {
 		if (path.begins_with("uid://")) {
 			const ResourceUID::ID uid = ResourceUID::get_singleton()->text_to_id(path);
@@ -582,20 +626,28 @@ String GoAgenticsToolBridge::prepare_editor_action(const go::GoKiloToolCall &p_c
 			}
 			path = ResourceUID::get_singleton()->get_id_path(uid);
 		}
-		const auto checked = go::validate_res_path(to_std(path), go::PathOperation::READ);
+		const auto checked = go::validate_res_path(to_std(path), saving ? go::PathOperation::WRITE : go::PathOperation::READ);
 		if (!checked.ok || path.get_extension().to_lower() != "tscn") {
 			return TTR("A saved res:// text scene is required for this action.");
 		}
 		path = to_godot(checked.normalized);
-		std::string error;
-		if (!read_project_text(path, source, error)) {
-			return to_godot(error);
+		if (has_link_component(path) || !DirAccess::dir_exists_absolute(path.get_base_dir()) || DirAccess::dir_exists_absolute(path)) {
+			return TTR("A safe scene file with an existing parent directory is required.");
 		}
-		if (!source.strip_edges().begins_with("[gd_scene ")) {
-			return TTR("Target does not have a text-scene header.");
+		if (saving && path != root->get_scene_file_path() && FileAccess::exists(path)) {
+			return TTR("Save As requires a new target; another existing scene will not be overwritten.");
+		}
+		if (!saving || FileAccess::exists(path)) {
+			std::string error;
+			if (!read_project_text(path, source, error, &original_bytes)) {
+				return to_godot(error);
+			}
+			if (!source.strip_edges().begins_with("[gd_scene ")) {
+				return TTR("Target does not have a text-scene header.");
+			}
 		}
 	}
-	String state = project + "\n" + to_godot(p_call.name) + "\n" + to_godot(p_call.arguments) + "\n" + path + "\n" + source.sha256_text();
+	String state = project + "\n" + to_godot(p_call.name) + "\n" + to_godot(p_call.arguments) + "\n" + path + "\n" + source.sha256_text() + "\n" + String::hex_encode_buffer(original_bytes.ptr(), original_bytes.size()) + "\n" + (!path.is_empty() && FileAccess::exists(path) ? "existing" : "missing");
 	state += "\n" + itos(root != nullptr ? uint64_t(root->get_instance_id()) : 0);
 	state += "\n" + editor->get_playing_scene() + "\n" + (editor->is_playing_scene() ? "playing" : "stopped");
 	if (root != nullptr && EditorUndoRedoManager::get_singleton() != nullptr) {
@@ -604,6 +656,10 @@ String GoAgenticsToolBridge::prepare_editor_action(const go::GoKiloToolCall &p_c
 	}
 	r_fingerprint = state.sha256_text();
 	r_preview = to_godot(p_call.name) + "\n" + project + "\n" + path + "\n\n";
+	if (saving) {
+		r_preview += TTR("Save the current scene using the editor. Existing scene bytes are backed up locally. Normal save callbacks and external-resource side effects may occur. This is not an Undo/Redo action. Check the editor for save errors.");
+		return String();
+	}
 	r_preview += p_call.name == "stop_project" ? TTR("Stop the editor's running project. This is not an Undo/Redo action.") : TTR("Opening scenes may execute tool scripts. Running a project executes its scripts with your user permissions. This is NOT a sandbox. Normal editor imports/build/run side effects still apply. Dependencies are not frozen by this approval; review and trust the entire project first. This is not an Undo/Redo action.");
 	return String();
 }
@@ -616,6 +672,33 @@ String GoAgenticsToolBridge::execute_editor_action(const go::GoKiloToolCall &p_c
 		return to_godot(error_json(error.is_empty() ? "Project, scene or run state changed after approval; request a fresh action" : to_std(error)));
 	}
 	EditorInterface *editor = EditorInterface::get_singleton();
+	if (p_call.name == "save_current_scene" || p_call.name == "save_scene_as") {
+		String target = editor->get_edited_scene_root()->get_scene_file_path();
+		if (p_call.name == "save_scene_as") {
+			std::string parse_error;
+			const auto args = go::parse_json(p_call.arguments, parse_error);
+			target = to_godot(go::validate_res_path(argument_string(args, "path"), go::PathOperation::WRITE).normalized);
+		}
+		String backup;
+		if (FileAccess::exists(target)) {
+			String text;
+			Vector<uint8_t> original;
+			std::string read_error;
+			if (!read_project_text(target, text, read_error, &original)) {
+				return to_godot(error_json(read_error));
+			}
+			const std::string backup_error = backup_project_bytes(target, original, backup);
+			if (!backup_error.empty()) {
+				return to_godot(error_json(backup_error));
+			}
+		}
+		const String recheck = prepare_editor_action(p_call, preview, fingerprint);
+		if (!recheck.is_empty() || fingerprint != p_fingerprint) {
+			return to_godot(error_json("Scene or target changed before saving; request a fresh action"));
+		}
+		editor->save_scene_as(target, false);
+		return to_godot(ok_json("Scene save requested for " + to_std(target) + ". Backup: " + to_std(backup) + ". The editor API does not return the final save error; inspect the editor before treating this as saved."));
+	}
 	if (p_call.name == "open_scene") {
 		std::string parse_error;
 		const auto args = go::parse_json(p_call.arguments, parse_error);
@@ -660,33 +743,9 @@ String GoAgenticsToolBridge::execute_file_change(const go::GoKiloToolCall &p_cal
 		}
 	} else {
 		if (plan.existed) {
-			const String folder = "res://.godot/go_agent_backups";
-			if (has_link_component(folder) || DirAccess::make_dir_recursive_absolute(folder) != OK) {
-				return to_godot(error_json("Cannot create a safe local backup directory"));
-			}
-			Ref<DirAccess> directory = DirAccess::open(folder);
-			if (directory.is_null() || directory->list_dir_begin() != OK) {
-				return to_godot(error_json("Cannot inspect local backups"));
-			}
-			int count = 0;
-			while (!directory->get_next().is_empty() && count < 200) {
-				++count;
-			}
-			directory->list_dir_end();
-			if (count >= 200) {
-				return to_godot(error_json("Backup limit reached; review .godot/go_agent_backups before more file changes"));
-			}
-			backup = folder.path_join(itos(OS::get_singleton()->get_ticks_usec()) + "-" + plan.path.get_file() + ".bak");
-			if (has_link_component(backup) || FileAccess::exists(backup)) {
-				return to_godot(error_json("Backup collision; no source file changed"));
-			}
-			Ref<FileAccess> file = FileAccess::open(backup, FileAccess::WRITE);
-			if (file.is_null() || !file->store_buffer(plan.original)) {
-				return to_godot(error_json("Could not write backup; no source file changed"));
-			}
-			file->flush();
-			if (file->get_error() != OK) {
-				return to_godot(error_json("Could not flush backup; no source file changed"));
+			const std::string backup_error = backup_project_bytes(plan.path, plan.original, backup);
+			if (!backup_error.empty()) {
+				return to_godot(error_json(backup_error));
 			}
 		}
 		String temporary;
@@ -902,18 +961,6 @@ String GoAgenticsToolBridge::execute(const go::GoKiloToolCall &p_call) const {
 	EditorInterface *editor = EditorInterface::get_singleton();
 	if (editor == nullptr) {
 		return to_godot(error_json("the Godot editor is not available for this tool"));
-	}
-
-	if (tool == "save_current_scene") {
-		return to_godot(editor->save_scene() == OK ? ok_json("saved current scene") : error_json("could not save current scene"));
-	}
-
-	if (tool == "save_scene_as") {
-		if (!has_path) {
-			return to_godot(error_json("a res:// scene path is required"));
-		}
-		editor->save_scene_as(path);
-		return to_godot(ok_json("saved scene as " + to_std(path)));
 	}
 
 	if (tool == "scan_filesystem") {

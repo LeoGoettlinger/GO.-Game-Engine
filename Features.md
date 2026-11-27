@@ -509,3 +509,19 @@ approval. The in-memory main scene is updated only after successful replacement.
 It does not load/instantiate the scene or claim its dependencies are valid. Native
 regressions cover no pre-approval mutation, stale target rejection, successful
 configuration update and missing targets; runtime CI is pending.
+
+### Guarded scene save requests
+
+`save_current_scene` and `save_scene_as` are now enabled through mandatory editor
+execution approval (27 tools total). Save As requires a new .tscn target unless
+it is the current scene's own path; foreign existing scenes are never replaced.
+Current-scene edits may be saved, but other unsaved scenes and script/text buffers
+block the action. Project/scene/history/target bytes are fingerprinted, existing
+bytes are backed up through the shared bounded backup helper, and state is
+rechecked after backup before calling the editor.
+
+The dialog warns about normal save callbacks and external-resource effects.
+Godot's save_scene_as API returns no final save error, so the result deliberately
+says save requested and directs the user to inspect editor errors. No success
+claim is inferred from file existence. Native bypass/missing-editor tests now
+cover both save actions; actual save UI/round-trip acceptance remains pending.
