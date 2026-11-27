@@ -888,3 +888,14 @@ Quick Checks 46064309084 passed at 68e17657, including addon parsing. Full runs
 for 2f479106/3300b3c8/0e17a529 were superseded by subsequent pushes, so they do not
 prove plugin startup fixed. The next full run must reach both platform gates
 before release readiness can be claimed.
+
+### Native startup regression found in ed6b1e53
+
+Full run 46065048771 built the Linux editor, but its startup gate detected an
+invalid `visibility_changed` signal connection on the LFS dialog. The fix uses
+Window's visibility notification instead and extends the native LFS regression
+to hide a running dialog and verify process/lock cleanup. Both the compiled editor
+and its build cache are now preserved immediately after compilation, before any
+runtime gate can fail. The corrected runtime result is still pending. Local
+production/test syntax checks pass (33 C++ units, eight native-test headers), as
+do all 22 discovered Python harness tests. These do not replace native execution.

@@ -116,6 +116,10 @@ void GoLfsDialog::_start_read(ReadPurpose p_purpose) {
 }
 
 void GoLfsDialog::_notification(int p_what) {
+	if (p_what == NOTIFICATION_VISIBILITY_CHANGED) {
+		_visibility_changed();
+		return;
+	}
 	if (p_what == NOTIFICATION_EXIT_TREE) {
 		_cancel_job();
 		return;
@@ -442,5 +446,4 @@ GoLfsDialog::GoLfsDialog(go_suite::GoGitController *p_controller) {
 	cancel_button->set_disabled(true);
 	cancel_button->connect("pressed", callable_mp(this, &GoLfsDialog::_cancel_job));
 	root->add_child(cancel_button);
-	connect("visibility_changed", callable_mp(this, &GoLfsDialog::_visibility_changed));
 }

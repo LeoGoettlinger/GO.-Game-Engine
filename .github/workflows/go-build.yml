@@ -106,6 +106,20 @@ jobs:
             exit "$status"
           fi
 
+      - name: Preserve editor cache before runtime gates
+        uses: actions/cache/save@v4
+        with:
+          path: .scons_cache
+          key: go-${{ matrix.platform }}-editor-${{ github.sha }}
+
+      - name: Preserve compiled editor for diagnostics
+        uses: actions/upload-artifact@v4
+        with:
+          name: go-editor-candidate-${{ matrix.platform }}
+          path: bin/godot.*.editor.x86_64*
+          retention-days: 3
+          if-no-files-found: error
+
       - name: Verify --version branding
         shell: bash
         run: |

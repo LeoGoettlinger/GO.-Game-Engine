@@ -85,6 +85,13 @@ struct GoChatHistoryDockTest {
 		dialog->_start_command(go::git(go_suite::to_std_string(directory), { "--version" }));
 		CHECK_FALSE(dialog->owns_job);
 		GoSuiteRegistry::set_git_job_busy(false);
+		dialog->show();
+		dialog->_start_command(go::git(go_suite::to_std_string(directory), { "hash-object", "--stdin" }));
+		REQUIRE(dialog->owns_job);
+		dialog->hide();
+		CHECK_FALSE(dialog->owns_job);
+		CHECK_FALSE(dialog->command_process.is_running());
+		CHECK_FALSE(GoSuiteRegistry::is_git_job_busy());
 		memdelete(dialog);
 	}
 	void check_json_fallback() {

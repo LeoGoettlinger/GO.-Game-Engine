@@ -828,3 +828,7 @@ asynchronous too; local policy/attribute processing remains synchronous. Closing
 the dialog cancels its owned operation without releasing another job's lock.
 Cancellation does not undo completed package, transfer or file changes. Native
 lock/cancellation coverage is added; runtime confirmation remains pending.
+
+Runtime validation update: Linux compilation of ed6b1e53 passed, but startup
+caught an LFS-dialog signal registration error. Window-notification cleanup and
+a hide-while-running regression correct that path; native rerun is pending.
