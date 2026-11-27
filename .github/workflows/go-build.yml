@@ -12,6 +12,10 @@ on:
   pull_request:
     types: [opened, labeled, synchronize, reopened]
 
+concurrency:
+  group: go-full-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: write
 

@@ -1,0 +1,48 @@
+# Retire obsolete GO. validation runs on this development branch only.
+name: GO. Validation Queue Cleanup
+on:
+  workflow_dispatch:
+  push:
+    branches: [arena/a15e5657-go-game-engine]
+permissions:
+  actions: write
+  contents: read
+jobs:
+  retire-obsolete:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    steps:
+      - name: Cancel obsolete development validations only
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GO_REPOSITORY: ${{ github.repository }}
+          GO_BRANCH: ${{ github.ref_name }}
+          GO_SHA: ${{ github.sha }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import subprocess
+          repo, branch, sha = (os.environ[key] for key in ("GO_REPOSITORY", "GO_BRANCH", "GO_SHA"))
+          if branch != "arena/a15e5657-go-game-engine":
+              raise SystemExit("Cleanup is restricted to the GO. development branch")
+          names = {"GO. Build and Release", "GO. Quick Checks"}
+          for state in ("queued", "in_progress", "waiting", "pending"):
+              result = subprocess.check_output([
+                  "gh", "api", "--method", "GET", f"repos/{repo}/actions/runs",
+                  "-f", f"branch={branch}", "-f", f"status={state}", "-f", "per_page=100",
+              ], text=True)
+              for run in json.loads(result)["workflow_runs"]:
+                  if run["name"] not in names or run["head_branch"] != branch or run["head_sha"] == sha:
+                      continue
+                  # A newer push may already exist. Never cancel runs newer than
+                  # this cleanup's own workflow run.
+                  if run["id"] >= int(os.environ["GITHUB_RUN_ID"]):
+                      continue
+                  response = subprocess.run([
+                      "gh", "api", "--method", "POST", f"repos/{repo}/actions/runs/{run['id']}/cancel",
+                  ], capture_output=True, text=True)
+                  print(f"Cancel obsolete {run['name']} #{run['id']}: exit {response.returncode}")
+                  if response.returncode:
+                      print(response.stderr)
+          PY

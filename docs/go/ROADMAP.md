@@ -704,3 +704,12 @@ Clear event: a direct autoload global access despite the supplied per-event
 handler. The last-event check now uses `dialogic`, as the rest of that event
 already does. The patch is recorded in source provenance and PATCHES.md; no test
 was excluded. Re-run confirmation is pending.
+
+### Validation queue consolidation
+
+Full and quick workflows now supersede obsolete runs per ref. A restricted
+queue-maintenance workflow cancels only older GO. full/quick development-branch
+runs, not releases, unrelated workflows or the current SHA. Previous broken
+checkpoints had accumulated many simultaneous engine builds and delayed current
+validation. Direct sandbox cancellation returned an Actions permission 403; the
+repository workflow uses an explicit actions:write GITHUB_TOKEN permission.
