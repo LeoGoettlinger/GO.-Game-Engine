@@ -87,6 +87,9 @@ jobs:
       - name: Kilo Gateway mock test (no live network)
         run: python misc/scripts/go_mock_gateway_test.py
 
+      - name: Live-probe safety tests with mocked HTTP
+        run: python misc/scripts/go_live_kilo_smoke_test.py
+
       - name: Local bare-repo Git flow and LFS pointer test
         run: python misc/scripts/go_git_flow_test.py
 

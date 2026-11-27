@@ -1,0 +1,31 @@
+# Explicit synthetic-only live check. Not a dependency of offline builds.
+name: GO. Live Anonymous Kilo Probe
+on:
+  workflow_dispatch:
+  push:
+    branches: [arena/a15e5657-go-game-engine]
+    paths:
+      - 'misc/scripts/go_live_kilo*'
+      - '.github/workflows/go-live-kilo.yml'
+permissions:
+  contents: read
+concurrency:
+  group: go-live-kilo-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  synthetic-plan:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Anonymous free model planning with fixed synthetic prompt
+        run: python misc/scripts/go_live_kilo_smoke.py --allow-live-synthetic-request --output go-validation/live-kilo.json
+      - name: Preserve result without gateway response bodies
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-kilo-synthetic-result
+          path: go-validation/live-kilo.json

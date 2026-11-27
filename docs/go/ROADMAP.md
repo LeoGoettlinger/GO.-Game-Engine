@@ -729,3 +729,21 @@ native dock regression checks opt-in, unapproved writes, denial, unique IDs and
 the action cap. Local syntax and standalone checks pass; new native/live runtime
 results remain pending. This supersedes earlier statements that fallback actions
 are never executed.
+
+### Anonymous gateway planning probe
+
+A separate explicitly synthetic live Actions workflow now requests the model
+catalog and at most one chat completion from the fixed Kilo Gateway using the
+public anonymous credential. Only the production default model is accepted and
+only when the production catalog parser verifies it is free. The fixed prompt
+contains no repository files, diffs, user paths, credentials or environment data.
+Redirects, oversized responses, paid/authenticated fallback and automatic retries
+are refused. A generated `list_files` plan is checked using the production C++
+response parser and tool argument/path schema, but is NOT executed in an editor.
+Artifacts record only status and scope, not arbitrary gateway response bodies.
+
+Three offline tests compile the real C++ probe while mocking HTTP: valid free
+planning, refusal to send chat for a paid/missing default model, and rejection of
+an unexpected action. Those pass locally. Live result and full live-agent editor
+acceptance remain separate and pending; this probe does not claim user-clicked
+approvals, player creation or screenshot acceptance.
