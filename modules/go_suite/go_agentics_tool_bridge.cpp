@@ -421,7 +421,7 @@ std::string plan_file_change(const go::GoKiloToolCall &p_call, FileChangePlan &r
 				}
 				r_plan.after = "[gd_scene format=3]\n\n[node name=\"" + name + "\" type=\"" + type + "\"]\n";
 			} else {
-				if (type != "RectangleShape2D" && type != "CircleShape2D" && type != "CapsuleShape2D" && type != "BoxShape3D" && type != "SphereShape3D" && type != "StandardMaterial3D" && type != "Gradient" && type != "SpriteFrames") {
+				if (type != "RectangleShape2D" && type != "CircleShape2D" && type != "CapsuleShape2D" && type != "BoxShape3D" && type != "SphereShape3D" && type != "StandardMaterial3D" && type != "Gradient" && type != "GradientTexture2D" && type != "SpriteFrames") {
 					return "Resource type is outside the supported built-in allowlist";
 				}
 				r_plan.after = "[gd_resource type=\"" + type + "\" format=3]\n\n[resource]\n";
@@ -582,7 +582,8 @@ String GoAgenticsToolBridge::prepare_editor_action(const go::GoKiloToolCall &p_c
 		return TTR("A running editor is required.");
 	}
 	const bool saving = p_call.name == "save_current_scene" || p_call.name == "save_scene_as";
-	const bool attaching = p_call.name == "attach_script";
+	const bool resource_assignment = p_call.name == "assign_resource";
+	const bool attaching = p_call.name == "attach_script" || resource_assignment;
 	if (!attaching && !saving && p_call.name != "stop_project" && !editor->get_unsaved_scenes().is_empty()) {
 		return TTR("Save or discard unsaved scenes yourself before this action; the agent will not autosave them.");
 	}
@@ -600,7 +601,7 @@ String GoAgenticsToolBridge::prepare_editor_action(const go::GoKiloToolCall &p_c
 	if (attaching) {
 		std::string parse_error;
 		const auto args = go::parse_json(p_call.arguments, parse_error);
-		path = to_godot(argument_string(args, "script_path"));
+		path = to_godot(argument_string(args, resource_assignment ? "path" : "script_path"));
 		const String node_path = to_godot(argument_string(args, "node_path", "."));
 		if (root == nullptr || root->get_scene_inherited_state().is_valid() || node_path.is_empty() || node_path.begins_with("/") || node_path.contains("..") || node_path.contains(":")) {
 			return TTR("A local target inside the current non-inherited scene is required.");
@@ -608,6 +609,12 @@ String GoAgenticsToolBridge::prepare_editor_action(const go::GoKiloToolCall &p_c
 		attachment_target = root->get_node_or_null(NodePath(node_path));
 		if (attachment_target == nullptr || !attachment_target->get_script().is_null() || (attachment_target != root && (attachment_target->get_owner() != root || !attachment_target->get_scene_file_path().is_empty()))) {
 			return TTR("Attach Script requires a locally owned node without an existing script; existing script state is never replaced.");
+		}
+		if (resource_assignment) {
+			const std::string property = argument_string(args, "property");
+			if (!((property == "texture" && attachment_target->is_class("Sprite2D")) || (property == "shape" && (attachment_target->is_class("CollisionShape2D") || attachment_target->is_class("CollisionShape3D"))))) {
+				return TTR("Resource assignment supports Sprite2D.texture and CollisionShape2D/3D.shape only.");
+			}
 		}
 		if (EditorUndoRedoManager::get_singleton() == nullptr) {
 			return TTR("Editor undo history is required for script attachment.");
@@ -644,7 +651,7 @@ String GoAgenticsToolBridge::prepare_editor_action(const go::GoKiloToolCall &p_c
 			path = ResourceUID::get_singleton()->get_id_path(uid);
 		}
 		const auto checked = go::validate_res_path(to_std(path), saving ? go::PathOperation::WRITE : go::PathOperation::READ);
-		if (!checked.ok || path.get_extension().to_lower() != (attaching ? "gd" : "tscn")) {
+		if (!checked.ok || path.get_extension().to_lower() != (resource_assignment ? "tres" : (attaching ? "gd" : "tscn"))) {
 			return TTR("A saved res:// .tscn scene or .gd attachment script is required for this action.");
 		}
 		path = to_godot(checked.normalized);
@@ -659,6 +666,9 @@ String GoAgenticsToolBridge::prepare_editor_action(const go::GoKiloToolCall &p_c
 			if (!read_project_text(path, source, error, &original_bytes)) {
 				return to_godot(error);
 			}
+			if (resource_assignment && !source.strip_edges().begins_with("[gd_resource ")) {
+				return TTR("Target does not have a text-resource header.");
+			}
 			if (!attaching && !source.strip_edges().begins_with("[gd_scene ")) {
 				return TTR("Target does not have a text-scene header.");
 			}
@@ -667,6 +677,12 @@ String GoAgenticsToolBridge::prepare_editor_action(const go::GoKiloToolCall &p_c
 	String state = project + "\n" + to_godot(p_call.name) + "\n" + to_godot(p_call.arguments) + "\n" + path + "\n" + source.sha256_text() + "\n" + String::hex_encode_buffer(original_bytes.ptr(), original_bytes.size()) + "\n" + (!path.is_empty() && FileAccess::exists(path) ? "existing" : "missing");
 	state += "\n" + itos(root != nullptr ? uint64_t(root->get_instance_id()) : 0);
 	state += "\n" + itos(attachment_target != nullptr ? uint64_t(attachment_target->get_instance_id()) : 0);
+	if (resource_assignment) {
+		std::string parse_error;
+		const auto args = go::parse_json(p_call.arguments, parse_error);
+		Ref<Resource> previous = attachment_target->get(to_godot(argument_string(args, "property")));
+		state += "\n" + itos(previous.is_valid() ? uint64_t(previous->get_instance_id()) : 0);
+	}
 	state += "\n" + editor->get_playing_scene() + "\n" + (editor->is_playing_scene() ? "playing" : "stopped");
 	if (root != nullptr && EditorUndoRedoManager::get_singleton() != nullptr) {
 		EditorUndoRedoManager *undo = EditorUndoRedoManager::get_singleton();
@@ -674,6 +690,10 @@ String GoAgenticsToolBridge::prepare_editor_action(const go::GoKiloToolCall &p_c
 	}
 	r_fingerprint = state.sha256_text();
 	r_preview = to_godot(p_call.name) + "\n" + project + "\n" + path + "\n\n";
+	if (resource_assignment) {
+		r_preview += TTR("Load and assign this resource to the approved built-in property. Resource dependencies may execute tool/static scripts; this is NOT a sandbox. Only the property assignment has Undo/Redo, not resource-loading side effects.");
+		return String();
+	}
 	if (attaching) {
 		r_preview += TTR("Load and attach this script to the approved local node. Loading may execute static initialization and tool scripts with your user permissions; this is NOT a sandbox. Only the script assignment has Undo/Redo, not arbitrary script side effects. Existing scripts are never replaced.");
 		return String();
@@ -694,13 +714,15 @@ String GoAgenticsToolBridge::execute_editor_action(const go::GoKiloToolCall &p_c
 		return to_godot(error_json(error.is_empty() ? "Project, scene or run state changed after approval; request a fresh action" : to_std(error)));
 	}
 	EditorInterface *editor = EditorInterface::get_singleton();
-	if (p_call.name == "attach_script") {
+	if (p_call.name == "attach_script" || p_call.name == "assign_resource") {
+		const bool resource_assignment = p_call.name == "assign_resource";
 		std::string parse_error;
 		const auto args = go::parse_json(p_call.arguments, parse_error);
-		const auto checked = go::validate_res_path(argument_string(args, "script_path"), go::PathOperation::READ);
-		Ref<Script> script = ResourceLoader::load(to_godot(checked.normalized), "Script", ResourceFormatLoader::CACHE_MODE_IGNORE);
-		if (script.is_null() || !script->is_valid()) {
-			return to_godot(error_json("Script did not load/validate; no attachment was made. Check editor diagnostics."));
+		const auto checked = go::validate_res_path(argument_string(args, resource_assignment ? "path" : "script_path"), go::PathOperation::READ);
+		Ref<Resource> resource = ResourceLoader::load(to_godot(checked.normalized), resource_assignment ? "" : "Script", ResourceFormatLoader::CACHE_MODE_IGNORE);
+		Ref<Script> script = resource;
+		if (resource.is_null() || (!resource_assignment && (script.is_null() || !script->is_valid()))) {
+			return to_godot(error_json("Resource/script did not load or validate; no assignment was made. Check editor diagnostics."));
 		}
 		// Loading an explicitly approved script can itself run code. Re-resolve
 		// everything afterwards instead of retaining possibly freed Node pointers.
@@ -710,15 +732,22 @@ String GoAgenticsToolBridge::execute_editor_action(const go::GoKiloToolCall &p_c
 		}
 		Node *root = editor->get_edited_scene_root();
 		Node *target = root->get_node_or_null(NodePath(to_godot(argument_string(args, "node_path", "."))));
-		if (!target->is_class(script->get_instance_base_type())) {
+		if (!resource_assignment && !target->is_class(script->get_instance_base_type())) {
 			return to_godot(error_json("Script base type does not match the target node"));
 		}
+		const StringName property = resource_assignment ? StringName(to_godot(argument_string(args, "property"))) : SNAME("script");
+		if (resource_assignment) {
+			const StringName expected = property == SNAME("texture") ? SNAME("Texture2D") : (target->is_class("CollisionShape2D") ? SNAME("Shape2D") : SNAME("Shape3D"));
+			if (!resource->is_class(expected)) {
+				return to_godot(error_json("Resource type does not match the target property"));
+			}
+		}
 		EditorUndoRedoManager *undo = EditorUndoRedoManager::get_singleton();
-		undo->create_action(TTR("Code Agentics: Attach Script"), UndoRedo::MERGE_DISABLE, root);
+		undo->create_action(TTR("Code Agentics: Assign Resource or Script"), UndoRedo::MERGE_DISABLE, root);
 		undo->force_fixed_history();
-		record_set_property(undo->get_history_undo_redo(undo->get_history_id_for_object(root)), target, SNAME("script"), script);
+		record_set_property(undo->get_history_undo_redo(undo->get_history_id_for_object(root)), target, property, resource);
 		undo->commit_action();
-		return to_godot(ok_json("Script assignment committed to editor undo history. Script initialization/runtime effects are not undone; inspect editor errors and save the scene separately."));
+		return to_godot(ok_json("Resource/script assignment committed to editor undo history. Initialization/runtime effects are not undone; inspect editor errors and save the scene separately."));
 	}
 	if (p_call.name == "save_current_scene" || p_call.name == "save_scene_as") {
 		String target = editor->get_edited_scene_root()->get_scene_file_path();

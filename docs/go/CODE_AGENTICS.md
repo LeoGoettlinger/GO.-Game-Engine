@@ -367,3 +367,16 @@ script validity and native base compatibility, and records assignment through th
 editor undo history. The old direct set_script draft was removed. A native test
 checks resource retention across assignment/undo/redo; denial tests cover missing
 editor/approval. Full actual-editor attachment acceptance is still pending.
+
+### Resource assignment for player components
+
+`assign_resource` adds a 29th tool: required res:// .tres `path`, required
+`property`, optional scene-relative `node_path`. Supported targets are
+Sprite2D.texture (Texture2D) and CollisionShape2D/3D.shape (Shape2D/3D). Local
+non-scripted targets only; existing resource assignments are retained for undo.
+The approved target, resource bytes, old resource identity and history are checked
+again after loading. Loading can execute dependency scripts and therefore always
+requires explicit execution approval, not scene auto-approval. Only assignment,
+not arbitrary initialization effects, is undoable. GradientTexture2D is now also
+allowed by create_resource. Native shape-reference undo/redo and bypass tests are
+added; real editor assignment and visual validation remain pending.

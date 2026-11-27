@@ -298,6 +298,7 @@ TEST_CASE("[GO.][ReadTools] Editor execution cannot bypass approval or dereferen
 				 go::GoKiloToolCall{ "test", "stop_project", "{}" },
 				 go::GoKiloToolCall{ "test", "save_current_scene", "{}" },
 				 go::GoKiloToolCall{ "test", "attach_script", R"({"script_path":"res://player.gd","node_path":"."})" },
+				 go::GoKiloToolCall{ "test", "assign_resource", R"({"path":"res://shape.tres","node_path":"Shape","property":"shape"})" },
 				 go::GoKiloToolCall{ "test", "save_scene_as", R"({"path":"res://copy.tscn"})" } }) {
 		CHECK(bridge.execute(call).contains("prepared approval snapshot"));
 		CHECK(bridge.execute_editor_action(call, "").contains("\"ok\":false"));

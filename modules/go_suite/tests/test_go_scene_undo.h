@@ -37,10 +37,12 @@
 
 #include "core/object/undo_redo.h"
 #include "scene/2d/node_2d.h"
+#include "scene/2d/physics/collision_shape_2d.h"
 #include "scene/gui/label.h"
 #include "scene/main/node.h"
 #include "scene/main/scene_tree.h"
 #include "scene/main/window.h"
+#include "scene/resources/2d/rectangle_shape_2d.h"
 #include "tests/test_macros.h"
 
 #include "modules/gdscript/gdscript.h"
@@ -208,6 +210,30 @@ TEST_CASE("[GO.][SceneUndo][SceneTree] Script assignment retains its resource ac
 	CHECK(node->get_script().is_null());
 	CHECK(undo->redo());
 	CHECK(Ref<Script>(node->get_script()) == script);
+	undo->clear_history();
+	memdelete(undo);
+	memdelete(node);
+}
+} // namespace TestGoSceneUndo
+
+namespace TestGoSceneUndo {
+TEST_CASE("[GO.][SceneUndo][SceneTree] Shape assignment restores the prior resource") {
+	Ref<RectangleShape2D> first;
+	Ref<RectangleShape2D> second;
+	first.instantiate();
+	second.instantiate();
+	second->set_size(Vector2(32, 32));
+	CollisionShape2D *node = memnew(CollisionShape2D);
+	node->set_shape(first);
+	UndoRedo *undo = memnew(UndoRedo);
+	undo->create_action("Assign shape");
+	GoAgenticsToolBridge::record_set_property(undo, node, SNAME("shape"), second);
+	undo->commit_action();
+	CHECK(node->get_shape() == second);
+	CHECK(undo->undo());
+	CHECK(node->get_shape() == first);
+	CHECK(undo->redo());
+	CHECK(node->get_shape() == second);
 	undo->clear_history();
 	memdelete(undo);
 	memdelete(node);
